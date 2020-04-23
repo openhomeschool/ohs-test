@@ -27,7 +27,7 @@ And run your app::
 	
 (Or, with `aiohttp-devtools <https://github.com/aio-libs/aiohttp-devtools>`_)::
 
-	adev runserver --livereload test1_app
+	$ adev runserver --livereload test1_app
 
 (Other adev options may be desirable, and additions like 
 `aiohttp-debugtoolbar <https://github.com/aio-libs/aiohttp-debugtoolbar>`_
