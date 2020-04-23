@@ -23,11 +23,11 @@ Create the tiny starter reference database::
 
 And run your app::
 
-	$ python -m aiohttp.web -H localhost -P 8080 test1_app.server:init
+	$ python -m aiohttp.web -H localhost -P 8080 test1_app.main:init
 	
 (Or, with `aiohttp-devtools <https://github.com/aio-libs/aiohttp-devtools>`_)::
 
-	adev runserver --app-factory init --livereload test1_app
+	adev runserver --livereload test1_app
 
 (Other adev options may be desirable, and additions like 
 `aiohttp-debugtoolbar <https://github.com/aio-libs/aiohttp-debugtoolbar>`_

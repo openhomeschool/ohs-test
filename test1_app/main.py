@@ -137,7 +137,7 @@ async def shutdown(app):
 #		python -m aiohttp.web -H localhost -P 8080 main:init
 # Or, using adev (from parent directory!):
 #		adev runserver --app-factory init --livereload --debug-toolbar test1_app
-def init():
+def init(argv):
 	app = web.Application()
 	app.update(
 		websockets = weakref.WeakSet(),
@@ -148,3 +148,6 @@ def init():
 	app.on_startup.append(init_db)
 	app.on_shutdown.append(shutdown)
 	return app
+
+def app():
+	return init(None)
