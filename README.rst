@@ -1,33 +1,28 @@
-aiohttp-sqlite-dominate-stack-reference
-=======================================
+ohs-test
+========
 
-**aiohttp-sqlite-dominate-stack-reference** is a skeletal implementation of an
-aiohttp-based web application that uses sqlite
-(`aiosqlite <https://github.com/jreese/aiosqlite>`_, actually) for the
-database access and `dominate <https://github.com/Knio/dominate>`_ for HTML
-generation (rather than a templating language/tool).  The feature set is
-intentionally vapid, meant only to demonstrate the basics and offer a
-starting-point.
+**ohs-test** is the practice / quiz / test server for openhome.school
+grammar.
 
 Install and Configuration
 -------------------------
 ::
 
-	$ pip install aiohttp-sqlite-dominate-stack-reference
-	$ cd aiohttp_sqlite_dominate_stack_reference
+	$ pip install ohs-test
+	$ cd ohs-test
 	$ pip install -r requirements.txt
 
-Create the tiny starter reference database::
+Create the reference database::
 
-	$ cat test1.sql | sqlite3 test1.db
+	$ cat seed.sql | sqlite3 main.db
 
 And run your app::
 
-	$ python -m aiohttp.web -H localhost -P 8080 test1_app.main:init
+	$ python -m aiohttp.web -H localhost -P 8080 app.main:init
 	
 (Or, with `aiohttp-devtools <https://github.com/aio-libs/aiohttp-devtools>`_)::
 
-	$ adev runserver --livereload test1_app
+	$ adev runserver --livereload app
 
 (Other adev options may be desirable, and additions like 
 `aiohttp-debugtoolbar <https://github.com/aio-libs/aiohttp-debugtoolbar>`_
