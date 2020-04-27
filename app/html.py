@@ -30,57 +30,35 @@ class Form:
 
 # Handlers --------------------------------------------------------------------
 
-def test1_basic(record):
-	d = _doc('Test 1')
+def quiz(ws_url, db_function, html_function):
+	d = _doc('Quiz')
 	with d:
-		with t.div(cls = 'test1_cls', id = 'test1_id'):
-			t.p('This is a test paragraph; test record id: %s, "test" value: "%s"' % (record['id'], record['name']))
-	return d.render()
-
-
-def test1(form, title_prefix, button_title):
-	title = title_prefix + ' Test 1'
-	d = _doc(title)
-	with d:
-		with t.form(action = form.action, method = 'post'):
-			with t.fieldset():
-				t.legend(title)
-				with t.div(cls = 'form_row'):
-					_text_input(*form.nv('name'), ('autofocus', 'required'), {'pattern': valid.re_alphanum})
-			with t.div(cls = 'form_row'):
-				t.input(type = 'submit', value = button_title)
-	return d.render()
-
-
-def success():
-	d = _doc('Success!')
-	with d:
-		t.p('It worked!')
-	return d.render()
-
-
-def select_test1(url):
-	d = _doc('Select Test 1')
-
-	with d:
-		_text_input('search', None, ('autofocus',), {'autocomplete': 'off', 'oninput': 'search(this.value)'}, label = 'Search', type_ = 'search')
-		t.div(id = 'result') # filtered results themselves are added here, in this `result` div, via websocket, as search text is typed (see javascript)
-		
+		# Content container - filtered results themselves will be fed into here, via websocket (see _js_socket_quiz_manager):
+		t.div(id = 'content')
 		# JS (intentionally at bottom of file; see https://faqs.skillcrush.com/article/176-where-should-js-script-tags-be-linked-in-html-documents and many stackexchange answers):
-		t.script(_js_socket_filter(url))
-	
+		t.script(_js_socket_quiz_manager(ws_url, db_function, html_function))
 	return d.render()
 
 
-def list_test1(hits, url):
-	table = t.table()
-	with table:
-		for hit in hits:
-			with t.tr():
-				t.td(t.a(hit['name'], href = '%s/%d' % (url, hit['id'])))
-		if len(hits) >= 9:
-			t.tr(t.td('... (type in search bar to narrow list)'))
-	return table.render()
+exposed = {}
+def expose(func):
+	exposed[func.__name__] = func
+	def wrapper():
+		func()
+
+@expose
+def multi_choice_question(question, options):
+	d = t.div('Where does "%s" belong in this sequence of events?' % question['name'], cls = 'quiz_question_content')
+	with d:
+		with t.div(cls = 'quiz_question_option'):
+			t.input(type = 'radio', id = 'first', name = 'answer', value = '0')
+			t.label('First', fr = 'first')
+		for record in options:
+			#t.div('Option - %s' % record['name'] + '(%s)' % record['start'], cls = 'quiz_question_option')
+			with t.div(cls = 'quiz_question_option'):
+				t.input(type = 'radio', id = record['name'], name = 'answer', value = record['id'])
+				t.label('After "%s"' % record['name'], fr = record['name'])
+	return d.render()
 
 
 # Utils -----------------------------------------------------------------------
@@ -88,7 +66,7 @@ def list_test1(hits, url):
 #TODO: deport some of these?
 
 _dress_bool_attrs = lambda attrs: dict([(f, True) for f in attrs])
-_error = lambda message: t.div(message, class_ = 'error')
+_error = lambda message: t.div(message, cls = 'error')
 
 def _doc(title, css = None, scripts = None):
 	result = document(title = title)
@@ -127,14 +105,23 @@ def _text_input(name, value, bool_attrs = None, attrs = None, label = None, erro
 		result += _error(error_message)
 	return result
 
-def _js_socket_filter(url):
+def _js_socket_quiz_manager(url, db_function, html_function):
 	# This js not served as a static file for two reasons: 1) it's tiny and single-purpose, and 2) its code is tightly connected to this server code; it's not a candidate for another team to maintain, in other words; it also relies on our URL (for the websocket), whereas true static files might be served by a reverse-proxy server from anywhere, and won't tend to contain any references to the wsgi urls
 	return raw('''
-	var ws = new WebSocket("%s");
-	ws.onmessage = function(result) {
-		document.getElementById("result").innerHTML = result.data;
+	var ws = new WebSocket("%(url)s");
+	ws.onmessage = function(event) {
+		var payload = JSON.parse(event.data);
+		switch(payload.call) {
+			case "start":
+				ws.send(JSON.stringify({db_function: "%(db_function)s", html_function: "%(html_function)s", answer: 0}));
+				break;
+			case "content":
+				document.getElementById("content").innerHTML = payload.content;
+				break;
+		}
 	};
-	function search(str) {
-		ws.send(str);
+	function send_answer(answer) {
+		ws.send(JSON.stringify({db_function: "%(db_function)s", html_function: "%(html_function)s", answer: answer}));
 	};
-	''' % url)
+	
+	''' % {'url': url, 'db_function': db_function, 'html_function': html_function})

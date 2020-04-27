@@ -8,6 +8,7 @@ import logging
 import aiosqlite
 import re
 import weakref
+import json
 
 from aiohttp import web, WSMsgType, WSCloseCode
 
@@ -26,77 +27,34 @@ l = logging.getLogger(__name__)
 r = web.RouteTableDef()
 def hr(text): return web.Response(text = text, content_type = 'text/html')
 
+def _ws_url(request):
+	# Transform a normal URL like http://domain.tld/quiz/history/sequence into ws://domain.tld/ws_handler
+	return re.sub('%s$' % request.rel_url, '/ws_handler', re.sub('.*://', 'ws://', str(request.url)))
+
+
 # Handlers --------------------------------------------------------------------
 
-@r.get('/test1')
-async def test1(request):
-	r1 = await db.get_test1(request.app['db'], 1) # test code; assumes a record with id=1 exists
-	return hr(html.test1_basic(r1))
 
-
-@r.view('/new_test1')
-class New_Test1(web.View):
-	async def get(self):
-		return hr(html.test1(html.Form(self.request.path), 'New', 'Create'))
-	
-	async def post(self):
-		r = self.request
-		data = await r.post()
-		await db.create_test1(r.app['db'], data['name'])
-		return hr(html.success()) # lame placeholder
-
-		# TODO: Use shield() to write regardless of an unexpected closed connection:
-		# await asyncio.shield(db.insert_or_update(data['input1']))
-		# Otherwise, use aiojobs.aiohttp @atomic decorator to guard entire post handler (which prevents all handler (async) code from cancellation; it doesn't lock aio into an atomic mutex like it might suggest; this is all about cancellation-protection *only*)
-
-
-@r.view('/edit_test1/{id}')
-class Edit_Test1(web.View):
-	async def get(self):
-		r = self.request
-		id = r.match_info['id']
-		record = await db.get_test1(r.app['db'], id)
-		l.debug(record['name'])
-		return hr(html.test1(html.Form(r.path, {'name': record['name']}), 'Edit', 'Save'))
-	
-	async def post(self):
-		r = self.request
-		data = await r.post()
-		# TODO: validate/sanitize `data`
-		await db.update_test1(r.app['db'], r.match_info['id'], data['name'])
-		return hr(html.success()) # lame placeholder
-
-	
-@r.get('/select_test1')
-async def select_test1(request):
-	ws_url = re.sub('.*://', 'ws://', str(request.url)) # swap ws:// in for current scheme (http:// or https://, presumably)
-	ws_url = re.sub('%s$' % request.rel_url, '/ws_search_test1', ws_url)
-	return hr(html.select_test1(ws_url))
-
-
-@r.get('/ws_search_test1')
-async def ws_search_test1(request):
+@r.get('/ws_handler')
+async def ws_handler(request):
 	ws = web.WebSocketResponse()
 	await ws.prepare(request)
 	request.app['websockets'].add(ws)
-	edit_url = re.sub('.*://', 'http://', str(request.url)) # swap http:// in for current scheme (ws://) - note: what about HTTPs!?TODO
-	edit_url = re.sub('%s$' % request.rel_url, '/edit_test1', edit_url)
-	# Pre-populate list with subset of record list:
-	default_list = await db.get_test1_limited(request.app['db'], 10)
-	await ws.send_str(html.list_test1(default_list, edit_url))
-	
+	dbc = request.app['db']
+
+	await ws.send_json({'call': 'start'})
 	l.debug('Websocket prepared, listening for messages...')
 	try:
 		async for msg in ws:
-			#l.debug('WS message (%s): %s' % (msg.type, msg.data))
 			try:
 				if msg.type == WSMsgType.text:
 					#TODO: Validate each msg in ws as search string (use Schema(valid_search_string())?
-					if msg.data:
-						records = await db.find_test1(request.app['db'], msg.data)
-					else:
-						records = default_list
-					await ws.send_str(html.list_test1(records, edit_url))
+					payload = json.loads(msg.data)
+					l.debug(payload)
+					if payload['answer']:
+						pass # TODO
+					question, options = await db.get_question(db.exposed[payload['db_function']], dbc, payload)
+					await ws.send_json({'call': 'content', 'content': html.exposed[payload['html_function']](question, options)})
 				elif msg.type == aiohttp.WSMsgType.ERROR:
 					l.warning('websocket connection closed with exception "%s"' % ws.exception())
 				else:
@@ -104,6 +62,7 @@ async def ws_search_test1(request):
 
 			except Exception as e: # per-message exceptions:
 				l.error('Exception (%s: %s) during WS message processing; continuing on...' % (str(e), type(e)))
+				raise
 
 	except Exception as e:
 		l.error('Exception (%s: %s) processing WS messages; shutting down WS...' % (str(e), type(e)))
@@ -113,12 +72,13 @@ async def ws_search_test1(request):
 		request.app['websockets'].discard(ws) # in finally block to ensure that this is done even if an exception propagates out of this function
 
 	return ws
+	
 
 
 # Init / Shutdown -------------------------------------------------------------
 
 async def init_db(app):
-	db = await aiosqlite.connect('test1.db', isolation_level = None) # isolation_level: autocommit
+	db = await aiosqlite.connect('ohs-test.db', isolation_level = None) # isolation_level: autocommit TODO: parameterize DB ID!
 		# non-async equivalent would have been: db = sqlite3.connect('test1.db', isolation_level = None) # isolation_level: autocommit
 	db.row_factory = aiosqlite.Row
 	await db.execute('pragma journal_mode = wal') # see https://charlesleifer.com/blog/going-fast-with-sqlite-and-python/ - since we're using async/await from a wsgi stack, this is appropriate
@@ -141,13 +101,51 @@ def init(argv):
 	app = web.Application()
 	app.update(
 		websockets = weakref.WeakSet(),
-		#static_path='static/', ??
-		#static_url='/static/', ??
+		#static_path = 'static/', TODO
+		#static_url = '/static/', TODO
 	)
+	
+	# Add standard routes:
 	app.add_routes(r)
+	# And quiz routes:
+	def q(db_function, html_function):
+		def quiz(request):
+			return hr(html.quiz(_ws_url(request), db_function, html_function))
+		return quiz
+	g = web.get
+	app.add_routes([
+		g('/quiz/history/sequence', q('get_history_sequence_question', 'multi_choice_question')),
+		g('/quiz/history/geography', q('get_history_geography_question', 'multi_choice_question')),
+		g('/quiz/history/detail', q('get_history_detail_question', 'multi_choice_question')),
+		g('/quiz/history/submissions', q('get_history_submissions_question', 'multi_choice_question')),
+		g('/quiz/history/random', q('get_history_random_question', 'multi_choice_question')),
+		g('/quiz/geography/orientation', q('get_geography_orientation_question', 'multi_choice_question')),
+		g('/quiz/geography/map', q('get_geography_map_question', 'multi_choice_question')),
+		g('/quiz/science/grammar', q('get_science_grammar_question', 'multi_choice_question')),
+		g('/quiz/science/submissions', q('get_science_submissions_question', 'multi_choice_question')),
+		g('/quiz/science/random', q('get_science_random_question', 'multi_choice_question')),
+		g('/quiz/math/facts/multiplication', q('get_math_facts_question', 'multi_choice_question')),
+		g('/quiz/math/grammar', q('get_math_grammar_question', 'multi_choice_question')),
+		g('/quiz/english/grammar', q('get_english_grammar_question', 'multi_choice_question')),
+		g('/quiz/english/vocabulary', q('get_quiz_english_vocabulary_question', 'multi_choice_question')),
+		g('/quiz/english/random', q('get_english_random_question', 'multi_choice_question')),
+		g('/quiz/latin/grammar', q('get_latin_grammar_question', 'multi_choice_question')),
+		g('/quiz/latin/vocabulary', q('get_latin_vocabulary_question', 'multi_choice_question')),
+		g('/quiz/latin/translation', q('get_latin_translation_question', 'multi_choice_question')),
+		g('/quiz/latin/random', q('get_latin_random_question', 'multi_choice_question')),
+		g('/quiz/music/note', q('get_music_note_question', 'multi_choice_question')),
+		g('/quiz/music/key_signature', q('get_music_key_signature_question', 'multi_choice_question')),
+		g('/quiz/music/submissions', q('get_music_submissions_question', 'multi_choice_question')),
+		g('/quiz/music/random', q('get_music_random_question', 'multi_choice_question')),
+	])
+	
+	# Add startup/shutdown hooks:
 	app.on_startup.append(init_db)
 	app.on_shutdown.append(shutdown)
+
 	return app
+
 
 def app():
 	return init(None)
+
