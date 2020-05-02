@@ -1,5 +1,5 @@
 --
--- File generated with SQLiteStudio v3.2.1 on Tue Apr 28 00:33:51 2020
+-- File generated with SQLiteStudio v3.2.1 on Sat May 2 00:59:50 2020
 --
 -- Text encoding used: UTF-8
 --
@@ -767,8 +767,8 @@ CREATE TABLE test_event_sequence_target (id INTEGER PRIMARY KEY AUTOINCREMENT, u
 CREATE TABLE test_event_sequence_target_threshold (id INTEGER PRIMARY KEY AUTOINCREMENT, user INTEGER REFERENCES test_user (id) ON DELETE CASCADE ON UPDATE CASCADE UNIQUE, threshold INTEGER);
 
 -- Table: test_user
-CREATE TABLE test_user (id INTEGER PRIMARY KEY AUTOINCREMENT, username STRING UNIQUE);
-INSERT INTO test_user (id, username) VALUES (1, 'jmcaine');
+CREATE TABLE test_user (id INTEGER PRIMARY KEY AUTOINCREMENT, username STRING UNIQUE, password STRING, salt STRING, email STRING);
+INSERT INTO test_user (id, username, password, salt, email) VALUES (1, 'jmcaine', NULL, NULL, NULL);
 
 -- Table: vocabulary
 CREATE TABLE vocabulary (id INTEGER PRIMARY KEY AUTOINCREMENT, cw INTEGER REFERENCES cycle_week (id) ON DELETE RESTRICT ON UPDATE CASCADE NOT NULL, word STRING NOT NULL UNIQUE, pos INTEGER REFERENCES part_of_speech (id) ON DELETE RESTRICT ON UPDATE CASCADE NOT NULL, definition STRING NOT NULL, root STRING);

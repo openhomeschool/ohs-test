@@ -4,20 +4,30 @@ __version__ = '0.1'
 __license__ = 'MIT'
 
 import logging
-import re
-
-# Logging ---------------------------------------------------------------------
-
-#logging.basicConfig(format = '%(asctime)s - %(levelname)s : %(name)s:%(lineno)d -- %(message)s', level = logging.DEBUG) # TODO: parameterize DEBUG
 l = logging.getLogger(__name__)
+
+import re
 
 
 # Handlers --------------------------------------------------------------------
 
-async def get_question_DEPRECATED(db, sql_function, payload):
-	c = await db.execute(sql_function(payload))
-	return await c.fetchall() # Note: see "Deferred fetch" example at bottom of this file....
+_add_user = lambda username, password, email: ('insert into test_user(username, password, email) values (?, ?, ?)', (username, password, email))
+async def add_user(db, *args):
+	c = await db.execute(*_add_user(*args))
+	return None #TODO
 
+_get_users_limited = lambda limit: ('select * from test_user limit ?', (limit,))
+async def get_users_limited(db, limit):
+	c = await db.execute(*_get_users_limited(limit))
+	return await c.fetchall()
+	
+
+_find_users = lambda like: ('select * from test_user where username like ?', ('%' + like + '%',))
+async def find_users(db, like):
+	c = await db.execute(*_find_users(like))
+	return await c.fetchall()
+
+# ------------
 
 async def get_question(function, db, payload):
 	return await function(db, payload)
@@ -30,8 +40,8 @@ def expose(func):
 
 @expose
 async def get_history_sequence_question(db, payload):
-	primary = await get_random_event(db, week_range = (1, 3), date_range = None)
-	events = await get_surrounding_events(db, primary, week_range = (1, 3), date_range = None)
+	primary = await get_random_event(db, week_range = (1, 12), date_range = None)
+	events = await get_surrounding_events(db, primary, week_range = (1, 12), date_range = None)
 	return (primary, events)
 
 @expose
@@ -223,7 +233,7 @@ async def get_surrounding_events(db, event, week_range = None, date_range = None
 	return result
 
 
-
+# Unit testing... <fledgling start> -------------------------------------------
 
 def _ut_get_random_event(week_range = None, date_range = None):
 	event = db.execute(*s_get_random_event(week_range, date_range)).fetchone()

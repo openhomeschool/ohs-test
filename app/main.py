@@ -14,6 +14,7 @@ from aiohttp import web, WSMsgType, WSCloseCode
 
 from . import html
 from . import db
+from . import valid
 
 _debug = True # TODO: parameterize!
 
@@ -27,16 +28,92 @@ l = logging.getLogger(__name__)
 r = web.RouteTableDef()
 def hr(text): return web.Response(text = text, content_type = 'text/html')
 
-def _ws_url(request):
-	# Transform a normal URL like http://domain.tld/quiz/history/sequence into ws://domain.tld/ws_handler
-	return re.sub('%s$' % request.rel_url, '/ws_handler', re.sub('.*://', 'ws://', str(request.url)))
-
 
 # Handlers --------------------------------------------------------------------
 
+@r.view('/new_user')
+class New_User(web.View):
+	async def get(self):
+		return hr(html.new_user(html.Form(self.request.path)))
+	
+	async def post(self):
+		r = self.request
+		data = await r.post()
+		
+		# Validate:
+		errors = {}
+		_validate_regex(data, errors, (
+				('new_username', valid.re_username, valid.inv_username),
+				('password', valid.re_password, valid.inv_password),
+				('email', valid.re_email, valid.inv_email),
+			))
+		if str(data['password']) != str(data['password_confirmation']):
+			errors['password_confirmation'] = valid.inv_password_confirmation
 
-@r.get('/ws_handler')
-async def ws_handler(request):
+		if errors:
+			# Re-present:
+			return hr(html.new_user(html.Form(self.request.path, data, errors)))
+		#else...
+
+		#if sess.get('trial'): # True
+		#user = db.update_user(dbs, sess['username'], p.username, p.password, p.email)
+		#else:
+		user = await db.add_user(r.app['db'], data['new_username'], data['password'], data['email'])
+		
+		return hr(html.new_user_success()) # lame placeholder
+
+
+@r.get('/select_user')
+async def select_user(request):
+	return hr(html.select_user(_ws_url(request, '/ws_filter_list')))
+
+@r.get('/ws_filter_list')
+async def ws_filter_list(request):
+	# Create a default list to show when nothing is entered into search bar:
+	default_list = await db.get_users_limited(request.app['db'], 10)
+	edit_url = _http_url(request, 'edit_user')
+	
+	async def msg_handler(payload, dbc, ws):
+		assert(payload['call'] == 'search')
+		if payload['string']:
+			#TODO: validate first!
+			records = await db.find_users(dbc, payload['string'])
+		else:
+			records = default_list
+		await ws.send_json({'call': 'content', 'content': html.filter_user_list(records, edit_url)})
+
+	return await _ws_handler(request, msg_handler)
+
+	
+
+@r.get('/ws_quiz_handler')
+async def ws_quiz_handler(request):
+
+	async def msg_handler(payload, dbc, ws):
+		if payload['answer']:
+			pass # TODO
+		question, options = await db.get_question(db.exposed[payload['db_function']], dbc, payload)
+		await ws.send_json({'call': 'content', 'content': html.exposed[payload['html_function']](question, options)})
+
+	return await _ws_handler(request, msg_handler)
+
+
+# Util ------------------------------------------------------------------------
+
+def _ws_url(request, name):
+	# Transform a normal URL like http://domain.tld/quiz/history/sequence into ws://domain.tld/<name>
+	return re.sub('%s$' % request.rel_url, name, re.sub('.*://', 'ws://', str(request.url)))
+
+def _http_url(request, name):
+	# Transform a ws URL like ws://domain.tld/... into a normal URL: http://domain.tld/<name>  - note: what about HTTPs!?TODO
+	return re.sub('%s$' % request.rel_url, name, re.sub('.*://', 'http://', str(request.url)))
+
+def _validate_regex(data, errors, tuple_list):
+	for field, regex, message in tuple_list:
+		if not regex.match(str(data[field])):
+			errors[field] = message
+
+async def _ws_handler(request, msg_handler):
 	ws = web.WebSocketResponse()
 	await ws.prepare(request)
 	request.app['websockets'].add(ws)
@@ -51,10 +128,7 @@ async def ws_handler(request):
 					#TODO: Validate each msg in ws as search string (use Schema(valid_search_string())?
 					payload = json.loads(msg.data)
 					l.debug(payload)
-					if payload['answer']:
-						pass # TODO
-					question, options = await db.get_question(db.exposed[payload['db_function']], dbc, payload)
-					await ws.send_json({'call': 'content', 'content': html.exposed[payload['html_function']](question, options)})
+					await msg_handler(payload, dbc, ws)
 				elif msg.type == aiohttp.WSMsgType.ERROR:
 					l.warning('websocket connection closed with exception "%s"' % ws.exception())
 				else:
@@ -72,7 +146,6 @@ async def ws_handler(request):
 		request.app['websockets'].discard(ws) # in finally block to ensure that this is done even if an exception propagates out of this function
 
 	return ws
-	
 
 
 # Init / Shutdown -------------------------------------------------------------
@@ -101,8 +174,9 @@ def init(argv):
 	app = web.Application()
 	app.update(
 		websockets = weakref.WeakSet(),
-		#static_path = 'static/', TODO
-		#static_url = '/static/', TODO
+		static_path = 'static/',
+		static_url = '/static/',
+		static_root_url = 'static/',
 	)
 	
 	# Add standard routes:
@@ -110,7 +184,7 @@ def init(argv):
 	# And quiz routes:
 	def q(db_function, html_function):
 		def quiz(request):
-			return hr(html.quiz(_ws_url(request), db_function, html_function))
+			return hr(html.quiz(_ws_url(request, '/ws_quiz_handler'), db_function, html_function))
 		return quiz
 	g = web.get
 	app.add_routes([
