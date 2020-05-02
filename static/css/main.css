@@ -1,0 +1,94 @@
+
+
+.content {
+	max-width: 80%;
+	margin: auto;
+}
+
+label {
+	display: block;
+	margin-top: 10px;
+	color: gray;
+}
+
+input[type="text"], input[type="email"], input[type="password"] {
+	width: 100%;
+	display: block;
+	outline: none;
+	border-style: none;
+	border-bottom: 2px solid #d9d9d9;
+	font-size: 130%;
+}
+
+input[type="submit"] {
+	margin-top: 15px;
+	font-size: 150%;
+	border-radius: 6px;
+}
+
+button {
+	margin-top: 15px;
+	font-size: 150%;
+	border-radius: 8px;
+}
+
+.small_fieldset {
+	width: 100%;
+	max-width: 400px;
+}
+
+#correct_answer_flash {
+	color:red;
+	font-size:150%;
+}
+
+#login_detail {
+	color:red;
+	font-size:150%;
+}
+
+.flash {
+	color:red;
+	font-size:115%;
+}
+
+.error {
+	/*display: none;*/
+	background-color: #82200d;
+	color: white;
+	margin: 0px 0px 12px 12px;
+	padding: 4px;
+	border-radius: 6px;
+}
+
+ol.step_numbers {
+	list-style: none;
+	counter-reset: big-counter;
+}
+ol.step_numbers li {
+	counter-increment: big-counter;
+	position: relative;
+}
+ol.step_numbers li::before {
+	content: counter(big-counter) ") ";
+	position: absolute;
+	--size: 32px;
+	left: calc(-1 * var(--size) - 10px);
+	font-size: x-large;
+	font-weight: bold;
+	color: #070842;
+	transform: rotate(-15deg);
+}
+
+fieldset {
+	margin: 5px 0px 5px;
+	border-radius: 7px;
+}
+
+.tilt_label {
+	display: inline-block;
+	font-weight: bold;
+	font-size: x-large;
+	transform: rotate(-15deg);
+	margin: 5px;
+}
