@@ -72,7 +72,7 @@ def get_geography_map_question(db, payload):
 def get_science_grammar_question(db, payload):
 	# 1. get a random science "question" (grammar record)
 	# 2. get a random selection of science "answers" from the remaining records
-	# 3. return the root question/answers and the science and others: 
+	# 3. return the root question/answers 
 	pass
 
 @expose
