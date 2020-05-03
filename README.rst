@@ -8,13 +8,16 @@ Install and Configuration
 -------------------------
 ::
 
-	$ pip install ohs-test
-	$ cd ohs-test
+	$ python3 -m venv ve
+	$ . ve/bin/activate
+	$ pip install --upgrade pip
+	$ git clone https://github.com/openhomeschool/ohs-test.git
+	$ cd ohs-test/
 	$ pip install -r requirements.txt
 
-Create the reference database::
+Create the database::
 
-	$ cat seed.sql | sqlite3 main.db
+	$ cat ohs-test.sql | sqlite3 ohs-test.db
 
 And run your app::
 
@@ -24,9 +27,10 @@ And run your app::
 
 	$ adev runserver --livereload app
 
-(Other adev options may be desirable, and additions like 
+The adev server will run on port 8000 by default.  Other adev options may be
+desirable, and additions like
 `aiohttp-debugtoolbar <https://github.com/aio-libs/aiohttp-debugtoolbar>`_
-might be useful.)
+might be useful.
 	
 License
 -------
