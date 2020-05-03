@@ -31,6 +31,10 @@ def hr(text): return web.Response(text = text, content_type = 'text/html')
 
 # Handlers --------------------------------------------------------------------
 
+@r.get('/')
+async def home(request):
+	return hr(html.home())
+
 @r.view('/new_user')
 class New_User(web.View):
 	async def get(self):
