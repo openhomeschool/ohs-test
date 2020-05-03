@@ -32,6 +32,12 @@ class Form:
 
 # Handlers --------------------------------------------------------------------
 
+def home():
+	d = _doc('OHS-Test Home Page')
+	with d:
+		t.p('This is the stub home-page for ohs-test')
+	return d.render()
+	
 def new_user_success(): # TODO: this is just a lame placeholder
 	d = _doc('New User!')
 	with d:
