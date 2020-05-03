@@ -69,11 +69,12 @@ def get_geography_map_question(db, payload):
 	pass
 
 @expose
-def get_science_grammar_question(db, payload):
+async def get_science_grammar_question(db, payload):
 	# 1. get a random science "question" (grammar record)
 	# 2. get a random selection of science "answers" from the remaining records
 	# 3. return the root question/answers 
-	pass
+	primary = await get_random_science_record(db, week_range = (1, 12), date_range = None)
+	return (primary, None)
 
 @expose
 def get_science_submissions_question(db, payload):
@@ -170,6 +171,12 @@ def s_get_random_event(week_range = None, date_range = None, exclude_ids = None)
 async def get_random_event(db, week_range = None, date_range = None, exclude_ids = None):
 	e = await db.execute(*s_get_random_event(week_range, date_range, exclude_ids))
 	return await e.fetchone()
+
+
+async def get_random_science_record(db, week_range = None, exclude_ids = None):
+	e = await db.execute('select * from science order by random() limit 1')
+	return await e.fetchone()
+
 
 
 def s_get_keyword_similar_events(event, week_range = None, date_range = None, limit = 5, exclude_ids = None):
