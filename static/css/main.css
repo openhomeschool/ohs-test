@@ -52,8 +52,8 @@ button {
 	font-size:115%;
 }
 
-.error {
-	/*display: none;*/
+.invalid {
+	display: none;
 	background-color: #82200d;
 	color: white;
 	margin: 0px 0px 12px 12px;

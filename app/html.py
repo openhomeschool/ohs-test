@@ -15,20 +15,22 @@ from . import valid
 # Classes ---------------------------------------------------------------------
 
 class Form:
-	def __init__(self, action, values = None, errors = None):
+	def __init__(self, action, values = None, invalids = None):
 		'''
 		`values` is a dict of (field-name, value) pairs.
-		`errors` is a dict of (field-name, error-message) pairs.
+		`invalids` is a list/tuple of field names that did not pass a validity test (server side).
 		'''
 		self.action = action
 		self.values = values
-		self.errors = errors
+		self.invalids = set(invalids) if invalids else set()
 		
 	def nv(self, name):
+		# returns a (name, value) pair for `name`, or else None if there are no values set at all (in __init__)
 		return (name, self.values.get(name) if self.values else None)
 
-	def ne(self, name):
-		return self.errors.get(name) if self.errors else None
+	def invalid(self, name):
+		# returns True if `name` is in the list of invalids set (in __init__)
+		return name in self.invalids
 
 # Handlers --------------------------------------------------------------------
 
@@ -44,7 +46,7 @@ def new_user_success(): # TODO: this is just a lame placeholder
 		t.p('New user successfully created! ....')
 	return d.render()
 
-def new_user(form):
+def new_user(form, errors = None):
 	title = 'New User'
 	d = _doc(title)
 	with d:
@@ -54,21 +56,26 @@ def new_user(form):
 				with t.ol(cls = 'step_numbers'):
 					with t.li():
 						t.p('First, create a one-word username for yourself (lowercase, no spaces)...')
-						_text_input(*form.nv('new_username'), ('required', 'autofocus'), {'patternz': valid.re_username}, 'Type new username here', form.ne('new_username'))
+						_text_input(*form.nv('new_username'), ('required', 'autofocus'), {'pattern': valid.re_username}, 'Type new username here',
+							_invalid(valid.inv_username, form.invalid('new_username')))
 					with t.li():
 						t.p("Next, invent a password; type it in twice to make sure you've got it...")
-						_text_input('password', None, ('required',), {'patternz': valid.re_password}, 'Type new password here', form.ne('password'), type_ = 'password')
-						_text_input('password_confirmation', None, ('required',), None, 'Type password again for confirmation', form.ne('password_confirmation'), type_ = 'password')
+						_text_input('password', None, ('required',), {'pattern': valid.re_password}, 'Type new password here',
+							_invalid(valid.inv_password, form.invalid('password')), type_ = 'password')
+						_text_input('password_confirmation', None, ('required',), None, 'Type password again for confirmation',
+							_invalid(valid.inv_password_confirmation, form.invalid('password_confirmation')), type_ = 'password')
 					with t.li():
 						t.p("Finally, type in an email address that can be used if you ever need a password reset (optional, but this may be very useful someday!)...")
-						_text_input(*form.nv('email'), ('required',), {'patternz': valid.re_email}, 'Type email address here', form.ne('email'))
+						_text_input(*form.nv('email'), None, {'pattern': valid.re_email}, 'Type email address here', 
+							_invalid(valid.inv_email, form.invalid('email')))
 				t.input_(type = "submit", value = "Done!")
+		t.script(_js_validate_new_user())
 	return d.render()
 
 def select_user(url):
 	d = _doc('Select User')
 	with d:
-		_text_input('search', None, ('autofocus',), {'autocomplete': 'off', 'oninput': 'search(this.value)'}, label = 'Search', type_ = 'search')
+		_text_input('search', None, ('autofocus',), {'autocomplete': 'off', 'oninput': 'search(this.value)'}, 'Search', type_ = 'search')
 		t.div(id = 'search_result') # filtered results themselves are added here, in this `result` div, via websocket, as search text is typed (see javascript)
 		# JS (intentionally at bottom of file; see https://faqs.skillcrush.com/article/176-where-should-js-script-tags-be-linked-in-html-documents and many stackexchange answers):
 		t.script(_js_filter_list(url))
@@ -122,7 +129,8 @@ def multi_choice_question(question, options):
 #TODO: deport some of these?
 
 _dress_bool_attrs = lambda attrs: dict([(f, True) for f in attrs])
-_error = lambda message: t.div(message, cls = 'error')
+
+_invalid = lambda message, visible: t.div(message, cls = 'invalid', style = 'display:%s;' % 'block' if visible else 'none')
 
 def _doc(title, css = None, scripts = None):
 	d = document(title = title)
@@ -138,7 +146,7 @@ def _combine_attrs(attrs, bool_attrs):
 		attrs.update(_dress_bool_attrs(bool_attrs))
 	return attrs
 
-def _text_input(name, value, bool_attrs = None, attrs = None, label = None, error_message = None, type_ = 'text', internal_label = True):
+def _text_input(name, value, bool_attrs = None, attrs = None, label = None, invalid_div = None, type_ = 'text', internal_label = True):
 	'''
 	The 'name' string is expected to be a lowercase alphanumeric
 	"variable name" without spaces.  Use underscores ('_') to
@@ -150,7 +158,7 @@ def _text_input(name, value, bool_attrs = None, attrs = None, label = None, erro
 		label = name.replace('_', ' ').title()
 	attrs = _combine_attrs(attrs, bool_attrs)
 	
-	i = t.input_(name = name, type = type_, **attrs)
+	i = t.input_(name = name, id = name, type = type_, **attrs)
 	if value:
 		i['value'] = value
 	if internal_label:
@@ -158,8 +166,8 @@ def _text_input(name, value, bool_attrs = None, attrs = None, label = None, erro
 		result = t.label(i)
 	else:
 		result = t.label(label + ':', i)
-	if error_message:
-		result += _error(error_message)
+	if invalid_div:
+		result += invalid_div
 	return result
 
 def _js_socket_quiz_manager(url, db_function, html_function):
@@ -203,3 +211,25 @@ def _js_filter_list(url):
 	};
 	
 	''' % {'url': url})
+
+def _js_check_validity():
+	return '''
+	function validate(evt) {
+		var e = evt.currentTarget;
+		e.nextElementSibling.style.display = e.checkValidity() ? "none" : "block";
+	}
+	'''
+
+def _js_validate_new_user():
+	return raw('''
+	function $(id) { return document.getElementById(id); }
+	$('new_username').addEventListener('input', validate);
+	$('email').addEventListener('blur', validate);
+	$('password').addEventListener('blur', validate_passwords);
+	$('password_confirmation').addEventListener('blur', validate_passwords);
+
+	function validate_passwords(evt) {
+		var e = evt.currentTarget; // "password_confirmation"
+		$('password_match_message').style.display = $('password_confirmation').value == "" || $('password').value == $('password_confirmation').value ? "none" : "block";
+	}
+	''' + _js_check_validity())

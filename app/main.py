@@ -45,24 +45,30 @@ class New_User(web.View):
 		data = await r.post()
 		
 		# Validate:
-		errors = {}
-		_validate_regex(data, errors, (
-				('new_username', valid.re_username, valid.inv_username),
-				('password', valid.re_password, valid.inv_password),
-				('email', valid.re_email, valid.inv_email),
+		invalids = []
+		_validate_regex(data, invalids, (
+				('new_username', valid.re_username),
+				('password', valid.re_password),
+				('email', valid.re_email),
 			))
 		if str(data['password']) != str(data['password_confirmation']):
-			errors['password_confirmation'] = valid.inv_password_confirmation
+			invalids.append('password_confirmation')
 
-		if errors:
+		if invalids:
 			# Re-present:
-			return hr(html.new_user(html.Form(self.request.path, data, errors)))
+			return hr(html.new_user(html.Form(self.request.path, data, invalids)))
 		#else...
+
+		# (Try to) add the user:
+		try:
+			user_id = await db.add_user(r.app['db'], data['new_username'], data['password'], data['email'])
+		except: # TODO: Specify!!!
+			# Re-present with errors:
+			return hr(html.new_user(html.Form(self.request.path, data), errors))
 
 		#if sess.get('trial'): # True
 		#user = db.update_user(dbs, sess['username'], p.username, p.password, p.email)
 		#else:
-		user = await db.add_user(r.app['db'], data['new_username'], data['password'], data['email'])
 		
 		return hr(html.new_user_success()) # lame placeholder
 
@@ -112,10 +118,10 @@ def _http_url(request, name):
 	# Transform a ws URL like ws://domain.tld/... into a normal URL: http://domain.tld/<name>  - note: what about HTTPs!?TODO
 	return re.sub('%s$' % request.rel_url, name, re.sub('.*://', 'http://', str(request.url)))
 
-def _validate_regex(data, errors, tuple_list):
-	for field, regex, message in tuple_list:
+def _validate_regex(data, invalids, tuple_list):
+	for field, regex in tuple_list:
 		if not regex.match(str(data[field])):
-			errors[field] = message
+			invalids.append(field)
 
 async def _ws_handler(request, msg_handler):
 	ws = web.WebSocketResponse()
