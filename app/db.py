@@ -73,7 +73,7 @@ async def get_science_grammar_question(db, payload):
 	# 1. get a random science "question" (grammar record)
 	# 2. get a random selection of science "answers" from the remaining records
 	# 3. return the root question/answers 
-	primary = await get_random_science_record(db, week_range = (1, 12), date_range = None)
+	primary = await get_random_science_record(db, week_range = (1, 12), exclude_ids = None)
 	return (primary, None)
 
 @expose
