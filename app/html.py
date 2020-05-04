@@ -116,6 +116,17 @@ def multi_choice_question(question, options):
 				t.label('After "%s"' % record['name'], fr = record['name'])
 	return d.render()
 
+@expose
+def multi_choice_science_question(question, options):
+	d = t.div('Define "%s".' % question['prompt'], cls = 'quiz_question_content')
+	with d:
+		if options: # TODO: TEMPORARY - there should always be options, in the future, but, during development, they may not exist
+			for record in options:
+				with t.div(cls = 'quiz_question_option'):
+					t.input(type = 'radio', id = record['id'], name = 'answer', value = record['id'])
+					t.label('%s' % record['answer'], fr = record['id'])
+	return d.render()
+
 
 # Utils -----------------------------------------------------------------------
 
