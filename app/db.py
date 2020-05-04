@@ -3,18 +3,20 @@ __copyright__ = '2020'
 __version__ = '0.1'
 __license__ = 'MIT'
 
+import hashlib
+from os import urandom
+import re
+
 import logging
 l = logging.getLogger(__name__)
-
-import re
 
 
 # Handlers --------------------------------------------------------------------
 
-_add_user = lambda username, password, email: ('insert into test_user(username, password, email) values (?, ?, ?)', (username, password, email))
 async def add_user(db, *args):
-	c = await db.execute(*_add_user(*args))
-	return None #TODO
+	c = await db.cursor() # need cursor because we need lastrowid, only available via cursor
+	r = await c.execute(*_add_user(*args))
+	return r.lastrowid
 
 _get_users_limited = lambda limit: ('select * from test_user limit ?', (limit,))
 async def get_users_limited(db, limit):
@@ -134,6 +136,11 @@ def get_music_random_question(db, payload):
 
 
 # Utils -----------------------------------------------------------------------
+
+_hash = lambda password, salt: hashlib.pbkdf2_hmac('sha256', bytes(password, 'UTF-8'), salt, 100000)
+def _add_user(username, password, email):
+	salt = urandom(32)
+	return ('insert into test_user(username, password, salt, email) values (?, ?, ?, ?)', (username, _hash(password, salt), salt, email))
 
 def _week_range(week_range, joins, wheres, args):
 	joins.append('join cycle_week as cw on event.cw = cw.id')
