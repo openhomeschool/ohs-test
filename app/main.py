@@ -47,9 +47,9 @@ class New_User(web.View):
 		# Validate:
 		invalids = []
 		_validate_regex(data, invalids, (
-				('new_username', valid.re_username),
-				('password', valid.re_password),
-				('email', valid.re_email),
+				('new_username', valid.rec_username, True),
+				('password', valid.rec_password, True),
+				('email', valid.rec_email, False),
 			))
 		if str(data['password']) != str(data['password_confirmation']):
 			invalids.append('password_confirmation')
@@ -60,17 +60,20 @@ class New_User(web.View):
 		#else...
 
 		# (Try to) add the user:
+		user_id = None
 		try:
 			user_id = await db.add_user(r.app['db'], data['new_username'], data['password'], data['email'])
 		except: # TODO: Specify!!!
+			raise
 			# Re-present with errors:
+			errors = [] #TODO
 			return hr(html.new_user(html.Form(self.request.path, data), errors))
 
 		#if sess.get('trial'): # True
 		#user = db.update_user(dbs, sess['username'], p.username, p.password, p.email)
 		#else:
 		
-		return hr(html.new_user_success()) # lame placeholder
+		return hr(html.new_user_success(user_id)) # TODO: lame placeholder - need to redirect, anyway!
 
 
 @r.get('/select_user')
@@ -119,8 +122,9 @@ def _http_url(request, name):
 	return re.sub('%s$' % request.rel_url, name, re.sub('.*://', 'http://', str(request.url)))
 
 def _validate_regex(data, invalids, tuple_list):
-	for field, regex in tuple_list:
-		if not regex.match(str(data[field])):
+	for field, regex, required in tuple_list:
+		value = str(data[field])
+		if (required and not value) or (value and not regex.match(value)):
 			invalids.append(field)
 
 async def _ws_handler(request, msg_handler):

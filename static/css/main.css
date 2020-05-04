@@ -53,7 +53,7 @@ button {
 }
 
 .invalid {
-	display: none;
+	display: none; /* 'invalid' messages are invisible by default; made visible by javascript or server-side html-generation code */
 	background-color: #82200d;
 	color: white;
 	margin: 0px 0px 12px 12px;

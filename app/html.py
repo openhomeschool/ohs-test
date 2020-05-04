@@ -40,10 +40,10 @@ def home():
 		t.p('This is the stub home-page for ohs-test')
 	return d.render()
 	
-def new_user_success(): # TODO: this is just a lame placeholder
+def new_user_success(id): # TODO: this is just a lame placeholder
 	d = _doc('New User!')
 	with d:
-		t.p('New user successfully created! ....')
+		t.p('New user (%s) successfully created! ....' % id)
 	return d.render()
 
 def new_user(form, errors = None):
@@ -63,7 +63,7 @@ def new_user(form, errors = None):
 						_text_input('password', None, ('required',), {'pattern': valid.re_password}, 'Type new password here',
 							_invalid(valid.inv_password, form.invalid('password')), type_ = 'password')
 						_text_input('password_confirmation', None, ('required',), None, 'Type password again for confirmation',
-							_invalid(valid.inv_password_confirmation, form.invalid('password_confirmation')), type_ = 'password')
+							_invalid(valid.inv_password_confirmation, form.invalid('password_confirmation'), 'password_match_message'), type_ = 'password')
 					with t.li():
 						t.p("Finally, type in an email address that can be used if you ever need a password reset (optional, but this may be very useful someday!)...")
 						_text_input(*form.nv('email'), None, {'pattern': valid.re_email}, 'Type email address here', 
@@ -130,7 +130,7 @@ def multi_choice_question(question, options):
 
 _dress_bool_attrs = lambda attrs: dict([(f, True) for f in attrs])
 
-_invalid = lambda message, visible: t.div(message, cls = 'invalid', style = 'display:%s;' % 'block' if visible else 'none')
+_invalid = lambda message, visible, id = None: t.div(message, cls = 'invalid', style = 'display:block;' if visible else 'display:none;', id = id if id else '')
 
 def _doc(title, css = None, scripts = None):
 	d = document(title = title)
@@ -217,19 +217,18 @@ def _js_check_validity():
 	function validate(evt) {
 		var e = evt.currentTarget;
 		e.nextElementSibling.style.display = e.checkValidity() ? "none" : "block";
-	}
+	};
 	'''
 
 def _js_validate_new_user():
 	return raw('''
-	function $(id) { return document.getElementById(id); }
+	function $(id) { return document.getElementById(id); };
 	$('new_username').addEventListener('input', validate);
 	$('email').addEventListener('blur', validate);
-	$('password').addEventListener('blur', validate_passwords);
+	$('password').addEventListener('blur', validate);
 	$('password_confirmation').addEventListener('blur', validate_passwords);
 
 	function validate_passwords(evt) {
-		var e = evt.currentTarget; // "password_confirmation"
 		$('password_match_message').style.display = $('password_confirmation').value == "" || $('password').value == $('password_confirmation').value ? "none" : "block";
-	}
+	};
 	''' + _js_check_validity())

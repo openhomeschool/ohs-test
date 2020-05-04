@@ -5,11 +5,16 @@ __license__ = 'MIT'
 
 import re
 
-re_alphanum = re.compile(r'^[\w ]+$')
-re_username = re.compile(r'^[\w\-_]{1,16}$')
-re_password = re.compile(r'^.{4,32}$')
-re_email = re.compile(r'(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)') # TODO: how can I limit overall length?
-re_slug = re.compile(r'^[\w\-_]{2,32}$')
+re_alphanum = r'^[\w ]+$'
+rec_alphanum = re.compile(re_alphanum)
+re_username = r'^[\w\-_]{1,16}$'
+rec_username = re.compile(re_username)
+re_password = r'^.{4,32}$'
+rec_password = re.compile(re_password)
+re_email = r'(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)' # TODO: how can I limit overall length?
+rec_email = re.compile(re_email)
+re_slug = r'^[\w\-_]{2,32}$'
+rec_slug = re.compile(re_slug)
 
 inv_username = "Username must be a single word (no spaces) made of letters and/or numbers, 16 characters or less."
 inv_password = "Password can be made of letters, numbers, and/or symbols, and must be between 4 and 32 characters long."

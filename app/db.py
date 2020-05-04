@@ -16,7 +16,7 @@ l = logging.getLogger(__name__)
 async def add_user(db, *args):
 	c = await db.cursor() # need cursor because we need lastrowid, only available via cursor
 	r = await c.execute(*_add_user(*args))
-	return r.lastrowid
+	return c.lastrowid
 
 _get_users_limited = lambda limit: ('select * from test_user limit ?', (limit,))
 async def get_users_limited(db, limit):
