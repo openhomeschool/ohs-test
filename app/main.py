@@ -199,7 +199,7 @@ def init(argv):
 		g('/quiz/history/random', q('get_history_random_question', 'multi_choice_question')),
 		g('/quiz/geography/orientation', q('get_geography_orientation_question', 'multi_choice_question')),
 		g('/quiz/geography/map', q('get_geography_map_question', 'multi_choice_question')),
-		g('/quiz/science/grammar', q('get_science_grammar_question', 'multi_choice_question')),
+		g('/quiz/science/grammar', q('get_science_grammar_question', 'multi_choice_science_question')),
 		g('/quiz/science/submissions', q('get_science_submissions_question', 'multi_choice_question')),
 		g('/quiz/science/random', q('get_science_random_question', 'multi_choice_question')),
 		g('/quiz/math/facts/multiplication', q('get_math_facts_question', 'multi_choice_question')),
