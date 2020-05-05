@@ -1,5 +1,6 @@
 aiohttp==3.6.2
 aiohttp-devtools==0.13.1
+aiohttp-session==2.9.0
 aiosqlite==0.12.0
 async-timeout==3.0.1
 attrs==19.3.0
