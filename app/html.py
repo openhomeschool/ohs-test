@@ -3,6 +3,7 @@ __copyright__ = '2020'
 __version__ = '0.1'
 __license__ = 'MIT'
 
+import functools
 import logging
 l = logging.getLogger(__name__)
 
@@ -34,11 +35,25 @@ class Form:
 
 # Handlers --------------------------------------------------------------------
 
-def home():
+def home(text):
 	d = _doc('OHS-Test Home Page')
 	with d:
-		t.p('This is the stub home-page for ohs-test')
+		t.p('This is the stub home-page for ohs-test; last visit: %s' % text)
 	return d.render()
+
+def login(error = None):
+	d = _doc('OHS-Test Login')
+	with d:
+		with t.form(action = '/login', method = 'post'):
+			with t.fieldset(cls = 'small_fieldset'):
+				t.legend('Log in...')
+				_error(error)
+				t.div(_text_input('username', None, ('required', 'autofocus'), {'pattern': valid.re_username}, invalid_div = _invalid(valid.inv_username, False)), cls = 'field')
+				t.div(_text_input('password', None, ('required',), type_ = 'password'), cls = 'field')
+				t.div(t.input_(type = "submit", value = "Log in!"), cls = 'field')
+		t.script(_js_validate_login_fields())
+	return d.render()
+
 	
 def new_user_success(id): # TODO: this is just a lame placeholder
 	d = _doc('New User!')
@@ -106,11 +121,10 @@ def quiz(ws_url, db_function, html_function):
 	return d.render()
 
 
-exposed = {}
+exposed = dict()
 def expose(func):
 	exposed[func.__name__] = func
-	def wrapper():
-		func()
+	return func
 
 @expose
 def multi_choice_question(question, options):
@@ -139,6 +153,12 @@ def _doc(title, css = None, scripts = None):
 		t.meta(name = 'viewport', content = 'width=device-width, initial-scale=1')
 		t.link(href = 'http://localhost:8001/static/css/main.css', rel = 'stylesheet') # TODO: deport!
 	return d
+
+def _error(error):
+	if error:
+		d = t.div(cls = 'errors')
+		d += t.div(error, cls = 'error')
+		return d
 
 def _errors(errors):
 	if errors:
@@ -243,6 +263,12 @@ def _js_check_validity():
 		e.nextElementSibling.style.display = e.checkValidity() ? "none" : "block";
 	};
 	'''
+
+def _js_validate_login_fields():
+	return raw('''
+	function $(id) { return document.getElementById(id); };
+	$('username').addEventListener('input', validate);
+	''' + _js_check_validity())
 
 def _js_validate_new_user_fields():
 	return raw('''

@@ -4,8 +4,9 @@ __version__ = '0.1'
 __license__ = 'MIT'
 
 import hashlib
-from os import urandom
 import re
+
+from os import urandom
 
 import logging
 l = logging.getLogger(__name__)
@@ -13,9 +14,12 @@ l = logging.getLogger(__name__)
 
 # Handlers --------------------------------------------------------------------
 
-async def add_user(db, *args):
+_hash = lambda password, salt: hashlib.pbkdf2_hmac('sha256', bytes(password, 'UTF-8'), salt, 100000)
+
+async def add_user(db, username, password, email):
+	salt = urandom(32)
 	c = await db.cursor() # need cursor because we need lastrowid, only available via cursor
-	r = await c.execute(*_add_user(*args))
+	r = await c.execute('insert into test_user(username, password, salt, email) values (?, ?, ?, ?)', (username, _hash(password, salt), salt, email))
 	return c.lastrowid
 
 _get_users_limited = lambda limit: ('select * from test_user limit ?', (limit,))
@@ -48,16 +52,23 @@ async def get_user(db, where_matches):
 	return await c.fetchall()
 
 
+async def authenticate(db, username, password):
+	c = await db.execute('select * from test_user where username = ?', (username,))
+	user = await c.fetchone()
+	if user and (user['password'] == _hash(password, user['salt'])):
+		return ('student',) # TODO: replace with roles from DB
+	#else:
+	return None
+
 # ------------
 
 async def get_question(function, db, payload):
 	return await function(db, payload)
 
-exposed = {}
+exposed = dict()
 def expose(func):
 	exposed[func.__name__] = func
-	def wrapper():
-		func()
+	return func
 
 @expose
 async def get_history_sequence_question(db, payload):
@@ -155,11 +166,6 @@ def get_music_random_question(db, payload):
 
 
 # Utils -----------------------------------------------------------------------
-
-_hash = lambda password, salt: hashlib.pbkdf2_hmac('sha256', bytes(password, 'UTF-8'), salt, 100000)
-def _add_user(username, password, email):
-	salt = urandom(32)
-	return ('insert into test_user(username, password, salt, email) values (?, ?, ?, ?)', (username, _hash(password, salt), salt, email))
 
 def _week_range(week_range, joins, wheres, args):
 	joins.append('join cycle_week as cw on event.cw = cw.id')
