@@ -88,9 +88,17 @@ ol.step_numbers li::before {
 	transform: rotate(-15deg);
 }
 
+ul.fieldset li {
+	list-style-type: none;
+}
+
 fieldset {
 	margin: 5px 0px 5px;
 	border-radius: 7px;
+}
+
+div.field {
+	margin: 10px 5px;
 }
 
 .tilt_label {

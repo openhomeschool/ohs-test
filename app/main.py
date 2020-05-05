@@ -3,15 +3,23 @@ __copyright__ = '2020'
 __version__ = '0.1'
 __license__ = 'MIT'
 
-import asyncio
-import logging
 import aiosqlite
+import asyncio
+import functools
+import logging
 import re
 import weakref
 import json
 
+# TODO: These three may be culled once user/session stuff is complete
+import time
+import base64
+from cryptography import fernet
+
 from aiohttp import web, WSMsgType, WSCloseCode
 from sqlite3 import IntegrityError
+from aiohttp_session import setup as setup_session, get_session
+from aiohttp_session.cookie_storage import EncryptedCookieStorage
 
 from . import html
 from . import db
@@ -33,9 +41,43 @@ def hr(text): return web.Response(text = text, content_type = 'text/html')
 
 # Handlers --------------------------------------------------------------------
 
-@r.get('/')
+def auth(func):
+	@functools.wraps(func)
+	async def wrapper(request): # no need for *args, **kwargs b/c this decorator is for aiohttp handler functions only, which must accept a Request instance as its only argument
+		session = await get_session(request)
+		if 'roles' in session and session['roles']: # TODO: match w/ auth(param) for roles!!!
+			return await func(request)
+		#else:
+		session['after_login'] = request.path
+		raise web.HTTPFound(location = request.app.router['login'].url_for())
+
+	return wrapper
+
+@r.get('/login', name = 'login')
+async def login(request):
+	return hr(html.login())
+
+@r.post('/login')
+async def login_(request):
+	data = await request.post()
+	#TODO: validate data!
+	roles = await db.authenticate(request.app['db'], data['username'], data['password'])
+	session = await get_session(request)
+	session['roles'] = roles
+	if roles:
+		raise web.HTTPFound(location = session['after_login'] if 'after_login' in session else request.app.router['home'].url_for())
+	else:
+		return hr(html.login(error.authentication_failure))
+
+
+@r.get('/', name = 'home')
+@auth
 async def home(request):
-	return hr(html.home())
+	session = await get_session(request)
+	last_visit = session['last_visit'] if 'last_visit' in session else None
+	text = 'Last visited: {}'.format(last_visit)
+	session['last_visit'] = time.time()
+	return hr(html.home(text))
 
 @r.view('/new_user')
 class New_User(web.View):
@@ -207,7 +249,12 @@ def init(argv):
 		static_url = '/static/',
 		static_root_url = 'static/',
 	)
-	
+
+	# Set up sessions:
+	fernet_key = fernet.Fernet.generate_key()
+	secret_key = base64.urlsafe_b64decode(fernet_key)
+	setup_session(app, EncryptedCookieStorage(secret_key))
+
 	# Add standard routes:
 	app.add_routes(r)
 	# And quiz routes:
