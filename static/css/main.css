@@ -52,6 +52,14 @@ button {
 	font-size:115%;
 }
 
+.errors {
+	margin: 0px 0px 12px 12px;
+	padding: 4px;
+	border: 2px solid #82200d;
+	border-radius: 6px;
+	background-color: #f1cccc;
+}
+
 .invalid {
 	display: none; /* 'invalid' messages are invisible by default; made visible by javascript or server-side html-generation code */
 	background-color: #82200d;

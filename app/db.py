@@ -22,12 +22,31 @@ _get_users_limited = lambda limit: ('select * from test_user limit ?', (limit,))
 async def get_users_limited(db, limit):
 	c = await db.execute(*_get_users_limited(limit))
 	return await c.fetchall()
-	
 
 _find_users = lambda like: ('select * from test_user where username like ?', ('%' + like + '%',))
 async def find_users(db, like):
 	c = await db.execute(*_find_users(like))
 	return await c.fetchall()
+
+def _prep_where_matches(where_matches):
+	'''
+	`where_matches` must be a list or tuple of 2-tuple pairs, such as:
+		(('username', 'frank'),)
+		(('first_name', 'John'), ('last_name', 'Smith'))
+		(('id', 5),)
+	'''
+	wheres, values = list(zip(*where_matches))
+	wheres = ' and '.join([i + ' = ?' for i in wheres])
+	return wheres, values
+
+async def get_user(db, where_matches):
+	'''
+	See _prep_where_matches() for `where_matches` spec
+	'''
+	wheres, values = _prep_where_matches(where_matches)
+	c = await db.execute('select * from test_user where ' + wheres, values)
+	return await c.fetchall()
+
 
 # ------------
 

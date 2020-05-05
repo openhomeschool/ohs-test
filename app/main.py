@@ -11,10 +11,12 @@ import weakref
 import json
 
 from aiohttp import web, WSMsgType, WSCloseCode
+from sqlite3 import IntegrityError
 
 from . import html
 from . import db
 from . import valid
+from . import error
 
 _debug = True # TODO: parameterize!
 
@@ -38,11 +40,12 @@ async def home(request):
 @r.view('/new_user')
 class New_User(web.View):
 	async def get(self):
-		return hr(html.new_user(html.Form(self.request.path)))
+		return hr(html.new_user(html.Form(self.request.path), _ws_url(self.request, '/ws_check_username')))
 	
 	async def post(self):
 		r = self.request
 		data = await r.post()
+		ws_url = _ws_url(r, '/ws_check_username')
 		
 		# Validate:
 		invalids = []
@@ -56,18 +59,16 @@ class New_User(web.View):
 
 		if invalids:
 			# Re-present:
-			return hr(html.new_user(html.Form(self.request.path, data, invalids)))
-		#else...
+			return hr(html.new_user(html.Form(r.path, data, invalids), ws_url))
+		#else, go on...
 
 		# (Try to) add the user:
 		user_id = None
 		try:
 			user_id = await db.add_user(r.app['db'], data['new_username'], data['password'], data['email'])
-		except: # TODO: Specify!!!
-			raise
-			# Re-present with errors:
-			errors = [] #TODO
-			return hr(html.new_user(html.Form(self.request.path, data), errors))
+		except IntegrityError: # Note that this should **almost** never happen, as we check username availability in real-time, but it's always possible that another new user with the same username is created milliseconds before the db.add_user() attempt, above; this would make the username suddenly unavailable; we could not possibly have told the user about this in advance, and need to revert to posting an error message now:
+			# Re-present with user_exists error:
+			return hr(html.new_user(html.Form(r.path, data), ws_url, (error.user_exists,)))
 
 		#if sess.get('trial'): # True
 		#user = db.update_user(dbs, sess['username'], p.username, p.password, p.email)
@@ -75,33 +76,48 @@ class New_User(web.View):
 		
 		return hr(html.new_user_success(user_id)) # TODO: lame placeholder - need to redirect, anyway!
 
+@r.get('/ws_check_username')
+async def ws_check_username(request):
+	async def msg_handler(payload, dbc, ws):
+		assert(payload['call'] == 'check')
+		if payload['string']:
+			value = str(payload['string'])
+			if valid.rec_username.match(value):
+				records = await db.get_user(dbc, (('username', payload['string']),))
+				await ws.send_str('exists' if records else 'available!')
+			else:
+				l.warning('username fragment sent to ws_check_username was not a valid string') # but do nothing else; client code already checks for validity; this must/might be an attack attempt; no need to respond
+
+	return await _ws_handler(request, msg_handler)
+	
 
 @r.get('/select_user')
 async def select_user(request):
 	return hr(html.select_user(_ws_url(request, '/ws_filter_list')))
 
+
 @r.get('/ws_filter_list')
 async def ws_filter_list(request):
-	# Create a default list to show when nothing is entered into search bar:
-	default_list = await db.get_users_limited(request.app['db'], 10)
 	edit_url = _http_url(request, 'edit_user')
 	
 	async def msg_handler(payload, dbc, ws):
 		assert(payload['call'] == 'search')
+		records = None
 		if payload['string']:
-			#TODO: validate first!
-			records = await db.find_users(dbc, payload['string'])
-		else:
-			records = default_list
+			string = str(payload['string'])
+			if valid.rec_string32.match(string):
+				records = await db.find_users(dbc, string)
+			else:
+				l.warning('string fragment sent to ws_filter_list was not a valid string 32-characters or less') # but do nothing else; client code already checks for validity; this must/might be an attack attempt; no need to respond
+		if not records:
+			records = await db.get_users_limited(request.app['db'], 10) # A default list (of 10) to show when nothing is entered into search bar:
 		await ws.send_json({'call': 'content', 'content': html.filter_user_list(records, edit_url)})
 
 	return await _ws_handler(request, msg_handler)
 
-	
 
 @r.get('/ws_quiz_handler')
 async def ws_quiz_handler(request):
-
 	async def msg_handler(payload, dbc, ws):
 		if payload['answer']:
 			pass # TODO
@@ -139,9 +155,8 @@ async def _ws_handler(request, msg_handler):
 		async for msg in ws:
 			try:
 				if msg.type == WSMsgType.text:
-					#TODO: Validate each msg in ws as search string (use Schema(valid_search_string())?
-					payload = json.loads(msg.data)
-					l.debug(payload)
+					payload = json.loads(msg.data) # Note: payload validated in msg_handler()
+					#l.debug(payload)
 					await msg_handler(payload, dbc, ws)
 				elif msg.type == aiohttp.WSMsgType.ERROR:
 					l.warning('websocket connection closed with exception "%s"' % ws.exception())

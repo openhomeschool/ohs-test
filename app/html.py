@@ -46,18 +46,20 @@ def new_user_success(id): # TODO: this is just a lame placeholder
 		t.p('New user (%s) successfully created! ....' % id)
 	return d.render()
 
-def new_user(form, errors = None):
+def new_user(form, ws_url, errors = None):
 	title = 'New User'
 	d = _doc(title)
 	with d:
 		with t.form(action = form.action, method = 'post'):
 			with t.fieldset():
 				t.legend(title)
+				_errors(errors)
 				with t.ol(cls = 'step_numbers'):
 					with t.li():
 						t.p('First, create a one-word username for yourself (lowercase, no spaces)...')
-						_text_input(*form.nv('new_username'), ('required', 'autofocus'), {'pattern': valid.re_username}, 'Type new username here',
+						_text_input(*form.nv('new_username'), ('required', 'autofocus'), {'pattern': valid.re_username, 'oninput': 'check_username(this.value)'}, 'Type new username here',
 							_invalid(valid.inv_username, form.invalid('new_username')))
+						_invalid(valid.inv_username_exists, False, 'username_exists_message')
 					with t.li():
 						t.p("Next, invent a password; type it in twice to make sure you've got it...")
 						_text_input('password', None, ('required',), {'pattern': valid.re_password}, 'Type new password here',
@@ -69,7 +71,8 @@ def new_user(form, errors = None):
 						_text_input(*form.nv('email'), None, {'pattern': valid.re_email}, 'Type email address here', 
 							_invalid(valid.inv_email, form.invalid('email')))
 				t.input_(type = "submit", value = "Done!")
-		t.script(_js_validate_new_user())
+		t.script(_js_validate_new_user_fields())
+		t.script(_js_check_username(ws_url))
 	return d.render()
 
 def select_user(url):
@@ -130,14 +133,23 @@ def multi_choice_question(question, options):
 
 _dress_bool_attrs = lambda attrs: dict([(f, True) for f in attrs])
 
-_invalid = lambda message, visible, id = None: t.div(message, cls = 'invalid', style = 'display:block;' if visible else 'display:none;', id = id if id else '')
-
 def _doc(title, css = None, scripts = None):
 	d = document(title = title)
 	with d.head:
 		t.meta(name = 'viewport', content = 'width=device-width, initial-scale=1')
 		t.link(href = 'http://localhost:8001/static/css/main.css', rel = 'stylesheet') # TODO: deport!
 	return d
+
+def _errors(errors):
+	if errors:
+		d = t.div(cls = 'errors')
+		with d:
+			for error in errors:
+				t.div(error, cls = 'error')
+		return d
+
+def _invalid(message, visible, id = None):
+	return t.div(message, cls = 'invalid', style = 'display:block;' if visible else 'display:none;', id = id if id else '')
 
 def _combine_attrs(attrs, bool_attrs):
 	if attrs == None:
@@ -212,6 +224,18 @@ def _js_filter_list(url):
 	
 	''' % {'url': url})
 
+def _js_check_username(url):
+	# This js not served as a static file for two reasons: 1) it's tiny and single-purpose, and 2) its code is tightly connected to this server code; it's not a candidate for another team to maintain, in other words; it also relies on our URL (for the websocket), whereas true static files might be served by a reverse-proxy server from anywhere, and won't tend to contain any references to the wsgi urls
+	return raw('''
+	var ws = new WebSocket("%(url)s");
+	ws.onmessage = function(event) {
+		document.getElementById("username_exists_message").style.display = ((event.data == 'exists') ? 'block' : 'none');
+	};
+	function check_username(username) {
+		ws.send(JSON.stringify({call: "check", string: username}));
+	};
+	''' % {'url': url})
+
 def _js_check_validity():
 	return '''
 	function validate(evt) {
@@ -220,7 +244,7 @@ def _js_check_validity():
 	};
 	'''
 
-def _js_validate_new_user():
+def _js_validate_new_user_fields():
 	return raw('''
 	function $(id) { return document.getElementById(id); };
 	$('new_username').addEventListener('input', validate);
