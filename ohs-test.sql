@@ -1,5 +1,5 @@
 --
--- File generated with SQLiteStudio v3.2.1 on Sat May 2 00:59:50 2020
+-- File generated with SQLiteStudio v3.2.1 on Tue May 5 18:23:55 2020
 --
 -- Text encoding used: UTF-8
 --
@@ -7,6 +7,7 @@ PRAGMA foreign_keys = off;
 BEGIN TRANSACTION;
 
 -- Table: cycle_week
+DROP TABLE IF EXISTS cycle_week;
 CREATE TABLE cycle_week (id INTEGER, cycle INTEGER NOT NULL CHECK (cycle >= 0 and cycle < 4), week INTEGER NOT NULL CHECK (week > 0 and week < 29), level INTEGER NOT NULL DEFAULT (1), PRIMARY KEY (id), UNIQUE (cycle, week, level));
 INSERT INTO cycle_week (id, cycle, week, level) VALUES (1, 1, 1, 1);
 INSERT INTO cycle_week (id, cycle, week, level) VALUES (2, 1, 2, 1);
@@ -206,6 +207,7 @@ INSERT INTO cycle_week (id, cycle, week, level) VALUES (195, 0, 27, 1);
 INSERT INTO cycle_week (id, cycle, week, level) VALUES (196, 0, 28, 1);
 
 -- Table: direction
+DROP TABLE IF EXISTS direction;
 CREATE TABLE direction (id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE);
 INSERT INTO direction (id, name) VALUES (1, 'northeast');
 INSERT INTO direction (id, name) VALUES (2, 'east');
@@ -217,6 +219,7 @@ INSERT INTO direction (id, name) VALUES (7, 'northwest');
 INSERT INTO direction (id, name) VALUES (8, 'north');
 
 -- Table: english
+DROP TABLE IF EXISTS english;
 CREATE TABLE english (id INTEGER PRIMARY KEY AUTOINCREMENT, cw INTEGER REFERENCES cycle_week (id) ON DELETE RESTRICT ON UPDATE CASCADE NOT NULL, prompt STRING UNIQUE NOT NULL, a BOOLEAN NOT NULL DEFAULT (1), "is" BOOLEAN NOT NULL DEFAULT (1), are BOOLEAN NOT NULL DEFAULT (0), answer STRING NOT NULL, example STRING, advanced STRING);
 INSERT INTO english (id, cw, prompt, a, "is", are, answer, example, advanced) VALUES (1, 3, 'parts of speech', 0, 0, 1, 'noun, pronoun, adjective; verb, adverb; conjunction, preposition, interjection', NULL, NULL);
 INSERT INTO english (id, cw, prompt, a, "is", are, answer, example, advanced) VALUES (2, 4, 'noun', 1, 1, 0, 'a word that names a person, place, or thing.', '"mother"', 'A noun may name an animal, quality, idea, or action.');
@@ -235,6 +238,7 @@ INSERT INTO english (id, cw, prompt, a, "is", are, answer, example, advanced) VA
 INSERT INTO english (id, cw, prompt, a, "is", are, answer, example, advanced) VALUES (15, 22, 'indefinite pronouns', 0, 0, 1, 'all, another, any, anybody, anyone, anything, both, each, either, enough, everybody, everyone, everything, few, fewer, less, little, many, more, most, much, neither, nobody, none, nothing, one, other, others, several, some, somebody, someone, something, such', NULL, NULL);
 
 -- Table: event
+DROP TABLE IF EXISTS event;
 CREATE TABLE event (id INTEGER PRIMARY KEY AUTOINCREMENT, cw INTEGER REFERENCES cycle_week (id) ON DELETE RESTRICT ON UPDATE CASCADE, seq INTEGER NOT NULL, subseq INTEGER, name TEXT UNIQUE NOT NULL, primary_sentence TEXT, secondary_sentence TEXT, keywords STRING, start_circa BOOLEAN, start INTEGER, fake_start_date INTEGER, end_circa BOOLEAN, "end" INTEGER, tie TEXT, people_group BOOLEAN DEFAULT (0), the BOOLEAN DEFAULT (0), extent INTEGER REFERENCES extent (id) ON DELETE RESTRICT ON UPDATE CASCADE, period INTEGER REFERENCES event (id) ON DELETE RESTRICT ON UPDATE CASCADE);
 INSERT INTO event (id, cw, seq, subseq, name, primary_sentence, secondary_sentence, keywords, start_circa, start, fake_start_date, end_circa, "end", tie, people_group, the, extent, period) VALUES (1, 169, 1, NULL, 'Creation', 'In six days God created the heavens and the earth. On day 1 He made light and separated it from darkness. On day 2 He set the sky above the earth''s surface. On day 3 He gathered the seas from the dry land and made vegetation grow. On day 4 He created the sun, moon, and stars. On day 5 He created water creatures and birds. And on day 6 He created land creatures and people.', NULL, NULL, NULL, NULL, -10010, NULL, NULL, NULL, 0, 0, NULL, NULL);
 INSERT INTO event (id, cw, seq, subseq, name, primary_sentence, secondary_sentence, keywords, start_circa, start, fake_start_date, end_circa, "end", tie, people_group, the, extent, period) VALUES (2, 169, 2, NULL, 'The Fall of Man', 'Adam and Eve ate the forbidden fruit in the garden of Eden, resulting in the fall of humanity.', NULL, 'Eden', NULL, NULL, -10009, NULL, NULL, NULL, 0, 0, NULL, NULL);
@@ -447,12 +451,14 @@ Newton''s work (1669-1733
 )', NULL, NULL, 1514, NULL, NULL, 1733, NULL, NULL, NULL, NULL, NULL);
 
 -- Table: event_location
+DROP TABLE IF EXISTS event_location;
 CREATE TABLE event_location (event INTEGER REFERENCES event (id) ON DELETE RESTRICT ON UPDATE CASCADE NOT NULL, location INTEGER REFERENCES location (id) ON DELETE RESTRICT ON UPDATE CASCADE NOT NULL, UNIQUE (event, location));
 INSERT INTO event_location (event, location) VALUES (5, 3);
 INSERT INTO event_location (event, location) VALUES (5, 4);
 INSERT INTO event_location (event, location) VALUES (6, 10);
 
 -- Table: event_resource
+DROP TABLE IF EXISTS event_resource;
 CREATE TABLE event_resource (id INTEGER PRIMARY KEY AUTOINCREMENT, event INTEGER REFERENCES event (id) ON DELETE RESTRICT ON UPDATE CASCADE NOT NULL, resource INTEGER REFERENCES resource (id) ON DELETE RESTRICT ON UPDATE CASCADE NOT NULL, reference1 STRING, reference2 STRING, priority INTEGER, "order" INTEGER, UNIQUE (event, priority, "order"));
 INSERT INTO event_resource (id, event, resource, reference1, reference2, priority, "order") VALUES (1, 24, 1, 'ch', 26, 1, 1);
 INSERT INTO event_resource (id, event, resource, reference1, reference2, priority, "order") VALUES (2, 31, 1, 'ch', 27, 1, 1);
@@ -550,15 +556,18 @@ INSERT INTO event_resource (id, event, resource, reference1, reference2, priorit
 INSERT INTO event_resource (id, event, resource, reference1, reference2, priority, "order") VALUES (94, 123, 2, 'ch', 36, 1, 1);
 
 -- Table: event_web_resource
+DROP TABLE IF EXISTS event_web_resource;
 CREATE TABLE event_web_resource (id INTEGER PRIMARY KEY AUTOINCREMENT, event INTEGER REFERENCES event (id) ON DELETE RESTRICT ON UPDATE CASCADE, url STRING);
 INSERT INTO event_web_resource (id, event, url) VALUES (1, 15, 'https://www.gotquestions.org/Moses-Hammurabi-code.html');
 
 -- Table: extent
+DROP TABLE IF EXISTS extent;
 CREATE TABLE extent (id INTEGER PRIMARY KEY AUTOINCREMENT, north INTEGER REFERENCES location (id) ON DELETE RESTRICT ON UPDATE CASCADE, south INTEGER REFERENCES location (id) ON DELETE CASCADE ON UPDATE RESTRICT, east INTEGER REFERENCES location (id) ON DELETE CASCADE ON UPDATE RESTRICT, west INTEGER REFERENCES location (id) ON DELETE RESTRICT ON UPDATE CASCADE);
 INSERT INTO extent (id, north, south, east, west) VALUES (1, NULL, 18, 2, 1);
 INSERT INTO extent (id, north, south, east, west) VALUES (2, 20, 16, 12, NULL);
 
 -- Table: history
+DROP TABLE IF EXISTS history;
 CREATE TABLE history (id INTEGER PRIMARY KEY AUTOINCREMENT, cw INTEGER REFERENCES cycle_week (id) ON DELETE RESTRICT ON UPDATE CASCADE, event INTEGER REFERENCES event (id) ON DELETE RESTRICT ON UPDATE CASCADE UNIQUE NOT NULL);
 INSERT INTO history (id, cw, event) VALUES (1, 3, 6);
 INSERT INTO history (id, cw, event) VALUES (2, 2, 5);
@@ -577,6 +586,7 @@ INSERT INTO history (id, cw, event) VALUES (14, 13, 76);
 INSERT INTO history (id, cw, event) VALUES (15, 14, 98);
 
 -- Table: latin
+DROP TABLE IF EXISTS latin;
 CREATE TABLE latin (id INTEGER PRIMARY KEY AUTOINCREMENT, cw INTEGER REFERENCES cycle_week (id) ON DELETE RESTRICT ON UPDATE CASCADE, name STRING NOT NULL, pattern STRING NOT NULL, example STRING, example_worked STRING, example_translated STRING, UNIQUE (pattern, example, example_worked));
 INSERT INTO latin (id, cw, name, pattern, example, example_worked, example_translated) VALUES (1, 3, 'first conjugation, present tense', 'ō, s, t; mus, tis, nt', 'amare (to love)', 'amō, amās, amat; amāmus, amātis, amant', 'I love, you love, he/she/it loves; we love, you all love, they love');
 INSERT INTO latin (id, cw, name, pattern, example, example_worked, example_translated) VALUES (2, 4, 'first conjugation, present tense', 'ō, s, t; mus, tis, nt', 'videre (to see)', 'videō, vidēs, videt; vidēmus, vidētis, vident', 'I see, you see, he/she/it sees; we see, you all see, they see');
@@ -586,6 +596,7 @@ INSERT INTO latin (id, cw, name, pattern, example, example_worked, example_trans
 INSERT INTO latin (id, cw, name, pattern, example, example_worked, example_translated) VALUES (6, 14, 'noun: second declension', 'us, i, o, um, o (singular); i, orum, is, os, is (plural) [SPIDO]', 'filius (son)', 'filius, filii, filio, filium, filio; filii, filiorum, filiis, filios, filiis', NULL);
 
 -- Table: latin_vocabulary
+DROP TABLE IF EXISTS latin_vocabulary;
 CREATE TABLE latin_vocabulary (id INTEGER PRIMARY KEY AUTOINCREMENT, cw INTEGER REFERENCES cycle_week (id) ON DELETE RESTRICT ON UPDATE CASCADE, word STRING NOT NULL UNIQUE, pos INTEGER REFERENCES part_of_speech (id) ON DELETE RESTRICT ON UPDATE CASCADE NOT NULL, translation STRING);
 INSERT INTO latin_vocabulary (id, cw, word, pos, translation) VALUES (1, 1, 'amīcus, amīcī', 1, 'friend');
 INSERT INTO latin_vocabulary (id, cw, word, pos, translation) VALUES (2, 1, 'bene', 3, 'well, best');
@@ -637,6 +648,7 @@ INSERT INTO latin_vocabulary (id, cw, word, pos, translation) VALUES (51, 9, 'n�
 INSERT INTO latin_vocabulary (id, cw, word, pos, translation) VALUES (600, 1, 'frāter, frātris', 1, 'brother');
 
 -- Table: location
+DROP TABLE IF EXISTS location;
 CREATE TABLE location (id INTEGER, cw INTEGER NOT NULL, name TEXT NOT NULL, city BOOLEAN NOT NULL DEFAULT 0, feature BOOLEAN NOT NULL DEFAULT 0, FOREIGN KEY (cw) REFERENCES cycle_week (id) ON UPDATE RESTRICT ON DELETE RESTRICT, PRIMARY KEY (id), UNIQUE (cw, name));
 INSERT INTO location (id, cw, name, city, feature) VALUES (1, 1, 'Euphrates River', 0, 1);
 INSERT INTO location (id, cw, name, city, feature) VALUES (2, 1, 'Tigris River', 0, 1);
@@ -662,6 +674,7 @@ INSERT INTO location (id, cw, name, city, feature) VALUES (21, 29, 'Mediterranea
 INSERT INTO location (id, cw, name, city, feature) VALUES (22, 29, 'Europe', 0, 0);
 
 -- Table: orientation
+DROP TABLE IF EXISTS orientation;
 CREATE TABLE orientation (location1 INTEGER REFERENCES location (id) ON DELETE CASCADE ON UPDATE CASCADE NOT NULL, direction INTEGER REFERENCES direction (id) ON DELETE RESTRICT ON UPDATE RESTRICT NOT NULL, location2 INTEGER REFERENCES location (id) ON DELETE CASCADE ON UPDATE CASCADE NOT NULL, UNIQUE (location1, direction, location2));
 INSERT INTO orientation (location1, direction, location2) VALUES (13, 4, 14);
 INSERT INTO orientation (location1, direction, location2) VALUES (16, 4, 13);
@@ -690,6 +703,7 @@ INSERT INTO orientation (location1, direction, location2) VALUES (17, 6, 18);
 INSERT INTO orientation (location1, direction, location2) VALUES (19, 4, 20);
 
 -- Table: part_of_speech
+DROP TABLE IF EXISTS part_of_speech;
 CREATE TABLE part_of_speech (id INTEGER PRIMARY KEY AUTOINCREMENT, name STRING);
 INSERT INTO part_of_speech (id, name) VALUES (1, 'noun');
 INSERT INTO part_of_speech (id, name) VALUES (2, 'pronoun');
@@ -701,6 +715,7 @@ INSERT INTO part_of_speech (id, name) VALUES (7, 'preposition');
 INSERT INTO part_of_speech (id, name) VALUES (8, 'interjection');
 
 -- Table: region
+DROP TABLE IF EXISTS region;
 CREATE TABLE region (location INTEGER REFERENCES location (id) ON DELETE CASCADE ON UPDATE CASCADE NOT NULL, region INTEGER REFERENCES location (id) ON DELETE RESTRICT ON UPDATE RESTRICT NOT NULL, UNIQUE (location, region));
 INSERT INTO region (location, region) VALUES (2, 3);
 INSERT INTO region (location, region) VALUES (1, 3);
@@ -736,11 +751,21 @@ INSERT INTO region (location, region) VALUES (21, 22);
 INSERT INTO region (location, region) VALUES (20, 9);
 
 -- Table: resource
+DROP TABLE IF EXISTS resource;
 CREATE TABLE resource (id INTEGER PRIMARY KEY AUTOINCREMENT, name STRING NOT NULL, version STRING, volume STRING, UNIQUE (name, version, volume));
 INSERT INTO resource (id, name, version, volume) VALUES (1, 'Story of the World', NULL, 1);
 INSERT INTO resource (id, name, version, volume) VALUES (2, 'Story of the World', NULL, 2);
 
+-- Table: role
+DROP TABLE IF EXISTS role;
+CREATE TABLE role (id INTEGER PRIMARY KEY AUTOINCREMENT, name STRING UNIQUE);
+INSERT INTO role (id, name) VALUES (1, 'student');
+INSERT INTO role (id, name) VALUES (2, 'admin');
+INSERT INTO role (id, name) VALUES (3, 'tutor');
+INSERT INTO role (id, name) VALUES (4, 'coordinator');
+
 -- Table: science
+DROP TABLE IF EXISTS science;
 CREATE TABLE science (id INTEGER PRIMARY KEY AUTOINCREMENT, cw INTEGER REFERENCES cycle_week (id) ON DELETE RESTRICT ON UPDATE CASCADE NOT NULL, prompt STRING UNIQUE NOT NULL, answer STRING NOT NULL, note STRING);
 INSERT INTO science (id, cw, prompt, answer, note) VALUES (1, 3, 'mass', 'the amount of matter (substance) in an object, usually measured in grams (g) or pound-mass (lbm)', NULL);
 INSERT INTO science (id, cw, prompt, answer, note) VALUES (2, 4, 'weight', 'the force of gravity on a mass, usually measured in Newtons (N) or pound-force (lbf)', 'A given mass will weigh *more* on earth than on the moon, since the earth''s gravitaional force is greater than, e.g., that of the moon.');
@@ -758,19 +783,32 @@ INSERT INTO science (id, cw, prompt, answer, note) VALUES (13, 13, 'force', 'an 
 INSERT INTO science (id, cw, prompt, answer, note) VALUES (14, 14, 'momentum', 'the product of an object''s mass and its velocity (p = mv), usually measured in kilogram-meters per second', 'Momentum = mass times velocity.');
 
 -- Table: test_event_sequence_score
-CREATE TABLE test_event_sequence_score (id INTEGER PRIMARY KEY AUTOINCREMENT, user INTEGER REFERENCES test_user (id) ON DELETE CASCADE ON UPDATE CASCADE, event INTEGER REFERENCES event (id) ON DELETE CASCADE ON UPDATE CASCADE, score INTEGER, count INTEGER);
+DROP TABLE IF EXISTS test_event_sequence_score;
+CREATE TABLE test_event_sequence_score (id INTEGER PRIMARY KEY AUTOINCREMENT, user INTEGER REFERENCES user (id) ON DELETE CASCADE ON UPDATE CASCADE, event INTEGER REFERENCES event (id) ON DELETE CASCADE ON UPDATE CASCADE, score INTEGER, count INTEGER);
 
 -- Table: test_event_sequence_target
-CREATE TABLE test_event_sequence_target (id INTEGER PRIMARY KEY AUTOINCREMENT, user INTEGER REFERENCES test_user (id) ON DELETE CASCADE ON UPDATE CASCADE, event INTEGER REFERENCES event (id) ON DELETE CASCADE ON UPDATE CASCADE);
+DROP TABLE IF EXISTS test_event_sequence_target;
+CREATE TABLE test_event_sequence_target (id INTEGER PRIMARY KEY AUTOINCREMENT, user INTEGER REFERENCES user (id) ON DELETE CASCADE ON UPDATE CASCADE, event INTEGER REFERENCES event (id) ON DELETE CASCADE ON UPDATE CASCADE);
 
 -- Table: test_event_sequence_target_threshold
-CREATE TABLE test_event_sequence_target_threshold (id INTEGER PRIMARY KEY AUTOINCREMENT, user INTEGER REFERENCES test_user (id) ON DELETE CASCADE ON UPDATE CASCADE UNIQUE, threshold INTEGER);
+DROP TABLE IF EXISTS test_event_sequence_target_threshold;
+CREATE TABLE test_event_sequence_target_threshold (id INTEGER PRIMARY KEY AUTOINCREMENT, user INTEGER REFERENCES user (id) ON DELETE CASCADE ON UPDATE CASCADE UNIQUE, threshold INTEGER);
 
--- Table: test_user
-CREATE TABLE test_user (id INTEGER PRIMARY KEY AUTOINCREMENT, username STRING UNIQUE, password STRING, salt STRING, email STRING);
-INSERT INTO test_user (id, username, password, salt, email) VALUES (1, 'jmcaine', NULL, NULL, NULL);
+-- Table: user
+DROP TABLE IF EXISTS user;
+CREATE TABLE user (id INTEGER PRIMARY KEY AUTOINCREMENT, username STRING UNIQUE, password STRING, salt STRING, email STRING);
+INSERT INTO user (id, username, password, salt, email) VALUES (1, 'jmcaine', NULL, NULL, NULL);
+
+-- Table: user_role
+DROP TABLE IF EXISTS user_role;
+CREATE TABLE user_role (user INTEGER REFERENCES user (id) ON DELETE CASCADE ON UPDATE CASCADE, role INTEGER REFERENCES role (id) ON DELETE RESTRICT ON UPDATE CASCADE);
+INSERT INTO user_role (user, role) VALUES (1, 1);
+INSERT INTO user_role (user, role) VALUES (1, 2);
+INSERT INTO user_role (user, role) VALUES (1, 3);
+INSERT INTO user_role (user, role) VALUES (1, 4);
 
 -- Table: vocabulary
+DROP TABLE IF EXISTS vocabulary;
 CREATE TABLE vocabulary (id INTEGER PRIMARY KEY AUTOINCREMENT, cw INTEGER REFERENCES cycle_week (id) ON DELETE RESTRICT ON UPDATE CASCADE NOT NULL, word STRING NOT NULL UNIQUE, pos INTEGER REFERENCES part_of_speech (id) ON DELETE RESTRICT ON UPDATE CASCADE NOT NULL, definition STRING NOT NULL, root STRING);
 INSERT INTO vocabulary (id, cw, word, pos, definition, root) VALUES (1, 1, 'amicable', 3, 'friendly', 'amīcus, amīcī (friend)');
 INSERT INTO vocabulary (id, cw, word, pos, definition, root) VALUES (2, 1, 'benevolent', 3, 'kind, compassionate', 'bene (well, best) + velle (to wish)');

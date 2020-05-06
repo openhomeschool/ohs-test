@@ -38,46 +38,74 @@ l = logging.getLogger(__name__)
 r = web.RouteTableDef()
 def hr(text): return web.Response(text = text, content_type = 'text/html')
 
+def auth(roles):
+	'''
+	Checks `roles` against user's roles, if user is logged in.
+	Sends user to login page if necessary.
+	`roles` may be a string, signifying a singleton role needed to access this handler,
+	or a list/tuple/set of roles that would suffice.  E.g., 
+		auth('user')
+		async def handler(request):
+			...
+	or:
+		auth(('contributor', 'admin'))
+		async def handler2(request):
+			...
+	'''
+	def decorator(func):
+		@functools.wraps(func)
+		async def wrapper(request): # no need for *args, **kwargs b/c this decorator is for aiohttp handler functions only, which must accept a Request instance as its only argument
+			session = await get_session(request)
+			arg_roles = roles
+			if isinstance(roles, str): # then wrap the singleton:
+				arg_roles = {roles,}
+			if 'roles' in session and set(session['roles']).intersection(arg_roles):
+				# Process the request (handler) as requested:
+				return await func(request)
+			#else, forward to log-in page:
+			session['after_login'] = request.path
+			if 'roles' in session: # user is logged in, but the above role-intersection test failed, meaning that user is not permitted to access this particular page
+				session['error_flash'] = error.not_permitted
+			raise web.HTTPFound(location = request.app.router['login'].url_for())
+		return wrapper
+	return decorator
+
 
 # Handlers --------------------------------------------------------------------
 
-def auth(func):
-	@functools.wraps(func)
-	async def wrapper(request): # no need for *args, **kwargs b/c this decorator is for aiohttp handler functions only, which must accept a Request instance as its only argument
-		session = await get_session(request)
-		if 'roles' in session and session['roles']: # TODO: match w/ auth(param) for roles!!!
-			return await func(request)
-		#else:
-		session['after_login'] = request.path
-		raise web.HTTPFound(location = request.app.router['login'].url_for())
-
-	return wrapper
-
 @r.get('/login', name = 'login')
 async def login(request):
-	return hr(html.login())
+	session = await get_session(request)
+	if 'user_id' in session:
+		del session['user_id']
+	if 'roles' in session:
+		del session['roles']
+	return hr(html.login(await _flash(request)))
 
 @r.post('/login')
 async def login_(request):
-	data = await request.post()
-	#TODO: validate data!
-	roles = await db.authenticate(request.app['db'], data['username'], data['password'])
-	session = await get_session(request)
-	session['roles'] = roles
-	if roles:
-		raise web.HTTPFound(location = session['after_login'] if 'after_login' in session else request.app.router['home'].url_for())
-	else:
-		return hr(html.login(error.authentication_failure))
+	r = request
+	data = await r.post()
+	session = await get_session(r)
+	try:
+		#TODO: validate data!
+		user_id, roles = await db.authenticate(r.app['db'], data['username'], data['password'])
+		if not user_id:
+			return hr(html.login(error.authentication_failure))
+		else:
+			session['user_id'] = user_id
+			session['roles'] = roles
+			# raise web.HTTPFound below, after blanket exception handler...
+	except:
+		return hr(html.login(error.unknown_login_failure))
+	if 'user_id' in session:
+		raise web.HTTPFound(location = session['after_login'] if 'after_login' in session else r.app.router['home'].url_for())
 
+		
 
 @r.get('/', name = 'home')
-@auth
 async def home(request):
-	session = await get_session(request)
-	last_visit = session['last_visit'] if 'last_visit' in session else None
-	text = 'Last visited: {}'.format(last_visit)
-	session['last_visit'] = time.time()
-	return hr(html.home(text))
+	return hr(html.home())
 
 @r.view('/new_user')
 class New_User(web.View):
@@ -134,6 +162,7 @@ async def ws_check_username(request):
 	
 
 @r.get('/select_user')
+@auth('admin')
 async def select_user(request):
 	return hr(html.select_user(_ws_url(request, '/ws_filter_list')))
 
@@ -170,6 +199,12 @@ async def ws_quiz_handler(request):
 
 
 # Util ------------------------------------------------------------------------
+
+async def _flash(request):
+	session = await get_session(request)
+	flash = session.get('error_flash')
+	session['error_flash'] = None
+	return flash
 
 def _ws_url(request, name):
 	# Transform a normal URL like http://domain.tld/quiz/history/sequence into ws://domain.tld/<name>
@@ -222,6 +257,7 @@ async def _ws_handler(request, msg_handler):
 # Init / Shutdown -------------------------------------------------------------
 
 async def init_db(app):
+	l.debug('Initializing database...')
 	db = await aiosqlite.connect('ohs-test.db', isolation_level = None) # isolation_level: autocommit TODO: parameterize DB ID!
 		# non-async equivalent would have been: db = sqlite3.connect('test1.db', isolation_level = None) # isolation_level: autocommit
 	db.row_factory = aiosqlite.Row
@@ -229,13 +265,14 @@ async def init_db(app):
 	#await db.execute('pragma case_sensitive_like = true')
 	#await db.set_trace_callback(l.debug) - not needed with aiosqlite, anyway
 	app['db'] = db
-	l.debug('Database initialized')
+	l.debug('...database initialized')
 
 async def shutdown(app):
+	l.debug('Shutting down...')
 	await app['db'].close()
 	for ws in set(app['websockets']):
 		await ws.close(code = WSCloseCode.GOING_AWAY, message = 'Server shutdown')
-	l.debug('Shutdown complete')
+	l.debug('...shutdown complete')
 
 # Run server like so, from cli:
 #		python -m aiohttp.web -H localhost -P 8080 main:init
@@ -243,12 +280,7 @@ async def shutdown(app):
 #		adev runserver --app-factory init --livereload --debug-toolbar test1_app
 def init(argv):
 	app = web.Application()
-	app.update(
-		websockets = weakref.WeakSet(),
-		static_path = 'static/',
-		static_url = '/static/',
-		static_root_url = 'static/',
-	)
+	app.update(websockets = weakref.WeakSet())
 
 	# Set up sessions:
 	fernet_key = fernet.Fernet.generate_key()
@@ -259,7 +291,8 @@ def init(argv):
 	app.add_routes(r)
 	# And quiz routes:
 	def q(db_function, html_function):
-		def quiz(request):
+		@auth('student')
+		async def quiz(request):
 			return hr(html.quiz(_ws_url(request, '/ws_quiz_handler'), db_function, html_function))
 		return quiz
 	g = web.get
