@@ -22,7 +22,7 @@ async def add_user(db, username, password, email):
 	r = await c.execute('insert into user(username, password, salt, email) values (?, ?, ?, ?)', (username, _hash(password, salt), salt, email))
 	user_id = c.lastrowid
 	r = await c.execute('insert into user_role(user, role) values (?, 1)', (user_id,)) #TODO: hard-coded to "role #1, student" -- parameterize!
-	return return user_id
+	return user_id
 
 _get_users_limited = lambda limit: ('select * from user limit ?', (limit,))
 async def get_users_limited(db, limit):
