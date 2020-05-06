@@ -19,15 +19,15 @@ _hash = lambda password, salt: hashlib.pbkdf2_hmac('sha256', bytes(password, 'UT
 async def add_user(db, username, password, email):
 	salt = urandom(32)
 	c = await db.cursor() # need cursor because we need lastrowid, only available via cursor
-	r = await c.execute('insert into test_user(username, password, salt, email) values (?, ?, ?, ?)', (username, _hash(password, salt), salt, email))
+	r = await c.execute('insert into user(username, password, salt, email) values (?, ?, ?, ?)', (username, _hash(password, salt), salt, email))
 	return c.lastrowid
 
-_get_users_limited = lambda limit: ('select * from test_user limit ?', (limit,))
+_get_users_limited = lambda limit: ('select * from user limit ?', (limit,))
 async def get_users_limited(db, limit):
 	c = await db.execute(*_get_users_limited(limit))
 	return await c.fetchall()
 
-_find_users = lambda like: ('select * from test_user where username like ?', ('%' + like + '%',))
+_find_users = lambda like: ('select * from user where username like ?', ('%' + like + '%',))
 async def find_users(db, like):
 	c = await db.execute(*_find_users(like))
 	return await c.fetchall()
@@ -48,17 +48,19 @@ async def get_user(db, where_matches):
 	See _prep_where_matches() for `where_matches` spec
 	'''
 	wheres, values = _prep_where_matches(where_matches)
-	c = await db.execute('select * from test_user where ' + wheres, values)
+	c = await db.execute('select * from user where ' + wheres, values)
 	return await c.fetchall()
 
 
 async def authenticate(db, username, password):
-	c = await db.execute('select * from test_user where username = ?', (username,))
+	c = await db.execute('select * from user where username = ?', (username,))
 	user = await c.fetchone()
 	if user and (user['password'] == _hash(password, user['salt'])):
-		return ('student',) # TODO: replace with roles from DB
+		c = await db.execute('select role.name as role_name from role join user_role on role.id = user_role.role join user on user.id = user_role.user where user.username = ?', (username,))
+		roles = await c.fetchall()
+		return user['id'], [role['role_name'] for role in roles]
 	#else:
-	return None
+	return None, None
 
 # ------------
 

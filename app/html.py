@@ -35,10 +35,10 @@ class Form:
 
 # Handlers --------------------------------------------------------------------
 
-def home(text):
+def home():
 	d = _doc('OHS-Test Home Page')
 	with d:
-		t.p('This is the stub home-page for ohs-test; last visit: %s' % text)
+		t.p('This is the stub home-page for ohs-test.')
 	return d.render()
 
 def login(error = None):
