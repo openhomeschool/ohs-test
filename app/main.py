@@ -193,7 +193,7 @@ async def ws_quiz_handler(request):
 		if payload['answer']:
 			pass # TODO
 		question, options = await db.get_question(db.exposed[payload['db_function']], dbc, payload)
-		await ws.send_json({'call': 'content', 'content': html.exposed[payload['html_function']](question, options)})
+		await ws.send_json({'call': 'content', 'check': question['id'], 'content': html.exposed[payload['html_function']](question, options)})
 
 	return await _ws_handler(request, msg_handler)
 
