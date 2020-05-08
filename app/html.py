@@ -116,6 +116,7 @@ def quiz(ws_url, db_function, html_function):
 	with d:
 		# Content container - filtered results themselves will be fed into here, via websocket (see _js_socket_quiz_manager):
 		t.div(id = 'content')
+		t.button('Go', id = "go")
 		# JS (intentionally at bottom of file; see https://faqs.skillcrush.com/article/176-where-should-js-script-tags-be-linked-in-html-documents and many stackexchange answers):
 		t.script(_js_socket_quiz_manager(ws_url, db_function, html_function))
 	return d.render()
@@ -131,13 +132,14 @@ def multi_choice_question(question, options):
 	d = t.div('Where does "%s" belong in this sequence of events?' % question['name'], cls = 'quiz_question_content')
 	with d:
 		with t.div(cls = 'quiz_question_option'):
-			t.input(type = 'radio', id = 'first', name = 'answer', value = '0')
-			t.label('First', fr = 'first')
+			t.input(type = 'radio', id = '0', name = 'choice', value = '0')
+			t.label('First', fr = '0')
 		for record in options:
 			#t.div('Option - %s' % record['name'] + '(%s)' % record['start'], cls = 'quiz_question_option')
 			with t.div(cls = 'quiz_question_option'):
-				t.input(type = 'radio', id = record['name'], name = 'answer', value = record['id'])
-				t.label('After "%s"' % record['name'], fr = record['name'])
+				t.input(type = 'radio', id = record['id'], name = 'choice', value = record['id'])
+				t.label('After "%s"' % record['name'], fr = record['id'])
+
 	return d.render()
 
 
@@ -205,15 +207,21 @@ def _text_input(name, value, bool_attrs = None, attrs = None, label = None, inva
 def _js_socket_quiz_manager(url, db_function, html_function):
 	# This js not served as a static file for two reasons: 1) it's tiny and single-purpose, and 2) its code is tightly connected to this server code; it's not a candidate for another team to maintain, in other words; it also relies on our URL (for the websocket), whereas true static files might be served by a reverse-proxy server from anywhere, and won't tend to contain any references to the wsgi urls
 	return raw('''
+		
 	var ws = new WebSocket("%(url)s");
+	var check = 0;
+	var go_button = document.getElementById("go");
+
 	ws.onmessage = function(event) {
 		var payload = JSON.parse(event.data);
 		switch(payload.call) {
 			case "start":
-				ws.send(JSON.stringify({db_function: "%(db_function)s", html_function: "%(html_function)s", answer: 0}));
+				send_answer(-1); // kick-start
 				break;
 			case "content":
 				document.getElementById("content").innerHTML = payload.content;
+				check = payload.check;
+				go_button.disabled = false;
 				break;
 		}
 	};
@@ -221,6 +229,34 @@ def _js_socket_quiz_manager(url, db_function, html_function):
 		ws.send(JSON.stringify({db_function: "%(db_function)s", html_function: "%(html_function)s", answer: answer}));
 	};
 	
+	go_button.onclick = function() {
+		submit();
+	};
+	function submit() {
+		//choice.disabled = true;
+		go_button.disabled = true; // until we get the next question
+		const rbs = document.querySelectorAll('input[name = "choice"]');
+		let selected = null;
+		for (const rb of rbs) {
+			if (rb.checked) {
+				selected = rb;
+				break;
+			}
+		}
+		var show_answer_delay = 2000; // assume failure (parameterize?!)
+		if (selected.value == check) {
+			show_answer_delay = 500; // don't show as long
+			alert("Right!");
+		} // TODO: placeholder!!
+		else if (selected != null) { alert("Wrong!"); } // TODO: placeholder!!
+		else { } // TODO: handle no selection! Allow user to skip?!
+
+		check_element = document.getElementById(check)
+		check_element.style.color = "green";
+		check_element.style.fontWeight = "bold";
+		setTimeout(function() { send_answer(selected.value); }, show_answer_delay);
+
+	};
 	''' % {'url': url, 'db_function': db_function, 'html_function': html_function})
 
 def _js_filter_list(url):
