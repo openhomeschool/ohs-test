@@ -14,6 +14,7 @@ from aiohttp import web, WSMsgType, WSCloseCode
 
 from . import html
 from . import db
+from . import cdb
 from . import valid
 
 _debug = True # TODO: parameterize!
