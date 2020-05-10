@@ -40,6 +40,13 @@ def _prep_where_matches(where_matches):
 		(('username', 'frank'),)
 		(('first_name', 'John'), ('last_name', 'Smith'))
 		(('id', 5),)
+	The result is, for the above:
+		('username = ?', ('frank',))
+		('first_name = ? and last_name = ?', ('John', 'Smith')
+		('id = ?', (5,))
+	You could put any of these into a SQL call, like:
+		db.execute('select * from foo where %s' % wheres, values)
+	Where `wheres' and 'values' are the two returns 
 	'''
 	wheres, values = list(zip(*where_matches))
 	wheres = ' and '.join([i + ' = ?' for i in wheres])
