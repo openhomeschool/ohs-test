@@ -292,7 +292,7 @@ def init(argv):
 	app.add_routes(r)
 	# And quiz routes:
 	def q(db_function, html_function):
-		@auth('student')
+		#@auth('student') -- TODO: comment this back in when it's time to auth students who are looking to quiz
 		async def quiz(request):
 			return hr(html.quiz(_ws_url(request, '/ws_quiz_handler'), db_function, html_function))
 		return quiz
