@@ -3,41 +3,77 @@ __copyright__ = '2020'
 __version__ = '0.1'
 __license__ = 'MIT'
 
+import hashlib
+import re
+
+from os import urandom
+
 import logging
 l = logging.getLogger(__name__)
-
-import re
 
 from . import cdb
 
 # Handlers --------------------------------------------------------------------
 
-_add_user = lambda username, password, email: ('insert into test_user(username, password, email) values (?, ?, ?)', (username, password, email))
-async def add_user(db, *args):
-	c = await db.execute(*_add_user(*args))
-	return None #TODO
+_hash = lambda password, salt: hashlib.pbkdf2_hmac('sha256', bytes(password, 'UTF-8'), salt, 100000)
 
-_get_users_limited = lambda limit: ('select * from test_user limit ?', (limit,))
+async def add_user(db, username, password, email):
+	salt = urandom(32)
+	c = await db.cursor() # need cursor because we need lastrowid, only available via cursor
+	r = await c.execute('insert into user(username, password, salt, email) values (?, ?, ?, ?)', (username, _hash(password, salt), salt, email))
+	user_id = c.lastrowid
+	r = await c.execute('insert into user_role(user, role) values (?, 1)', (user_id,)) #TODO: hard-coded to "role #1, student" -- parameterize!
+	return user_id
+
+_get_users_limited = lambda limit: ('select * from user limit ?', (limit,))
 async def get_users_limited(db, limit):
 	c = await db.execute(*_get_users_limited(limit))
 	return await c.fetchall()
-	
 
-_find_users = lambda like: ('select * from test_user where username like ?', ('%' + like + '%',))
+_find_users = lambda like: ('select * from user where username like ?', ('%' + like + '%',))
 async def find_users(db, like):
 	c = await db.execute(*_find_users(like))
 	return await c.fetchall()
+
+def _prep_where_matches(where_matches):
+	'''
+	`where_matches` must be a list or tuple of 2-tuple pairs, such as:
+		(('username', 'frank'),)
+		(('first_name', 'John'), ('last_name', 'Smith'))
+		(('id', 5),)
+	'''
+	wheres, values = list(zip(*where_matches))
+	wheres = ' and '.join([i + ' = ?' for i in wheres])
+	return wheres, values
+
+async def get_user(db, where_matches):
+	'''
+	See _prep_where_matches() for `where_matches` spec
+	'''
+	wheres, values = _prep_where_matches(where_matches)
+	c = await db.execute('select * from user where ' + wheres, values)
+	return await c.fetchall()
+
+
+async def authenticate(db, username, password):
+	c = await db.execute('select * from user where username = ?', (username,))
+	user = await c.fetchone()
+	if user and (user['password'] == _hash(password, user['salt'])):
+		c = await db.execute('select role.name as role_name from role join user_role on role.id = user_role.role join user on user.id = user_role.user where user.username = ?', (username,))
+		roles = await c.fetchall()
+		return user['id'], [role['role_name'] for role in roles]
+	#else:
+	return None, None
 
 # ------------
 
 async def get_question(function, db, payload):
 	return await function(db, payload)
 
-exposed = {}
+exposed = dict()
 def expose(func):
 	exposed[func.__name__] = func
-	def wrapper():
-		func()
+	return func
 
 @expose
 async def get_history_sequence_question(db, payload):
