@@ -23,6 +23,7 @@ from aiohttp_session.cookie_storage import EncryptedCookieStorage
 
 from . import html
 from . import db
+from . import cdb
 from . import valid
 from . import error
 
@@ -291,7 +292,7 @@ def init(argv):
 	app.add_routes(r)
 	# And quiz routes:
 	def q(db_function, html_function):
-		@auth('student')
+		#@auth('student') -- TODO: comment this back in when it's time to auth students who are looking to quiz
 		async def quiz(request):
 			return hr(html.quiz(_ws_url(request, '/ws_quiz_handler'), db_function, html_function))
 		return quiz
@@ -304,7 +305,7 @@ def init(argv):
 		g('/quiz/history/random', q('get_history_random_question', 'multi_choice_question')),
 		g('/quiz/geography/orientation', q('get_geography_orientation_question', 'multi_choice_question')),
 		g('/quiz/geography/map', q('get_geography_map_question', 'multi_choice_question')),
-		g('/quiz/science/grammar', q('get_science_grammar_question', 'multi_choice_question')),
+		g('/quiz/science/grammar', q('get_science_grammar_question', 'multi_choice_science_question')),
 		g('/quiz/science/submissions', q('get_science_submissions_question', 'multi_choice_question')),
 		g('/quiz/science/random', q('get_science_random_question', 'multi_choice_question')),
 		g('/quiz/math/facts/multiplication', q('get_math_facts_question', 'multi_choice_question')),
