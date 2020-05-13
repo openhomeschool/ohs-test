@@ -187,13 +187,23 @@ async def ws_filter_list(request):
 
 	return await _ws_handler(request, msg_handler)
 
+db_function
+html_function
 
 @r.get('/ws_quiz_handler')
 async def ws_quiz_handler(request):
+	'''
+	Generic "glue" code that manages question/answer mechanics between websocket/client and database/server.
+	Specific types of questions are handled quite differently, so the actual DB handler functions are in
+	payload['db_answer_function'] and etc., and the HTML-creation code is in payload['html_function'], and
+	the payload content may be different, but will be what the particular handler function expects.
+	'''
+	r = request
+	session = await get_session(r)
 	async def msg_handler(payload, dbc, ws):
 		if payload['answer']:
-			pass # TODO
-		question, options = await db.get_question(db.exposed[payload['db_function']], dbc, payload)
+			db.log_answer(db.exposed[payload['db_answer_function'], dbc, session['user_id'], payload['answer'])
+		question, options, answer = await db.get_question(db.exposed[payload['db_function']], dbc, payload)
 		await ws.send_json({'call': 'content', 'check': question['id'], 'content': html.exposed[payload['html_function']](question, options)})
 
 	return await _ws_handler(request, msg_handler)
@@ -275,6 +285,8 @@ async def shutdown(app):
 		await ws.close(code = WSCloseCode.GOING_AWAY, message = 'Server shutdown')
 	l.debug('...shutdown complete')
 
+
+	
 # Run server like so, from cli:
 #		python -m aiohttp.web -H localhost -P 8080 main:init
 # Or, using adev (from parent directory!):
@@ -291,14 +303,14 @@ def init(argv):
 	# Add standard routes:
 	app.add_routes(r)
 	# And quiz routes:
-	def q(db_function, html_function):
+	def q(db_question_fetch_function, html_function):
 		#@auth('student') -- TODO: comment this back in when it's time to auth students who are looking to quiz
 		async def quiz(request):
-			return hr(html.quiz(_ws_url(request, '/ws_quiz_handler'), db_function, html_function))
+			return hr(html.quiz(_ws_url(request, '/ws_quiz_handler'), db_question_fetch_function, html_function))
 		return quiz
 	g = web.get
 	app.add_routes([
-		g('/quiz/history/sequence', q('get_history_sequence_question', 'multi_choice_question')),
+		g('/quiz/history/sequence', q('get_history_sequence_question', 'log_history_sequence_answer', 'multi_choice_question')),
 		g('/quiz/history/geography', q('get_history_geography_question', 'multi_choice_question')),
 		g('/quiz/history/detail', q('get_history_detail_question', 'multi_choice_question')),
 		g('/quiz/history/submissions', q('get_history_submissions_question', 'multi_choice_question')),
