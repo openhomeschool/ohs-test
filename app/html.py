@@ -116,7 +116,7 @@ def quiz(ws_url, db_function, html_function):
 	with d:
 		# Content container - filtered results themselves will be fed into here, via websocket (see _js_socket_quiz_manager):
 		t.div(id = 'content')
-		t.button('Go', id = "go")
+		t.button('Go', id = "go", cls = 'quiz_button')
 		# JS (intentionally at bottom of file; see https://faqs.skillcrush.com/article/176-where-should-js-script-tags-be-linked-in-html-documents and many stackexchange answers):
 		t.script(_js_socket_quiz_manager(ws_url, db_function, html_function))
 	return d.render()
@@ -129,8 +129,9 @@ def expose(func):
 
 @expose
 def multi_choice_question(question, options):
-	d = t.div('Where does "%s" belong in this sequence of events?' % question['name'], cls = 'quiz_question_content')
+	d = t.div(cls = 'quiz_question_content')
 	with d:
+		t.div('Where does "%s" belong in this sequence of events?' % question['name'], cls = 'quiz_question')
 		with t.div(cls = 'quiz_question_option'):
 			t.input(type = 'radio', id = '0', name = 'choice', value = '0')
 			t.label('First', fr = '0')
@@ -246,8 +247,8 @@ def _js_socket_quiz_manager(url, db_function, html_function):
 		var show_answer_delay = 2000; // assume failure (parameterize?!)
 		if (selected.value == check) {
 			show_answer_delay = 500; // don't show as long
-			alert("Right!");
-		} // TODO: placeholder!!
+			alert("Right!"); // TODO: placeholder!
+		} // TODO: placeholder!
 		else if (selected != null) { alert("Wrong!"); } // TODO: placeholder!!
 		else { } // TODO: handle no selection! Allow user to skip?!
 

@@ -19,10 +19,10 @@ _hash = lambda password, salt: hashlib.pbkdf2_hmac('sha256', bytes(password, 'UT
 async def add_user(db, username, password, email):
 	salt = urandom(32)
 	c = await db.cursor() # need cursor because we need lastrowid, only available via cursor
-	r = await c.execute('insert into user(username, password, salt, email) values (?, ?, ?, ?)', (username, _hash(password, salt), salt, email))
+	r = await c.execute('insert into user (username, password, salt, email) values (?, ?, ?, ?)', (username, _hash(password, salt), salt, email))
 	user_id = c.lastrowid
-	r = await c.execute('insert into user_role(user, role) values (?, 1)', (user_id,)) #TODO: hard-coded to "role #1, student" -- parameterize!
-	return return user_id
+	r = await c.execute('insert into user_role (user, role) values (?, 1)', (user_id,)) #TODO: hard-coded to "role #1, student" -- parameterize!
+	return user_id
 
 _get_users_limited = lambda limit: ('select * from user limit ?', (limit,))
 async def get_users_limited(db, limit):
@@ -70,6 +70,9 @@ async def authenticate(db, username, password):
 		return user['id'], [role['role_name'] for role in roles]
 	#else:
 	return None, None
+
+# db.execute('insert into test_event_sequence_target (user, event, correct_option) values (?, ?, ?)', (user_id, event_id, correct_event_id)
+# db.executemany('insert into test_event_sequence_incorrect_option (target, incorrect_option
 
 # ------------
 
