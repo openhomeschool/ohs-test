@@ -111,13 +111,13 @@ def filter_user_list(results, url): # TODO: GENERALIZE for other lists!
 	return table.render()
 
 
-def quiz(ws_url, db_function, html_function):
+def quiz(ws_url, db_handler, html_function):
 	d = _doc('Quiz')
 	with d:
 		# Content container - filtered results themselves will be fed into here, via websocket (see _js_socket_quiz_manager):
 		t.div(id = 'content')
 		# JS (intentionally at bottom of file; see https://faqs.skillcrush.com/article/176-where-should-js-script-tags-be-linked-in-html-documents and many stackexchange answers):
-		t.script(_js_socket_quiz_manager(ws_url, db_function, html_function))
+		t.script(_js_socket_quiz_manager(ws_url, db_handler, html_function))
 	return d.render()
 
 
@@ -213,7 +213,7 @@ def _text_input(name, value, bool_attrs = None, attrs = None, label = None, inva
 		result += invalid_div
 	return result
 
-def _js_socket_quiz_manager(url, db_function, html_function):
+def _js_socket_quiz_manager(url, db_handler, html_function):
 	# This js not served as a static file for two reasons: 1) it's tiny and single-purpose, and 2) its code is tightly connected to this server code; it's not a candidate for another team to maintain, in other words; it also relies on our URL (for the websocket), whereas true static files might be served by a reverse-proxy server from anywhere, and won't tend to contain any references to the wsgi urls
 	return raw('''
 	var ws = new WebSocket("%(url)s");
@@ -221,7 +221,7 @@ def _js_socket_quiz_manager(url, db_function, html_function):
 		var payload = JSON.parse(event.data);
 		switch(payload.call) {
 			case "start":
-				ws.send(JSON.stringify({db_function: "%(db_function)s", html_function: "%(html_function)s", answer: 0}));
+				ws.send(JSON.stringify({db_handler: "%(db_handler)s", html_function: "%(html_function)s", answer: 0}));
 				break;
 			case "content":
 				document.getElementById("content").innerHTML = payload.content;
@@ -229,10 +229,10 @@ def _js_socket_quiz_manager(url, db_function, html_function):
 		}
 	};
 	function send_answer(answer) {
-		ws.send(JSON.stringify({db_function: "%(db_function)s", html_function: "%(html_function)s", answer: answer}));
+		ws.send(JSON.stringify({db_handler: "%(db_handler)s", html_function: "%(html_function)s", answer: answer}));
 	};
 	
-	''' % {'url': url, 'db_function': db_function, 'html_function': html_function})
+	''' % {'url': url, 'db_handler': db_handler, 'html_function': html_function})
 
 def _js_filter_list(url):
 	# This js not served as a static file for two reasons: 1) it's tiny and single-purpose, and 2) its code is tightly connected to this server code; it's not a candidate for another team to maintain, in other words; it also relies on our URL (for the websocket), whereas true static files might be served by a reverse-proxy server from anywhere, and won't tend to contain any references to the wsgi urls
