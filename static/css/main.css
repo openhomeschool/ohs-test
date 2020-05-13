@@ -108,3 +108,20 @@ div.field {
 	transform: rotate(-15deg);
 	margin: 5px;
 }
+
+
+.quiz_question {
+	margin: 1em;
+	font-size: 1.5em;
+	font-weight: bold;
+	color: #305d2e;
+}
+
+.quiz_question_option {
+	margin: 0.2em 2em;
+	font-size: 1.1em;
+}
+
+.quiz_button {
+	margin-left: 1em;
+}

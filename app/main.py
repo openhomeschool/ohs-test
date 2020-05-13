@@ -140,7 +140,7 @@ class New_User(web.View):
 			# Re-present with user_exists error:
 			return hr(html.new_user(html.Form(r.path, data), ws_url, (error.user_exists,)))
 
-		#if sess.get('trial'): # True
+		#if sess.get('trial'): # TODO!
 		#user = db.update_user(dbs, sess['username'], p.username, p.password, p.email)
 		#else:
 		
