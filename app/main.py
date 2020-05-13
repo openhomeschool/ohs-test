@@ -193,8 +193,8 @@ async def ws_quiz_handler(request):
 	async def msg_handler(payload, dbc, ws):
 		if payload['answer']:
 			pass # TODO
-		question, options = await db.get_question(db.exposed[payload['db_function']], dbc, payload)
-		await ws.send_json({'call': 'content', 'content': html.exposed[payload['html_function']](question, options)})
+		db_handler = await db.get_handler(payload['db_handler'], dbc, None) # TODO: add user_id,,, more....
+		await ws.send_json({'call': 'content', 'content': html.exposed[payload['html_function']](db_handler.question, db_handler.options)})
 
 	return await _ws_handler(request, msg_handler)
 
@@ -291,21 +291,21 @@ def init(argv):
 	# Add standard routes:
 	app.add_routes(r)
 	# And quiz routes:
-	def q(db_function, html_function):
+	def q(db_handler, html_function):
 		#@auth('student') -- TODO: comment this back in when it's time to auth students who are looking to quiz
 		async def quiz(request):
-			return hr(html.quiz(_ws_url(request, '/ws_quiz_handler'), db_function, html_function))
+			return hr(html.quiz(_ws_url(request, '/ws_quiz_handler'), db_handler, html_function))
 		return quiz
 	g = web.get
 	app.add_routes([
-		g('/quiz/history/sequence', q('get_history_sequence_question', 'multi_choice_question')),
+		g('/quiz/history/sequence', q('History_Sequence_QT', 'multi_choice_question')),
 		g('/quiz/history/geography', q('get_history_geography_question', 'multi_choice_question')),
 		g('/quiz/history/detail', q('get_history_detail_question', 'multi_choice_question')),
 		g('/quiz/history/submissions', q('get_history_submissions_question', 'multi_choice_question')),
 		g('/quiz/history/random', q('get_history_random_question', 'multi_choice_question')),
 		g('/quiz/geography/orientation', q('get_geography_orientation_question', 'multi_choice_question')),
 		g('/quiz/geography/map', q('get_geography_map_question', 'multi_choice_question')),
-		g('/quiz/science/grammar', q('get_science_grammar_question', 'multi_choice_science_question')),
+		g('/quiz/science/grammar', q('Science_Grammar_QT', 'multi_choice_science_question')),
 		g('/quiz/science/submissions', q('get_science_submissions_question', 'multi_choice_question')),
 		g('/quiz/science/random', q('get_science_random_question', 'multi_choice_question')),
 		g('/quiz/math/facts/multiplication', q('get_math_facts_question', 'multi_choice_question')),
