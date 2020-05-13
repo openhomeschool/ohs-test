@@ -3,6 +3,7 @@ __copyright__ = '2020'
 __version__ = '0.1'
 __license__ = 'MIT'
 
+import functools
 import logging
 l = logging.getLogger(__name__)
 
@@ -15,60 +16,84 @@ from . import valid
 # Classes ---------------------------------------------------------------------
 
 class Form:
-	def __init__(self, action, values = None, errors = None):
+	def __init__(self, action, values = None, invalids = None):
 		'''
 		`values` is a dict of (field-name, value) pairs.
-		`errors` is a dict of (field-name, error-message) pairs.
+		`invalids` is a list/tuple of field names that did not pass a validity test (server side).
 		'''
 		self.action = action
 		self.values = values
-		self.errors = errors
+		self.invalids = set(invalids) if invalids else set()
 		
 	def nv(self, name):
+		# returns a (name, value) pair for `name`, or else None if there are no values set at all (in __init__)
 		return (name, self.values.get(name) if self.values else None)
 
-	def ne(self, name):
-		return self.errors.get(name) if self.errors else None
+	def invalid(self, name):
+		# returns True if `name` is in the list of invalids set (in __init__)
+		return name in self.invalids
 
 # Handlers --------------------------------------------------------------------
 
 def home():
 	d = _doc('OHS-Test Home Page')
 	with d:
-		t.p('This is the stub home-page for ohs-test')
-	return d.render()
-	
-def new_user_success(): # TODO: this is just a lame placeholder
-	d = _doc('New User!')
-	with d:
-		t.p('New user successfully created! ....')
+		t.p('This is the stub home-page for ohs-test.')
 	return d.render()
 
-def new_user(form):
+def login(error = None):
+	d = _doc('OHS-Test Login')
+	with d:
+		with t.form(action = '/login', method = 'post'):
+			with t.fieldset(cls = 'small_fieldset'):
+				t.legend('Log in...')
+				_error(error)
+				t.div(_text_input('username', None, ('required', 'autofocus'), {'pattern': valid.re_username}, invalid_div = _invalid(valid.inv_username, False)), cls = 'field')
+				t.div(_text_input('password', None, ('required',), type_ = 'password'), cls = 'field')
+				t.div(t.input_(type = "submit", value = "Log in!"), cls = 'field')
+		t.script(_js_validate_login_fields())
+	return d.render()
+
+	
+def new_user_success(id): # TODO: this is just a lame placeholder
+	d = _doc('New User!')
+	with d:
+		t.p('New user (%s) successfully created! ....' % id)
+	return d.render()
+
+def new_user(form, ws_url, errors = None):
 	title = 'New User'
 	d = _doc(title)
 	with d:
 		with t.form(action = form.action, method = 'post'):
 			with t.fieldset():
 				t.legend(title)
+				_errors(errors)
 				with t.ol(cls = 'step_numbers'):
 					with t.li():
 						t.p('First, create a one-word username for yourself (lowercase, no spaces)...')
-						_text_input(*form.nv('new_username'), ('required', 'autofocus'), {'patternz': valid.re_username}, 'Type new username here', form.ne('new_username'))
+						_text_input(*form.nv('new_username'), ('required', 'autofocus'), {'pattern': valid.re_username, 'oninput': 'check_username(this.value)'}, 'Type new username here',
+							_invalid(valid.inv_username, form.invalid('new_username')))
+						_invalid(valid.inv_username_exists, False, 'username_exists_message')
 					with t.li():
 						t.p("Next, invent a password; type it in twice to make sure you've got it...")
-						_text_input('password', None, ('required',), {'patternz': valid.re_password}, 'Type new password here', form.ne('password'), type_ = 'password')
-						_text_input('password_confirmation', None, ('required',), None, 'Type password again for confirmation', form.ne('password_confirmation'), type_ = 'password')
+						_text_input('password', None, ('required',), {'pattern': valid.re_password}, 'Type new password here',
+							_invalid(valid.inv_password, form.invalid('password')), type_ = 'password')
+						_text_input('password_confirmation', None, ('required',), None, 'Type password again for confirmation',
+							_invalid(valid.inv_password_confirmation, form.invalid('password_confirmation'), 'password_match_message'), type_ = 'password')
 					with t.li():
 						t.p("Finally, type in an email address that can be used if you ever need a password reset (optional, but this may be very useful someday!)...")
-						_text_input(*form.nv('email'), ('required',), {'patternz': valid.re_email}, 'Type email address here', form.ne('email'))
+						_text_input(*form.nv('email'), None, {'pattern': valid.re_email}, 'Type email address here', 
+							_invalid(valid.inv_email, form.invalid('email')))
 				t.input_(type = "submit", value = "Done!")
+		t.script(_js_validate_new_user_fields())
+		t.script(_js_check_username(ws_url))
 	return d.render()
 
 def select_user(url):
 	d = _doc('Select User')
 	with d:
-		_text_input('search', None, ('autofocus',), {'autocomplete': 'off', 'oninput': 'search(this.value)'}, label = 'Search', type_ = 'search')
+		_text_input('search', None, ('autofocus',), {'autocomplete': 'off', 'oninput': 'search(this.value)'}, 'Search', type_ = 'search')
 		t.div(id = 'search_result') # filtered results themselves are added here, in this `result` div, via websocket, as search text is typed (see javascript)
 		# JS (intentionally at bottom of file; see https://faqs.skillcrush.com/article/176-where-should-js-script-tags-be-linked-in-html-documents and many stackexchange answers):
 		t.script(_js_filter_list(url))
@@ -96,11 +121,10 @@ def quiz(ws_url, db_function, html_function):
 	return d.render()
 
 
-exposed = {}
+exposed = dict()
 def expose(func):
 	exposed[func.__name__] = func
-	def wrapper():
-		func()
+	return func
 
 @expose
 def multi_choice_question(question, options):
@@ -133,7 +157,6 @@ def multi_choice_science_question(question, options):
 #TODO: deport some of these?
 
 _dress_bool_attrs = lambda attrs: dict([(f, True) for f in attrs])
-_error = lambda message: t.div(message, cls = 'error')
 
 def _doc(title, css = None, scripts = None):
 	d = document(title = title)
@@ -142,6 +165,23 @@ def _doc(title, css = None, scripts = None):
 		t.link(href = 'http://localhost:8001/static/css/main.css', rel = 'stylesheet') # TODO: deport!
 	return d
 
+def _error(error):
+	if error:
+		d = t.div(cls = 'errors')
+		d += t.div(error, cls = 'error')
+		return d
+
+def _errors(errors):
+	if errors:
+		d = t.div(cls = 'errors')
+		with d:
+			for error in errors:
+				t.div(error, cls = 'error')
+		return d
+
+def _invalid(message, visible, id = None):
+	return t.div(message, cls = 'invalid', style = 'display:block;' if visible else 'display:none;', id = id if id else '')
+
 def _combine_attrs(attrs, bool_attrs):
 	if attrs == None:
 		attrs = {}
@@ -149,7 +189,7 @@ def _combine_attrs(attrs, bool_attrs):
 		attrs.update(_dress_bool_attrs(bool_attrs))
 	return attrs
 
-def _text_input(name, value, bool_attrs = None, attrs = None, label = None, error_message = None, type_ = 'text', internal_label = True):
+def _text_input(name, value, bool_attrs = None, attrs = None, label = None, invalid_div = None, type_ = 'text', internal_label = True):
 	'''
 	The 'name' string is expected to be a lowercase alphanumeric
 	"variable name" without spaces.  Use underscores ('_') to
@@ -161,7 +201,7 @@ def _text_input(name, value, bool_attrs = None, attrs = None, label = None, erro
 		label = name.replace('_', ' ').title()
 	attrs = _combine_attrs(attrs, bool_attrs)
 	
-	i = t.input_(name = name, type = type_, **attrs)
+	i = t.input_(name = name, id = name, type = type_, **attrs)
 	if value:
 		i['value'] = value
 	if internal_label:
@@ -169,8 +209,8 @@ def _text_input(name, value, bool_attrs = None, attrs = None, label = None, erro
 		result = t.label(i)
 	else:
 		result = t.label(label + ':', i)
-	if error_message:
-		result += _error(error_message)
+	if invalid_div:
+		result += invalid_div
 	return result
 
 def _js_socket_quiz_manager(url, db_function, html_function):
@@ -214,3 +254,42 @@ def _js_filter_list(url):
 	};
 	
 	''' % {'url': url})
+
+def _js_check_username(url):
+	# This js not served as a static file for two reasons: 1) it's tiny and single-purpose, and 2) its code is tightly connected to this server code; it's not a candidate for another team to maintain, in other words; it also relies on our URL (for the websocket), whereas true static files might be served by a reverse-proxy server from anywhere, and won't tend to contain any references to the wsgi urls
+	return raw('''
+	var ws = new WebSocket("%(url)s");
+	ws.onmessage = function(event) {
+		document.getElementById("username_exists_message").style.display = ((event.data == 'exists') ? 'block' : 'none');
+	};
+	function check_username(username) {
+		ws.send(JSON.stringify({call: "check", string: username}));
+	};
+	''' % {'url': url})
+
+def _js_check_validity():
+	return '''
+	function validate(evt) {
+		var e = evt.currentTarget;
+		e.nextElementSibling.style.display = e.checkValidity() ? "none" : "block";
+	};
+	'''
+
+def _js_validate_login_fields():
+	return raw('''
+	function $(id) { return document.getElementById(id); };
+	$('username').addEventListener('input', validate);
+	''' + _js_check_validity())
+
+def _js_validate_new_user_fields():
+	return raw('''
+	function $(id) { return document.getElementById(id); };
+	$('new_username').addEventListener('input', validate);
+	$('email').addEventListener('blur', validate);
+	$('password').addEventListener('blur', validate);
+	$('password_confirmation').addEventListener('blur', validate_passwords);
+
+	function validate_passwords(evt) {
+		$('password_match_message').style.display = $('password_confirmation').value == "" || $('password').value == $('password_confirmation').value ? "none" : "block";
+	};
+	''' + _js_check_validity())
