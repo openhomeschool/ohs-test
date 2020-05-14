@@ -78,7 +78,7 @@ async def get_surrounding_event_records(spec, count, event):
 	# Get keyword-similar events:
 	exids = [event['id'],]
 	keyword_similars = await fetchall(spec.db, (_get_keyword_similar_events(spec, count, event, exids, joins, wheres), args))
-	exids = [e['id'] for e in keyword_similars] # ids to exclude from future search results; we only need any given event once
+	exids.extend([e['id'] for e in keyword_similars]) # ids to exclude from future search results; we only need any given event once
 	# And temporally-random ("proximal") events:
 	temporal_randoms = await fetchall(spec.db, (_get_temporal_random_events(spec, count, event, exids, joins, wheres), args))
 	exids.extend([e['id'] for e in temporal_randoms]) # ids to exclude from future search results; we only need any given event once
@@ -94,9 +94,21 @@ async def get_surrounding_event_records(spec, count, event):
 	# Put them all together and sort chronologically:
 	result = keyword_similars[:keyword_similar_count] + temporal_randoms[:temporal_random_count] + randoms
 	result.sort(key = lambda e: e['start'] if e['start'] else e['fake_start_date'])
+	
+	# Calculate answer - first option with a start date greater than (target) event's:
+	answer = 0 # default: "first" in sequence
+	main_event_start = event['start'] if event['start'] else event['fake_start_date']
+	for option in result:
+		option_start = option['start'] if option['start'] else option['fake_start_date']
+		if main_event_start > option_start: # this will happen every event until we've gone too far
+			answer = option['id'] # this won't be accurate until we've gone too far and 'break', below
+		else:
+			break # the previous hit was the right one
 
-	l.debug('EVENTS: %s' % [e['name'] for e in result])
-	return result
+	l.debug('TARGET EVENT: %s (%s)' % (event['name'], event['id']))
+	l.debug('SURROUNDING EVENTS: %s' % ['%s (%s), ' % (e['name'], e['id']) for e in result])
+	l.debug('ANSWER: %d' % answer)
+	return result, answer
 
 
 # -----------------------------------------------------------------------------

@@ -7,6 +7,7 @@ import hashlib
 import re
 
 from os import urandom
+from random import shuffle
 
 import logging
 l = logging.getLogger(__name__)
@@ -87,12 +88,12 @@ async def get_handler(class_name, db, user_id):
 
 	
 class Question_Transaction: # Abstract base class; see actual functional implementations below
-	def __init__(self, db, table, user_id, week_range = None, total_answer_options = 5):
+	def __init__(self, db, table, user_id, week_range = None, answer_option_count = 5):
 		self._db = db
 		self._table = table
 		self._user_id = user_id
 		self._week_range = week_range # constrain to records only within week_range; expected to be two-tuple of week numbers, as integers, like (3, 10) for weeks 3-10
-		self._total_answer_options = total_answer_options
+		self._answer_option_count = answer_option_count
 		# Subclasses expected to set self._question and self._options here
 
 	@property
@@ -120,10 +121,14 @@ class Question_Transaction: # Abstract base class; see actual functional impleme
 		return self._options
 
 	@property
-	def total_answer_options(self):
-		return self._total_answer_options
+	def answer_id(self):
+		return self._answer_id
 
-	def log_answer(self, answer):
+	@property
+	def answer_option_count(self):
+		return self._answer_option_count
+
+	def log_user_answer(self, answer_id):
 		raise Exception("Must be implemented by subclass")
 
 @qt
@@ -132,8 +137,15 @@ class Science_Grammar_QT(Question_Transaction):
 	async def create(cls, db, user_id, week_range = None):
 		self = Science_Grammar_QT(db, 'science', user_id, week_range)
 		self._question = await sql.fetchone(db, sql.get_random_science_records(self, 1))
-		self._options = await sql.fetchall(db, sql.get_random_science_records(self, self.total_answer_options - 1, [self._question['id'],]))
+		self._options = await sql.fetchall(db, sql.get_random_science_records(self, self.answer_option_count - 1, [self._question['id'],]))
+		self._options.append(self._question)
+		shuffle(self._options)
+		self._answer_id = self._question['id']
 		return self
+
+	def log_user_answer(self, answer_id):
+		l.debug('Science_Grammar_QT.log_user_answer(%s)' % answer_id)
+
 
 @qt
 class History_Sequence_QT(Question_Transaction):
@@ -142,7 +154,7 @@ class History_Sequence_QT(Question_Transaction):
 		self = History_Sequence_QT(db, 'event', user_id, week_range)
 		self._date_range = date_range # constrain to history events only within date_range; expected to be two-tuple of years, as integers, like (1500, 1750); BC dates are simply negative integers
 		self._question = await sql.fetchone(db, sql.get_random_event_records(self, 1))
-		self._options = await sql.get_surrounding_event_records(self, self.total_answer_options, self._question)
+		self._options, self._answer_id = await sql.get_surrounding_event_records(self, self.answer_option_count, self._question)
 		return self
 
 	@property
@@ -153,6 +165,8 @@ class History_Sequence_QT(Question_Transaction):
 	def exclude_people_groups(self):
 		return True # always exclude people_group records (events) for history-sequence questions
 
+	def log_user_answer(self, answer_id):
+		l.debug('History_Sequence_QT.log_user_answer(%s)' % answer_id)
 
 # TODO!!!
 # db.execute('insert into test_event_sequence_target (user, event, correct_option) values (?, ?, ?)', (user_id, event_id, correct_event_id)
