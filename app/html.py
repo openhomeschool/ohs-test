@@ -143,14 +143,27 @@ def multi_choice_question(question, options):
 	return d.render()
 
 @expose
-def multi_choice_english_vocabulary_question(question, options):
-	d = t.div('What is the definition of "%s".' % question['prompt'], cls = 'quiz_question_content')
+def multi_choice_english_question(question, options):
+	d = t.div(cls = 'quiz_question_content')
 	with d:
-		if options: # TODO: TEMPORARY - there should always be options, in the future, but, during development, they may not exist
-			for record in options:
-				with t.div(cls = 'quiz_question_option'):
-					t.input(type = 'radio', id = record['id'], name = 'answer', value = record['id'])
-					t.label('%s' % record['answer'], fr = record['id'])
+		t.div('Define or identify "%s".' % question['prompt'], cls = 'quiz_question')
+		for record in options:
+			with t.div(cls = 'quiz_answer_option'):
+				t.input(type = 'radio', id = record['id'], name = 'choice', value = record['id'])
+				t.label('%s' % record['answer'], fr = record['id'], cls = 'answer_option_label')
+					
+	return d.render()
+
+@expose
+def multi_choice_english_vocabulary_question(question, options):
+	d = t.div(cls = 'quiz_question_content')
+	with d:
+		t.div('What is the definition of "%s".' % question['word'], cls = 'quiz_question')
+		for record in options:
+			with t.div(cls = 'quiz_answer_option'):
+				t.input(type = 'radio', id = record['id'], name = 'choice', value = record['id'])
+				t.label('%s' % record['definition'], fr = record['id'], cls = 'answer_option_label')
+					
 	return d.render()
 
 @expose
@@ -167,13 +180,14 @@ def multi_choice_science_question(question, options):
 
 @expose
 def multi_choice_latin_vocabulary_question(question, options):
-	d = t.div('What is the definition of "%s".' % question['word'], cls = 'quiz_question_content')
+	d = t.div(cls = 'quiz_question_content')
 	with d:
-		if options: # TODO: TEMPORARY - there should always be options, in the future, but, during development, they may not exist
-			for record in options:
-				with t.div(cls = 'quiz_question_option'):
-					t.input(type = 'radio', id = record['id'], name = 'translation', value = record['id'])
-					t.label('%s' % record['translation'], fr = record['id'])
+		t.div('What is the translation for "%s".' % question['word'], cls = 'quiz_question')
+		for record in options:
+			with t.div(cls = 'quiz_answer_option'):
+				t.input(type = 'radio', id = record['id'], name = 'choice', value = record['id'])
+				t.label('%s' % record['translation'], fr = record['id'], cls = 'answer_option_label')
+					
 	return d.render()
 
 

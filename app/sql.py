@@ -37,6 +37,19 @@ def get_random_english_vocabulary_records(spec, count, exclude_ids = None):
 	Get `count` random records from the science table using `spec`
 	(Science_Grammar_QT) object, excluding any records with ids in `exclude_ids`.
 	'''
+	assert(spec.table == 'vocabulary') # sanity check
+	joins, wheres, args = [], [], []
+	_week_range(spec, joins, wheres, args)
+	_exclude_ids(spec, wheres, exclude_ids)
+	result = _random_select(spec, joins, wheres, count)
+	return result, args
+
+
+def get_random_english_grammar_records(spec, count, exclude_ids = None):
+	'''
+	Get `count` random records from the science table using `spec`
+	(Science_Grammar_QT) object, excluding any records with ids in `exclude_ids`.
+	'''
 	assert(spec.table == 'english') # sanity check
 	joins, wheres, args = [], [], []
 	_week_range(spec, joins, wheres, args)

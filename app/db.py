@@ -135,10 +135,33 @@ class Question_Transaction: # Abstract base class; see actual functional impleme
 class English_Vocabulary_QT(Question_Transaction):
 	@classmethod # need to use factory pattern creation scheme b/c can't await in __init__
 	async def create(cls, db, user_id, week_range = None):
-		self = English_Vocabulary_QT(db, 'english', user_id, week_range)
+		self = English_Vocabulary_QT(db, 'vocabulary', user_id, week_range)
 		self._question = await sql.fetchone(db, sql.get_random_english_vocabulary_records(self, 1))
-		self._options = await sql.fetchall(db, sql.get_random_english_vocabulary_records(self, self.total_answer_options - 1, [self._question['id'],]))
+		self._options = await sql.fetchall(db, sql.get_random_english_vocabulary_records(self, self.answer_option_count - 1, [self._question['id'],]))
+		self._options.append(self._question)
+		shuffle(self._options)
+		self._answer_id = self._question['id']
 		return self
+
+	def log_user_answer(self, answer_id):
+		l.debug('English_Vocabulary_QT.log_user_answer(%s)' % answer_id)
+
+
+@qt
+class English_Grammar_QT(Question_Transaction):
+	@classmethod # need to use factory pattern creation scheme b/c can't await in __init__
+	async def create(cls, db, user_id, week_range = None):
+		self = English_Vocabulary_QT(db, 'english', user_id, week_range)
+		self._question = await sql.fetchone(db, sql.get_random_english_grammar_records(self, 1))
+		self._options = await sql.fetchall(db, sql.get_random_english_grammar_records(self, self.answer_option_count - 1, [self._question['id'],]))
+		self._options.append(self._question)
+		shuffle(self._options)
+		self._answer_id = self._question['id']
+		return self
+
+	def log_user_answer(self, answer_id):
+		l.debug('English_Grammar_QT.log_user_answer(%s)' % answer_id)
+
 
 @qt
 class Latin_Vocabulary_QT(Question_Transaction):
@@ -146,8 +169,15 @@ class Latin_Vocabulary_QT(Question_Transaction):
 	async def create(cls, db, user_id, week_range = None):
 		self = Latin_Vocabulary_QT(db, 'latin_vocabulary', user_id, week_range)
 		self._question = await sql.fetchone(db, sql.get_random_latin_vocabulary_records(self, 1))
-		self._options = await sql.fetchall(db, sql.get_random_latin_vocabulary_records(self, self.total_answer_options - 1, [self._question['id'],]))
+		self._options = await sql.fetchall(db, sql.get_random_latin_vocabulary_records(self, self.answer_option_count - 1, [self._question['id'],]))
+		self._options.append(self._question)
+		shuffle(self._options)
+		self._answer_id = self._question['id']
 		return self
+
+	def log_user_answer(self, answer_id):
+		l.debug('Latin_Vocabulary_QT.log_user_answer(%s)' % answer_id)
+
 
 @qt
 class Science_Grammar_QT(Question_Transaction):
