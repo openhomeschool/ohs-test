@@ -23,7 +23,7 @@ from aiohttp_session.cookie_storage import EncryptedCookieStorage
 
 from . import html
 from . import db
-from . import cdb
+# from . import sql
 from . import valid
 from . import error
 
@@ -314,7 +314,7 @@ def init(argv):
 		g('/quiz/english/vocabulary', q('get_quiz_english_vocabulary_question', 'multi_choice_question')),
 		g('/quiz/english/random', q('get_english_random_question', 'multi_choice_question')),
 		g('/quiz/latin/grammar', q('get_latin_grammar_question', 'multi_choice_question')),
-		g('/quiz/latin/vocabulary', q('get_latin_vocabulary_question', 'multi_choice_question')),
+		g('/quiz/latin/vocabulary', q('Latin_Vocabulary_QT', 'multi_choice_latin_vocabulary_question')),
 		g('/quiz/latin/translation', q('get_latin_translation_question', 'multi_choice_question')),
 		g('/quiz/latin/random', q('get_latin_random_question', 'multi_choice_question')),
 		g('/quiz/music/note', q('get_music_note_question', 'multi_choice_question')),
