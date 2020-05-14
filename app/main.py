@@ -311,7 +311,7 @@ def init(argv):
 		g('/quiz/math/facts/multiplication', q('get_math_facts_question', 'multi_choice_question')),
 		g('/quiz/math/grammar', q('get_math_grammar_question', 'multi_choice_question')),
 		g('/quiz/english/grammar', q('get_english_grammar_question', 'multi_choice_question')),
-		g('/quiz/english/vocabulary', q('get_quiz_english_vocabulary_question', 'multi_choice_question')),
+		g('/quiz/english/vocabulary', q('English_Vocabulary_QT', 'multi_choice_english_vocabulary_question')),
 		g('/quiz/english/random', q('get_english_random_question', 'multi_choice_question')),
 		g('/quiz/latin/grammar', q('get_latin_grammar_question', 'multi_choice_question')),
 		g('/quiz/latin/vocabulary', q('Latin_Vocabulary_QT', 'multi_choice_latin_vocabulary_question')),
