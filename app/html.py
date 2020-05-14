@@ -151,6 +151,17 @@ def multi_choice_science_question(question, options):
 					t.label('%s' % record['answer'], fr = record['id'])
 	return d.render()
 
+@expose
+def multi_choice_latin_vocabulary_question(question, options):
+	d = t.div('What is the definition of "%s".' % question['word'], cls = 'quiz_question_content')
+	with d:
+		if options: # TODO: TEMPORARY - there should always be options, in the future, but, during development, they may not exist
+			for record in options:
+				with t.div(cls = 'quiz_question_option'):
+					t.input(type = 'radio', id = record['id'], name = 'translation', value = record['id'])
+					t.label('%s' % record['translation'], fr = record['id'])
+	return d.render()
+
 
 # Utils -----------------------------------------------------------------------
 
