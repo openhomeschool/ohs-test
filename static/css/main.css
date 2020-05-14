@@ -26,6 +26,15 @@ input[type="submit"] {
 	border-radius: 6px;
 }
 
+input[type="radio"] {
+	float: left;
+}
+
+label.answer_option_label {
+	margin-left: 2em;
+	display: block;
+}
+
 button {
 	margin-top: 15px;
 	font-size: 150%;
@@ -117,9 +126,16 @@ div.field {
 	color: #305d2e;
 }
 
-.quiz_question_option {
+.quiz_answer_option {
 	margin: 0.2em 2em;
 	font-size: 1.1em;
+}
+
+.quiz_right_answer_option {
+	margin: 0.2em 2em;
+	font-size: 1.3em;
+	color: #305d2e;
+	font-weight: bold;
 }
 
 .quiz_button {

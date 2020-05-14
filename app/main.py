@@ -23,7 +23,6 @@ from aiohttp_session.cookie_storage import EncryptedCookieStorage
 
 from . import html
 from . import db
-from . import cdb
 from . import valid
 from . import error
 
@@ -149,7 +148,9 @@ class New_User(web.View):
 
 @r.get('/ws_check_username')
 async def ws_check_username(request):
-	async def msg_handler(payload, dbc, ws):
+	dbc = request.app['db']
+	
+	async def msg_handler(payload, ws):
 		assert(payload['call'] == 'check')
 		if payload['string']:
 			value = str(payload['string'])
@@ -171,8 +172,9 @@ async def select_user(request):
 @r.get('/ws_filter_list')
 async def ws_filter_list(request):
 	edit_url = _http_url(request, 'edit_user')
+	dbc = request.app['db']
 	
-	async def msg_handler(payload, dbc, ws):
+	async def msg_handler(payload, ws):
 		assert(payload['call'] == 'search')
 		records = None
 		if payload['string']:
@@ -187,9 +189,6 @@ async def ws_filter_list(request):
 
 	return await _ws_handler(request, msg_handler)
 
-db_function
-html_function
-
 @r.get('/ws_quiz_handler')
 async def ws_quiz_handler(request):
 	'''
@@ -200,11 +199,22 @@ async def ws_quiz_handler(request):
 	'''
 	r = request
 	session = await get_session(r)
-	async def msg_handler(payload, dbc, ws):
-		if payload['answer']:
-			pass #TODO: db.log_answer(db.exposed[payload['db_answer_function'], dbc, session['user_id'], payload['answer'])
-		db_handler = await db.get_handler(payload['db_handler'], dbc, None) # TODO: add user_id,,, more....
-		await ws.send_json({'call': 'content', 'content': html.exposed[payload['html_function']](db_handler.question, db_handler.options)})
+	dbc = r.app['db']
+	db_handler = None # new one will be created each transaction
+
+	async def msg_handler(payload, ws):
+		nonlocal db_handler
+		if db_handler and 'answer_id' in payload:
+			if payload['answer_id'] >= 0: # -1 indicates "skip"... for now we just allow this and log nothing... TODO: evaluate!
+				db_handler.log_user_answer(payload['answer_id'])
+		if 'db_handler' in payload: # assume that 'html_function' is there, too
+			db_handler = await db.get_handler(payload['db_handler'], dbc, session['user_id']) # TODO: add args; e.g., history might utilize date_range....
+			await ws.send_json({
+				'call': 'content',
+				'content': html.exposed[payload['html_function']](db_handler.question, db_handler.options),
+				'check': db_handler.answer_id})
+		else:
+			l.warning('Unexpected payload for ws_quiz_handler - no db_handler field!')
 
 	return await _ws_handler(request, msg_handler)
 
@@ -235,7 +245,6 @@ async def _ws_handler(request, msg_handler):
 	ws = web.WebSocketResponse()
 	await ws.prepare(request)
 	request.app['websockets'].add(ws)
-	dbc = request.app['db']
 
 	await ws.send_json({'call': 'start'})
 	l.debug('Websocket prepared, listening for messages...')
@@ -245,7 +254,7 @@ async def _ws_handler(request, msg_handler):
 				if msg.type == WSMsgType.text:
 					payload = json.loads(msg.data) # Note: payload validated in msg_handler()
 					#l.debug(payload)
-					await msg_handler(payload, dbc, ws)
+					await msg_handler(payload, ws)
 				elif msg.type == aiohttp.WSMsgType.ERROR:
 					l.warning('websocket connection closed with exception "%s"' % ws.exception())
 				else:
@@ -304,7 +313,7 @@ def init(argv):
 	app.add_routes(r)
 	# And quiz routes:
 	def q(db_handler, html_function):
-		#@auth('student') -- TODO: comment this back in when it's time to auth students who are looking to quiz
+		@auth('student') # TODO: comment this back in when it's time to auth students who are looking to quiz
 		async def quiz(request):
 			return hr(html.quiz(_ws_url(request, '/ws_quiz_handler'), db_handler, html_function))
 		return quiz

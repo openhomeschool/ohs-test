@@ -132,26 +132,26 @@ def multi_choice_question(question, options):
 	d = t.div(cls = 'quiz_question_content')
 	with d:
 		t.div('Where does "%s" belong in this sequence of events?' % question['name'], cls = 'quiz_question')
-		with t.div(cls = 'quiz_question_option'):
+		with t.div(cls = 'quiz_answer_option'):
 			t.input(type = 'radio', id = '0', name = 'choice', value = '0')
-			t.label('First', fr = '0')
+			t.label('First', fr = '0', cls = 'answer_option_label')
 		for record in options:
-			#t.div('Option - %s' % record['name'] + '(%s)' % record['start'], cls = 'quiz_question_option')
-			with t.div(cls = 'quiz_question_option'):
+			with t.div(cls = 'quiz_answer_option'):
 				t.input(type = 'radio', id = record['id'], name = 'choice', value = record['id'])
-				t.label('After "%s"' % record['name'], fr = record['id'])
+				t.label('After "%s"' % record['name'], fr = record['id'], cls = 'answer_option_label')
 
 	return d.render()
 
 @expose
 def multi_choice_science_question(question, options):
-	d = t.div('Define "%s".' % question['prompt'], cls = 'quiz_question_content')
+	d = t.div(cls = 'quiz_question_content')
 	with d:
-		if options: # TODO: TEMPORARY - there should always be options, in the future, but, during development, they may not exist
-			for record in options:
-				with t.div(cls = 'quiz_question_option'):
-					t.input(type = 'radio', id = record['id'], name = 'answer', value = record['id'])
-					t.label('%s' % record['answer'], fr = record['id'])
+		t.div('Define "%s".' % question['prompt'], cls = 'quiz_question')
+		for record in options:
+			with t.div(cls = 'quiz_answer_option'):
+				t.input(type = 'radio', id = record['id'], name = 'choice', value = record['id'])
+				t.label('%s' % record['answer'], fr = record['id'], cls = 'answer_option_label')
+					
 	return d.render()
 
 
@@ -237,8 +237,8 @@ def _js_socket_quiz_manager(url, db_handler, html_function):
 				break;
 		}
 	};
-	function send_answer(answer) {
-		ws.send(JSON.stringify({db_handler: "%(db_handler)s", html_function: "%(html_function)s", answer: answer}));
+	function send_answer(answer_id) {
+		ws.send(JSON.stringify({db_handler: "%(db_handler)s", html_function: "%(html_function)s", answer_id: parseInt(answer_id, 10)}));
 	};
 	
 	go_button.onclick = function() {
@@ -256,20 +256,22 @@ def _js_socket_quiz_manager(url, db_handler, html_function):
 			}
 		}
 		var show_answer_delay = 2000; // assume failure (parameterize?!)
-		if (selected.value == check) {
-			show_answer_delay = 500; // don't show as long
-			alert("Right!"); // TODO: placeholder!
-		} // TODO: placeholder!
-		else if (selected != null) { alert("Wrong!"); } // TODO: placeholder!!
+		var chosen_answer = -1; // nothing chosen
+		if (selected != null) {
+			chosen_answer = selected.value
+			if (selected.value == check) { // correct answer chosen!
+				show_answer_delay = 500; // don't show as long
+			}
+		}
 		else { } // TODO: handle no selection! Allow user to skip?!
 
 		check_element = document.getElementById(check)
-		check_element.style.color = "green";
-		check_element.style.fontWeight = "bold";
+		check_element.parentElement.classList.remove("quiz_answer_option");
+		check_element.parentElement.classList.add("quiz_right_answer_option");
 		setTimeout(function() { send_answer(selected.value); }, show_answer_delay);
 
 	};
-	''' % {'url': url, 'db_function': db_function, 'html_function': html_function})
+	''' % {'url': url, 'db_handler': db_handler, 'html_function': html_function})
 
 def _js_filter_list(url):
 	# This js not served as a static file for two reasons: 1) it's tiny and single-purpose, and 2) its code is tightly connected to this server code; it's not a candidate for another team to maintain, in other words; it also relies on our URL (for the websocket), whereas true static files might be served by a reverse-proxy server from anywhere, and won't tend to contain any references to the wsgi urls
