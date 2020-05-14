@@ -11,9 +11,10 @@ from os import urandom
 import logging
 l = logging.getLogger(__name__)
 
-from . import cdb
+from . import sql
 
-# Handlers --------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# User stuff
 
 _hash = lambda password, salt: hashlib.pbkdf2_hmac('sha256', bytes(password, 'UTF-8'), salt, 100000)
 
@@ -72,178 +73,87 @@ async def authenticate(db, username, password):
 	#else:
 	return None, None
 
+# -----------------------------------------------------------------------------
+# Question transactions
+
+_question_transactions = dict()
+def qt(cls):
+	_question_transactions[cls.__name__] = cls
+	return cls
+
+async def get_handler(class_name, db, user_id):
+	# Construct and return an object of the specified handler class:
+	return await _question_transactions[class_name].create(db, user_id) # TODO: optional args.....
+
+	
+class Question_Transaction: # Abstract base class; see actual functional implementations below
+	def __init__(self, db, table, user_id, week_range = None, total_answer_options = 5):
+		self._db = db
+		self._table = table
+		self._user_id = user_id
+		self._week_range = week_range # constrain to records only within week_range; expected to be two-tuple of week numbers, as integers, like (3, 10) for weeks 3-10
+		self._total_answer_options = total_answer_options
+		# Subclasses expected to set self._question and self._options here
+
+	@property
+	def db(self):
+		return self._db
+
+	@property
+	def table(self):
+		return self._table
+
+	@property
+	def user_id(self):
+		return self._user_id
+
+	@property
+	def week_range(self):
+		return self._week_range
+
+	@property
+	def question(self):
+		return self._question
+
+	@property
+	def options(self):
+		return self._options
+
+	@property
+	def total_answer_options(self):
+		return self._total_answer_options
+
+	def log_answer(self, answer):
+		raise Exception("Must be implemented by subclass")
+
+@qt
+class Science_Grammar_QT(Question_Transaction):
+	@classmethod # need to use factory pattern creation scheme b/c can't await in __init__
+	async def create(cls, db, user_id, week_range = None):
+		self = Science_Grammar_QT(db, 'science', user_id, week_range)
+		self._question = await sql.fetchone(db, sql.get_random_science_records(self, 1))
+		self._options = await sql.fetchall(db, sql.get_random_science_records(self, self.total_answer_options - 1, [self._question['id'],]))
+		return self
+
+@qt
+class History_Sequence_QT(Question_Transaction):
+	@classmethod # need to use factory pattern creation scheme b/c can't await in __init__
+	async def create(cls, db, user_id, week_range = None, date_range = None):
+		self = History_Sequence_QT(db, 'event', user_id, week_range)
+		self._date_range = date_range # constrain to history events only within date_range; expected to be two-tuple of years, as integers, like (1500, 1750); BC dates are simply negative integers
+		self._question = await sql.fetchone(db, sql.get_random_event_records(self, 1))
+		self._options = await sql.get_surrounding_event_records(self, self.total_answer_options, self._question)
+		return self
+
+	@property
+	def date_range(self):
+		return self._date_range
+
+	@property
+	def exclude_people_groups(self):
+		return True # always exclude people_group records (events) for history-sequence questions
+
+
+# TODO!!!
 # db.execute('insert into test_event_sequence_target (user, event, correct_option) values (?, ?, ?)', (user_id, event_id, correct_event_id)
 # db.executemany('insert into test_event_sequence_incorrect_option (target, incorrect_option
-
-# ------------
-
-async def get_question(function, db, payload):
-	return await function(db, payload)
-
-exposed = dict()
-def expose(func):
-	exposed[func.__name__] = func
-	return func
-
-@expose
-async def get_history_sequence_question(db, payload):
-	s_events = cdb.cSqlUtilEvents('event')
-	primary = await s_events.get_random_event(db, week_range = (1, 12), date_range = None, exclude_people_groups = True)
-	events = await s_events.get_surrounding_events(db, primary, week_range = (1, 12))
-	return (primary, events)
-
-@expose
-def get_history_geography_question(db, payload):
-	pass
-
-@expose
-def get_history_detail_question(db, payload):
-	pass
-
-@expose
-def get_history_submissions_question(db, payload):
-	pass
-
-@expose
-def get_history_random_question(db, payload):
-	pass
-
-@expose
-def get_geography_orientation_question(db, payload):
-	pass
-
-@expose
-def get_geography_map_question(db, payload):
-	pass
-
-@expose
-async def get_science_grammar_question(db, payload):
-	s_resps = cdb.cSqlUtilResponses('science')
-	primary = await s_resps.get_random_event(db, week_range = (1, 12), exclude_people_groups = False)
-	events = await s_resps.get_surrounding_responses(db, primary, week_range = (1, 12))
-	return (primary, events)
-
-@expose
-def get_science_submissions_question(db, payload):
-	pass
-
-@expose
-def get_science_random_question(db, payload):
-	pass
-
-@expose
-def get_math_facts_question(db, payload):
-	pass
-
-@expose
-def get_math_grammar_question(db, payload):
-	pass
-
-@expose
-def get_english_grammar_question(db, payload):
-	pass
-
-@expose
-def get_quiz_english_vocabulary_question(db, payload):
-	pass
-
-@expose
-def get_english_random_question(db, payload):
-	pass
-
-@expose
-def get_latin_grammar_question(db, payload):
-	pass
-
-@expose
-def get_latin_vocabulary_question(db, payload):
-	pass
-
-@expose
-def get_latin_translation_question(db, payload):
-	pass
-
-@expose
-def get_latin_random_question(db, payload):
-	pass
-
-@expose
-def get_music_note_question(db, payload):
-	pass
-
-@expose
-def get_music_key_signature_question(db, payload):
-	pass
-
-@expose
-def get_music_submissions_question(db, payload):
-	pass
-
-@expose
-def get_music_random_question(db, payload):
-	pass
-
-
-'''
-# Unit testing... <fledgling start> -------------------------------------------
-
-def _ut_get_random_event(week_range = None, date_range = None):
-	event = db.execute(*s_get_random_event('event', week_range, date_range)).fetchone()
-	l.debug('%s (%s)' % (event['name'], event['start']) if event else 'No events!')
-	return event
-
-def _ut_get_surrounding_events(event, week_range = None, date_range = None, count = 5):
-	c = db.cursor()
-	e1 = c.execute(*s_get_keyword_similar_events(event, week_range, date_range, count)).fetchall()
-	exids = [e['id'] for e in e1]
-	e2 = c.execute(*s_get_temporal_random_events(event, week_range, date_range, count, exids)).fetchall()
-	exids.extend([e['id'] for e in e2])
-	keyword_similars, temporal_randoms, random_count = _get_surrounding_events(e1, e2, count)
-	randoms = []
-	exids.append(event['id'])
-	for i in range(random_count):
-		r = c.execute(*s_get_random_event('event', week_range, date_range, exids)).fetchone()
-		if r:
-			randoms.append(r)
-			exids.append(r['id'])
-
-	l.debug('kws:')
-	for event in keyword_similars:
-		l.debug(event['name'])
-	l.debug('trs:')
-	for event in temporal_randoms:
-		l.debug(event['name'])
-	l.debug('rs:')
-	for event in randoms:
-		l.debug(event['name'])
-'''
-
-
-'''
-"Deferred fetch" example
-In this case, the view code executes a fetchone on each:
-
-	async def multi_choice_question(records):
-		d = t.div('The question would be here...', cls = 'quiz_question_content')
-		with d:
-			async with records:
-				async for record in records:
-					t.div('Option - %s' % record['name'], cls = 'quiz_question_option')
-		return d.render()
-		
-This is the better way to go if there's a chance that the
-number of records is more than needed client-side, because
-bail-out can occur before all records are fetched, saving
-needless fetching.  The controller code looks like this:
-
-	data = await call_map[payload['call']](payload, dbc) # that is: reply = await db.get_history_sequence_question(dbc)
-	await ws.send_json({'call': 'content', 'content': await html.multi_choice_question(data)})
-
-Here is the model code:
-
-	_get_history_sequence_question = lambda: ('select * from test1 order by random() limit 5')
-	async def get_history_sequence_question(db):
-		return await db.execute(_get_history_sequence_question())
-'''
-
-# --------
