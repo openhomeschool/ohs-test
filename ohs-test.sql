@@ -1,5 +1,5 @@
 --
--- File generated with SQLiteStudio v3.2.1 on Tue May 5 18:23:55 2020
+-- File generated with SQLiteStudio v3.2.1 on Thu May 14 09:24:28 2020
 --
 -- Text encoding used: UTF-8
 --
@@ -260,9 +260,9 @@ INSERT INTO event (id, cw, seq, subseq, name, primary_sentence, secondary_senten
 INSERT INTO event (id, cw, seq, subseq, name, primary_sentence, secondary_sentence, keywords, start_circa, start, fake_start_date, end_circa, "end", tie, people_group, the, extent, period) VALUES (18, 171, 4, NULL, 'Hinduism established', 'Hinduism is a variety of beliefs about the "Oneness" expressing itself in many forms. It evolved from ancient India and is represented in the Vedas, Upanishads, and Bhagavad Gita.', NULL, 'Oneness, India, Vedas, Upanishads, Bhagavad Gita', 1, -1700, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 INSERT INTO event (id, cw, seq, subseq, name, primary_sentence, secondary_sentence, keywords, start_circa, start, fake_start_date, end_circa, "end", tie, people_group, the, extent, period) VALUES (19, 171, 5, NULL, 'Shang Dynasty', 'The Shang Dynasty marked the origin of Chinese culture. Writing, bronze casting, and distinctive religious rituals and art emerged.', NULL, 'China', 1, -1600, NULL, NULL, -1046, NULL, NULL, NULL, NULL, NULL);
 INSERT INTO event (id, cw, seq, subseq, name, primary_sentence, secondary_sentence, keywords, start_circa, start, fake_start_date, end_circa, "end", tie, people_group, the, extent, period) VALUES (20, 171, 6, NULL, '"New Kingdom" of Egypt', 'Egyptians drove out the Hyksos and Nubians under Ahmose I to begin a 500 year period of famous culture, pharaohs, and great pyramids.', NULL, 'Hyksos, Nubia, Ahmose, pharaohs, pyramids', 1, -1570, NULL, NULL, -1069, NULL, 0, NULL, NULL, NULL);
-INSERT INTO event (id, cw, seq, subseq, name, primary_sentence, secondary_sentence, keywords, start_circa, start, fake_start_date, end_circa, "end", tie, people_group, the, extent, period) VALUES (21, 171, 7, NULL, 'Moses & Israel’s Exodus', 'Moses, an Israelite, was raised up under Pharaoh''s household until he fled to Midian, where God called him to participate in the Plagues and the freeing of Israel from Egypt.', NULL, 'Midian, plagues, Egypt', 1, -1290, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL);
-INSERT INTO event (id, cw, seq, subseq, name, primary_sentence, secondary_sentence, keywords, start_circa, start, fake_start_date, end_circa, "end", tie, people_group, the, extent, period) VALUES (22, 172, 1, NULL, 'Israel occupies Canaan', 'Israel, led by Joshua, invaded Canaan lands after spending forty years in the Sinai desert following their Exodus from Egypt.', NULL, 'Joshua, Sinai, desert, exodus, Egypt', 1, -1250, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
-INSERT INTO event (id, cw, seq, subseq, name, primary_sentence, secondary_sentence, keywords, start_circa, start, fake_start_date, end_circa, "end", tie, people_group, the, extent, period) VALUES (23, 172, 2, NULL, 'Trojan War', 'The Trojan War, made famous in Homer’s Iliad, pitted the Mycenaean Greeks against the Hittites in ten years of war, ending in the epic siege of Troy.', NULL, 'Homer, Iliad, Mycenea, Greek, Hittite, Troy', 1, -1334, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+INSERT INTO event (id, cw, seq, subseq, name, primary_sentence, secondary_sentence, keywords, start_circa, start, fake_start_date, end_circa, "end", tie, people_group, the, extent, period) VALUES (21, 172, 1, NULL, 'Moses & Israel’s Exodus', 'Moses, an Israelite, was raised up under Pharaoh''s household until he fled to Midian, where God called him to participate in the Plagues and the freeing of Israel from Egypt.', NULL, 'Midian, plagues, Egypt', 1, -1290, NULL, NULL, NULL, NULL, 0, NULL, NULL, NULL);
+INSERT INTO event (id, cw, seq, subseq, name, primary_sentence, secondary_sentence, keywords, start_circa, start, fake_start_date, end_circa, "end", tie, people_group, the, extent, period) VALUES (22, 172, 2, NULL, 'Israel occupies Canaan', 'Israel, led by Joshua, invaded Canaan lands after spending forty years in the Sinai desert following their Exodus from Egypt.', NULL, 'Joshua, Sinai, desert, exodus, Egypt', 1, -1250, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+INSERT INTO event (id, cw, seq, subseq, name, primary_sentence, secondary_sentence, keywords, start_circa, start, fake_start_date, end_circa, "end", tie, people_group, the, extent, period) VALUES (23, 171, 7, NULL, 'Trojan War', 'The Trojan War, made famous in Homer’s Iliad, pitted the Mycenaean Greeks against the Hittites in ten years of war, ending in the epic siege of Troy.', NULL, 'Homer, Iliad, Mycenea, Greek, Hittite, Troy', 1, -1334, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 INSERT INTO event (id, cw, seq, subseq, name, primary_sentence, secondary_sentence, keywords, start_circa, start, fake_start_date, end_circa, "end", tie, people_group, the, extent, period) VALUES (24, 172, 3, NULL, 'Mayan Olmec Civilization', 'Olmec Civilization, known for their giant sculptures and vast architectures, was the first of the Mayan Civilizations.', NULL, NULL, 1, -1200, NULL, 1, -400, NULL, 1, NULL, NULL, NULL);
 INSERT INTO event (id, cw, seq, subseq, name, primary_sentence, secondary_sentence, keywords, start_circa, start, fake_start_date, end_circa, "end", tie, people_group, the, extent, period) VALUES (25, 172, 4, NULL, 'Greek Dark Ages', 'The Greek Dark Ages began with the fall of the Mycenaean civilization, after which writing was abandoned, so we have no record of 300 years of Greek life.', NULL, 'Mycenae', 1, -1100, NULL, 1, -800, NULL, NULL, NULL, NULL, NULL);
 INSERT INTO event (id, cw, seq, subseq, name, primary_sentence, secondary_sentence, keywords, start_circa, start, fake_start_date, end_circa, "end", tie, people_group, the, extent, period) VALUES (26, 172, 5, NULL, 'Israel''s United Kingdom', 'Israel’s united kingdom prospered under Kings Saul, David, and Solomon, following Israel’s early years under judges like Deborah, Gideon, Samson, and Samuel.', '', 'Saul, David, Solomon', 1, -1080, NULL, 1, -930, NULL, NULL, NULL, NULL, NULL);
@@ -782,17 +782,25 @@ INSERT INTO science (id, cw, prompt, answer, note) VALUES (12, 12, 'acceleration
 INSERT INTO science (id, cw, prompt, answer, note) VALUES (13, 13, 'force', 'an interaction which can change the velocity of an object; force = mass x acceleration (F = ma), usually measured in Newtons', NULL);
 INSERT INTO science (id, cw, prompt, answer, note) VALUES (14, 14, 'momentum', 'the product of an object''s mass and its velocity (p = mv), usually measured in kilogram-meters per second', 'Momentum = mass times velocity.');
 
--- Table: test_event_sequence_score
-DROP TABLE IF EXISTS test_event_sequence_score;
-CREATE TABLE test_event_sequence_score (id INTEGER PRIMARY KEY AUTOINCREMENT, user INTEGER REFERENCES user (id) ON DELETE CASCADE ON UPDATE CASCADE, event INTEGER REFERENCES event (id) ON DELETE CASCADE ON UPDATE CASCADE, score INTEGER, count INTEGER);
+-- Table: test_event_sequence_answer
+DROP TABLE IF EXISTS test_event_sequence_answer;
+CREATE TABLE test_event_sequence_answer (id INTEGER PRIMARY KEY AUTOINCREMENT, target INTEGER REFERENCES test_event_sequence_target (id) ON DELETE CASCADE ON UPDATE CASCADE, chosen_answer INTEGER REFERENCES event (id) ON DELETE CASCADE ON UPDATE CASCADE);
+
+-- Table: test_event_sequence_incorrect_option
+DROP TABLE IF EXISTS test_event_sequence_incorrect_option;
+CREATE TABLE test_event_sequence_incorrect_option (id INTEGER PRIMARY KEY AUTOINCREMENT, target INTEGER REFERENCES test_event_sequence_target (id) ON DELETE CASCADE ON UPDATE CASCADE, incorrect_option INTEGER REFERENCES event (id) ON DELETE CASCADE ON UPDATE CASCADE);
 
 -- Table: test_event_sequence_target
 DROP TABLE IF EXISTS test_event_sequence_target;
-CREATE TABLE test_event_sequence_target (id INTEGER PRIMARY KEY AUTOINCREMENT, user INTEGER REFERENCES user (id) ON DELETE CASCADE ON UPDATE CASCADE, event INTEGER REFERENCES event (id) ON DELETE CASCADE ON UPDATE CASCADE);
+CREATE TABLE test_event_sequence_target (id INTEGER PRIMARY KEY AUTOINCREMENT, event INTEGER REFERENCES event (id) ON DELETE CASCADE ON UPDATE CASCADE NOT NULL, correct_answer INTEGER REFERENCES event (id) ON DELETE CASCADE ON UPDATE CASCADE NOT NULL);
 
 -- Table: test_event_sequence_target_threshold
 DROP TABLE IF EXISTS test_event_sequence_target_threshold;
 CREATE TABLE test_event_sequence_target_threshold (id INTEGER PRIMARY KEY AUTOINCREMENT, user INTEGER REFERENCES user (id) ON DELETE CASCADE ON UPDATE CASCADE UNIQUE, threshold INTEGER);
+
+-- Table: test_event_sequence_user_answer
+DROP TABLE IF EXISTS test_event_sequence_user_answer;
+CREATE TABLE test_event_sequence_user_answer (id INTEGER PRIMARY KEY AUTOINCREMENT, user INTEGER REFERENCES user (id) ON DELETE CASCADE ON UPDATE CASCADE, chosen_answer INTEGER REFERENCES test_event_sequence_answer (id) ON DELETE CASCADE ON UPDATE CASCADE);
 
 -- Table: user
 DROP TABLE IF EXISTS user;
