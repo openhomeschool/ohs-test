@@ -30,11 +30,6 @@ input[type="radio"] {
 	float: left;
 }
 
-label.answer_option_label {
-	margin-left: 2em;
-	display: block;
-}
-
 button {
 	margin-top: 15px;
 	font-size: 150%;
@@ -119,25 +114,42 @@ div.field {
 }
 
 
-.quiz_question {
+.quiz_question_content {
 	margin: 1em;
+}
+
+.quiz_question_prompt {
+	margin: 0em;
 	font-size: 1.5em;
 	font-weight: bold;
 	color: #305d2e;
 }
 
+.quiz_question {
+	margin: 0em 0em 0em 2em;
+	font-size: 1.8em;
+	font-weight: bold;
+	color: #305d2e;
+}
+
 .quiz_answer_option {
-	margin: 0.2em 2em;
+	margin: 0.2em 0em;
 	font-size: 1.1em;
 }
 
+label.answer_option_label {
+	margin-left: 1.5em;
+	display: block;
+}
+
 .quiz_right_answer_option {
-	margin: 0.2em 2em;
+	margin: 0.2em 1em;
 	font-size: 1.3em;
 	color: #305d2e;
 	font-weight: bold;
 }
 
 .quiz_button {
-	margin-left: 1em;
+	margin-left: 3em;
+	margin-top: 0em;
 }
