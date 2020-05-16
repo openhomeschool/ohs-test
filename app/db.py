@@ -166,7 +166,7 @@ class English_Grammar_QT(Question_Transaction):
 @qt
 class Latin_Vocabulary_QT(Question_Transaction):
 	@classmethod # need to use factory pattern creation scheme b/c can't await in __init__
-	async def create(cls, db, user_id, week_range = None):
+	async def create(cls, db, user_id, week_range = None, date_range = None):
 		self = Latin_Vocabulary_QT(db, 'latin_vocabulary', user_id, week_range)
 		self._question = await sql.fetchone(db, sql.get_random_latin_vocabulary_records(self, 1))
 		self._options = await sql.fetchall(db, sql.get_random_latin_vocabulary_records(self, self.answer_option_count - 1, [self._question['id'],]))
@@ -206,12 +206,12 @@ class History_Sequence_QT(Question_Transaction):
 		return self
 
 	@property
-	def date_range(self):
-		return self._date_range
-
-	@property
 	def exclude_people_groups(self):
 		return True # always exclude people_group records (events) for history-sequence questions
+
+	@property
+	def date_range(self):
+		return self._date_range
 
 	def log_user_answer(self, answer_id):
 		l.debug('History_Sequence_QT.log_user_answer(%s)' % answer_id)
