@@ -12,6 +12,7 @@ from dominate import tags as t
 from dominate.util import raw
 
 from . import valid
+from . import settings
 
 # Classes ---------------------------------------------------------------------
 
@@ -41,10 +42,10 @@ def home():
 		t.p('This is the stub home-page for ohs-test.')
 	return d.render()
 
-def login(error = None):
+def login(action, error = None):
 	d = _doc('OHS-Test Login')
 	with d:
-		with t.form(action = '/login', method = 'post'):
+		with t.form(action = action, method = 'post'):
 			with t.fieldset(cls = 'small_fieldset'):
 				t.legend('Log in...')
 				_error(error)
@@ -166,7 +167,7 @@ def _doc(title, css = None, scripts = None):
 	d = document(title = title)
 	with d.head:
 		t.meta(name = 'viewport', content = 'width=device-width, initial-scale=1')
-		t.link(href = 'http://localhost:8001/static/css/main.css', rel = 'stylesheet') # TODO: deport!
+		t.link(href = settings.k_static_url + 'css/main.css', rel = 'stylesheet')
 	return d
 
 def _error(error):
