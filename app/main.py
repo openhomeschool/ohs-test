@@ -236,7 +236,7 @@ async def _flash(request):
 def _ws_url(request, name):
 	# Transform a normal URL like http://domain.tld/quiz/history/sequence into ws://domain.tld/<name>
 	rurl = request.url
-	return URL.build(scheme = settings.k_ws, host = request.host, path = settings.k_url_prefix + name)
+	return URL.build(scheme = settings.k_ws, host = request.host, path = settings.k_ws_url_prefix + name)
 
 def _http_url(request, name):
 	# Transform a ws URL like ws://domain.tld/... into a normal URL: http://domain.tld/<name>  - note: what about HTTPs!?TODO
