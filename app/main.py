@@ -68,7 +68,7 @@ def auth(roles):
 				# Process the request (handler) as requested:
 				return await func(request)
 			#else, forward to log-in page:
-			session['after_login'] = request.path
+			session['after_login'] = settings.k_url_prefix + request.path
 			if 'roles' in session: # user is logged in, but the above role-intersection test failed, meaning that user is not permitted to access this particular page
 				session['error_flash'] = error.not_permitted
 			raise web.HTTPFound(location = gurl(request, 'login'))
@@ -116,7 +116,7 @@ async def home(request):
 @r.view('/new_user')
 class New_User(web.View):
 	async def get(self):
-		return hr(html.new_user(html.Form(self.request.path), _ws_url(self.request, '/ws_check_username')))
+		return hr(html.new_user(html.Form(settings.k_url_prefix + self.request.path), _ws_url(self.request, '/ws_check_username')))
 	
 	async def post(self):
 		r = self.request
@@ -135,7 +135,7 @@ class New_User(web.View):
 
 		if invalids:
 			# Re-present:
-			return hr(html.new_user(html.Form(r.path, data, invalids), ws_url))
+			return hr(html.new_user(html.Form(settings.k_url_prefix + r.path, data, invalids), ws_url))
 		#else, go on...
 
 		# (Try to) add the user:
@@ -144,7 +144,7 @@ class New_User(web.View):
 			user_id = await db.add_user(r.app['db'], data['new_username'], data['password'], data['email'])
 		except IntegrityError: # Note that this should **almost** never happen, as we check username availability in real-time, but it's always possible that another new user with the same username is created milliseconds before the db.add_user() attempt, above; this would make the username suddenly unavailable; we could not possibly have told the user about this in advance, and need to revert to posting an error message now:
 			# Re-present with user_exists error:
-			return hr(html.new_user(html.Form(r.path, data), ws_url, (error.user_exists,)))
+			return hr(html.new_user(html.Form(settings.k_url_prefix + r.path, data), ws_url, (error.user_exists,)))
 
 		#if sess.get('trial'): # TODO!
 		#user = db.update_user(dbs, sess['username'], p.username, p.password, p.email)
