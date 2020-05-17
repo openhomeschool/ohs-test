@@ -17,14 +17,16 @@ import base64
 from cryptography import fernet
 
 from aiohttp import web, WSMsgType, WSCloseCode
-from sqlite3 import IntegrityError
 from aiohttp_session import setup as setup_session, get_session
 from aiohttp_session.cookie_storage import EncryptedCookieStorage
+from sqlite3 import IntegrityError
+from yarl import URL
 
 from . import html
 from . import db
 from . import valid
 from . import error
+from . import settings
 
 _debug = True # TODO: parameterize!
 
@@ -34,6 +36,9 @@ logging.basicConfig(format = '%(asctime)s - %(levelname)s : %(name)s:%(lineno)d 
 l = logging.getLogger(__name__)
 
 # Utils -----------------------------------------------------------------------
+
+#_prefix_url_path = lambda url: URL.build(scheme = url.scheme, host = url.host, path = settings.k_url_prefix + url.path, port = url.port, query = url.query, query_string = url.query_string)
+gurl = lambda request, name: settings.k_url_prefix + str(request.app.router[name].url_for())
 
 r = web.RouteTableDef()
 def hr(text): return web.Response(text = text, content_type = 'text/html')
@@ -66,7 +71,7 @@ def auth(roles):
 			session['after_login'] = request.path
 			if 'roles' in session: # user is logged in, but the above role-intersection test failed, meaning that user is not permitted to access this particular page
 				session['error_flash'] = error.not_permitted
-			raise web.HTTPFound(location = request.app.router['login'].url_for())
+			raise web.HTTPFound(location = gurl(request, 'login'))
 		return wrapper
 	return decorator
 
@@ -80,26 +85,27 @@ async def login(request):
 		del session['user_id']
 	if 'roles' in session:
 		del session['roles']
-	return hr(html.login(await _flash(request)))
+	return hr(html.login(gurl(request, 'login'), await _flash(request)))
 
 @r.post('/login')
 async def login_(request):
 	r = request
+	login_url = gurl(r, 'login')
 	data = await r.post()
 	session = await get_session(r)
 	try:
 		#TODO: validate data!
 		user_id, roles = await db.authenticate(r.app['db'], data['username'], data['password'])
 		if not user_id:
-			return hr(html.login(error.authentication_failure))
+			return hr(html.login(login_url, error.authentication_failure))
 		else:
 			session['user_id'] = user_id
 			session['roles'] = roles
 			# raise web.HTTPFound below, after blanket exception handler...
 	except:
-		return hr(html.login(error.unknown_login_failure))
+		return hr(html.login(login_url, error.unknown_login_failure))
 	if 'user_id' in session:
-		raise web.HTTPFound(location = session['after_login'] if 'after_login' in session else r.app.router['home'].url_for())
+		raise web.HTTPFound(location = session['after_login'] if 'after_login' in session else gurl(r, 'home'))
 
 		
 
@@ -229,11 +235,13 @@ async def _flash(request):
 
 def _ws_url(request, name):
 	# Transform a normal URL like http://domain.tld/quiz/history/sequence into ws://domain.tld/<name>
-	return re.sub('%s$' % request.rel_url, name, re.sub('.*://', 'ws://', str(request.url)))
+	rurl = request.url
+	return URL.build(scheme = settings.k_ws, host = request.host, path = settings.k_url_prefix + name)
 
 def _http_url(request, name):
 	# Transform a ws URL like ws://domain.tld/... into a normal URL: http://domain.tld/<name>  - note: what about HTTPs!?TODO
-	return re.sub('%s$' % request.rel_url, name, re.sub('.*://', 'http://', str(request.url)))
+	rurl = request.url
+	return URL.build(scheme = settings.k_http, host = request.host, path = settings.k_url_prefix + name)
 
 def _validate_regex(data, invalids, tuple_list):
 	for field, regex, required in tuple_list:
