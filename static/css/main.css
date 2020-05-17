@@ -36,11 +36,6 @@ button {
 	border-radius: 8px;
 }
 
-.small_fieldset {
-	width: 100%;
-	max-width: 400px;try a push
-}
-
 #correct_answer_flash {
 	color:red;
 	font-size:150%;
@@ -101,6 +96,12 @@ fieldset {
 	border-radius: 7px;
 }
 
+.small_fieldset {
+	width: 100%;
+	max-width: 400px;
+	padding: 0;
+}
+
 div.field {
 	margin: 10px 5px;
 }
@@ -114,27 +115,40 @@ div.field {
 }
 
 
+.quiz_content {
+	margin: 0em;
+	padding: 0em;
+}
+
 .quiz_question_content {
-	margin: 1em;
+	background-color: #d9d9ec;
+	color: #305d2e;
 }
 
 .quiz_question_prompt {
-	margin: 0em;
+	margin: 0.2em 0 0 0;
+	padding: 0.5em 0.5em 0em 0.5em;
 	font-size: 1.5em;
 	font-weight: bold;
-	color: #305d2e;
+}
+
+.quiz_question_prompt_postfix {
+	margin: 0;
+	padding: 0em 0.5em 0.5em 0.5em;
+	font-size: 1.5em;
+	font-weight: bold;
 }
 
 .quiz_question {
-	margin: 0em 0em 0em 2em;
+	margin: 0;
+	padding: 0.2em 0.2em 0.2em 2em;
 	font-size: 1.8em;
 	font-weight: bold;
-	color: #305d2e;
 }
 
 .quiz_answer_option {
-	margin: 0.2em 0em;
-	font-size: 1.1em;
+	margin: 0.5em 1em;
+	font-size: 1.2em;
 }
 
 label.answer_option_label {
@@ -150,6 +164,5 @@ label.answer_option_label {
 }
 
 .quiz_button {
-	margin-left: 3em;
-	margin-top: 0em;
+	margin: .5em .5em .5em 2em;
 }

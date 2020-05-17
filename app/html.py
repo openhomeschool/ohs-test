@@ -115,9 +115,11 @@ def filter_user_list(results, url): # TODO: GENERALIZE for other lists!
 def quiz(ws_url, db_handler, html_function):
 	d = _doc('Quiz')
 	with d:
-		# Content container - filtered results themselves will be fed into here, via websocket (see _js_socket_quiz_manager):
-		t.div(id = 'content')
-		t.button('Go', id = "go", cls = 'quiz_button')
+		with t.fieldset(cls = 'small_fieldset'):
+			# Content container - filtered results themselves will be fed into here, via websocket (see _js_socket_quiz_manager):
+			t.div(id = 'content', cls = 'quiz_content') # Note: this container will contain another div of the same class, in which everything "real" will go; see _multi_choice_question
+			t.button('Go', id = "go", cls = 'quiz_button')
+
 		# JS (intentionally at bottom of file; see https://faqs.skillcrush.com/article/176-where-should-js-script-tags-be-linked-in-html-documents and many stackexchange answers):
 		t.script(_js_socket_quiz_manager(ws_url, db_handler, html_function))
 	return d.render()
@@ -223,12 +225,13 @@ def _text_input(name, value, bool_attrs = None, attrs = None, label = None, inva
 # Question-handler helpers:
 
 def _start_question(prompt_prefix, prompt_text, prompt_postfix = None):
-	d = t.div(cls = 'quiz_question_content')
+	d = t.div(cls = 'quiz_content')
 	with d:
-		t.div(prompt_prefix, cls = 'quiz_question_prompt')
-		t.div(prompt_text, cls = 'quiz_question')
-		if prompt_postfix:
-			t.div(prompt_postfix, cls = 'quiz_question_prompt')
+		with t.div(cls = 'quiz_question_content'):
+			t.div(prompt_prefix, cls = 'quiz_question_prompt')
+			t.div(prompt_text, cls = 'quiz_question')
+			if prompt_postfix:
+				t.div(prompt_postfix, cls = 'quiz_question_prompt_postfix')
 	return d
 
 def _add_option(d, id, label):
