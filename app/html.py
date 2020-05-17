@@ -120,8 +120,19 @@ def quiz(ws_url, db_handler, html_function):
 			t.div(id = 'content', cls = 'quiz_content') # Note: this container will contain another div of the same class, in which everything "real" will go; see _multi_choice_question
 			t.button('Go', id = "go", cls = 'quiz_button')
 
+		with t.fieldset(cls = 'small_fieldset'):
+			with t.div(cls = 'dropdown'):
+				t.button('Subjects...', cls = 'dropdown-button', onclick = 'choose_subject()')
+				with t.div(id = 'subject_dropdown', cls = 'dropdown-content'):
+					t.a('Timeline (sequence)', href = settings.k_url_prefix + settings.k_history_sequence)
+					t.a('Science grammar', href = settings.k_url_prefix + settings.k_science_grammar)
+					t.a('English vocabulary', href = settings.k_url_prefix + settings.k_english_vocabulary)
+					t.a('English grammar', href = settings.k_url_prefix + settings.k_english_grammar)
+					t.a('Latin vocabulary', href = settings.k_url_prefix + settings.k_latin_vocabulary)
+
 		# JS (intentionally at bottom of file; see https://faqs.skillcrush.com/article/176-where-should-js-script-tags-be-linked-in-html-documents and many stackexchange answers):
 		t.script(_js_socket_quiz_manager(ws_url, db_handler, html_function))
+		t.script(_js_dropdown())
 	return d.render()
 
 # -----------------------------------------------------------------------------
@@ -366,3 +377,26 @@ def _js_validate_new_user_fields():
 		$('password_match_message').style.display = $('password_confirmation').value == "" || $('password').value == $('password_confirmation').value ? "none" : "block";
 	};
 	''' + _js_check_validity())
+
+
+def _js_dropdown():
+	return raw('''
+	/* When the user clicks on the button,
+	toggle between hiding and showing the dropdown content */
+	function choose_subject() {
+		document.getElementById("subject_dropdown").classList.toggle("show");
+	};
+
+	// Close the dropdown menu if the user clicks outside of it
+	window.onclick = function(event) {
+	if (!event.target.matches('.dropdown-button')) {
+		var dropdowns = document.getElementsByClassName("dropdown-content");
+		var i;
+		for (i = 0; i < dropdowns.length; i++) {
+			var openDropdown = dropdowns[i];
+			if (openDropdown.classList.contains('show')) {
+			openDropdown.classList.remove('show');
+			}
+		}
+	} };
+	''')
