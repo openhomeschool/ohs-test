@@ -43,7 +43,6 @@ def get_random_spec_records(spec, count, exclude_ids):
 
 def get_random_english_vocabulary_records(spec, count, exclude_ids = None):
 	'''
-	Get `count` random records from the english table using `spec`
 	(English_Vocabulary_QT) object, excluding any records with ids in `exclude_ids`.
 	'''
 	assert(spec.table == 'vocabulary') # sanity check
@@ -51,7 +50,6 @@ def get_random_english_vocabulary_records(spec, count, exclude_ids = None):
 
 def get_random_english_grammar_records(spec, count, exclude_ids = None):
 	'''
-	Get `count` random records from the english table using `spec`
 	(English_Grammar_QT) object, excluding any records with ids in `exclude_ids`.
 	'''
 	assert(spec.table == 'english') # sanity check
@@ -59,7 +57,6 @@ def get_random_english_grammar_records(spec, count, exclude_ids = None):
 
 def get_random_latin_vocabulary_records(spec, count, exclude_ids = None):
 	'''
-	Get `count` random records from the latin vocabulary table using `spec`
 	(Latin_Vocabulary_QT) object, excluding any records with ids in `exclude_ids`.
 	'''
 	assert(spec.table == 'latin_vocabulary') # sanity check
@@ -67,7 +64,6 @@ def get_random_latin_vocabulary_records(spec, count, exclude_ids = None):
 
 def get_random_science_records(spec, count, exclude_ids = None):
 	'''
-	Get `count` random records from the science table using `spec`
 	(Science_Grammar_QT) object, excluding any records with ids in `exclude_ids`.
 	'''
 	assert(spec.table == 'science') # sanity check
@@ -76,7 +72,6 @@ def get_random_science_records(spec, count, exclude_ids = None):
 
 def get_random_event_records(spec, count, exclude_ids = None):
 	'''
-	Get `count` random records from the event table using `spec`
 	(Question_Transaction) object, excluding any records with ids in `exclude_ids`.
 	'''
 	assert(spec.table == 'event') # sanity check
