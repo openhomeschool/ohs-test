@@ -219,3 +219,11 @@ class History_Sequence_QT(Question_Transaction):
 # TODO!!!
 # db.execute('insert into test_event_sequence_target (user, event, correct_option) values (?, ?, ?)', (user_id, event_id, correct_event_id)
 # db.executemany('insert into test_event_sequence_incorrect_option (target, incorrect_option
+
+# -----------------------------------------------------------------------------
+# Resource handlers
+
+async def get_weekly_resources(db, user_id):
+	# Cycle, Week, Subject, Content (subject-specific presentation, option of "more details"), "essential" resources (e.g., song audio)
+	c = await db.execute('select * from event where username = ?', (username,))
+	user = await c.fetchone()
