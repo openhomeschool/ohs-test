@@ -5,6 +5,8 @@ __license__ = 'MIT'
 
 import re
 
+from dataclasses import dataclass
+
 import logging
 l = logging.getLogger(__name__)
 
@@ -39,7 +41,7 @@ def get_random_english_vocabulary_records(spec, count, exclude_ids = None):
 	'''
 	assert(spec.table == 'vocabulary') # sanity check
 	joins, wheres, args = [], [], []
-	_week_range(spec, joins, wheres, args)
+	_cycle_week_range(spec, joins, wheres, args)
 	_exclude_ids(spec, wheres, exclude_ids)
 	result = _random_select(spec, joins, wheres, count)
 	return result, args
@@ -52,7 +54,7 @@ def get_random_english_grammar_records(spec, count, exclude_ids = None):
 	'''
 	assert(spec.table == 'english') # sanity check
 	joins, wheres, args = [], [], []
-	_week_range(spec, joins, wheres, args)
+	_cycle_week_range(spec, joins, wheres, args)
 	_exclude_ids(spec, wheres, exclude_ids)
 	result = _random_select(spec, joins, wheres, count)
 	return result, args
@@ -65,7 +67,7 @@ def get_random_latin_vocabulary_records(spec, count, exclude_ids = None):
 	'''
 	assert(spec.table == 'latin_vocabulary') # sanity check
 	joins, wheres, args = [], [], []
-	_week_range(spec, joins, wheres, args)
+	_cycle_week_range(spec, joins, wheres, args)
 	_exclude_ids(spec, wheres, exclude_ids)
 	result = _random_select(spec, joins, wheres, count)
 	return result, args
@@ -78,7 +80,7 @@ def get_random_science_records(spec, count, exclude_ids = None):
 	'''
 	assert(spec.table == 'science') # sanity check
 	joins, wheres, args = [], [], []
-	_week_range(spec, joins, wheres, args)
+	_cycle_week_range(spec, joins, wheres, args)
 	_exclude_ids(spec, wheres, exclude_ids)
 	result = _random_select(spec, joins, wheres, count)
 	return result, args
@@ -93,7 +95,7 @@ def get_random_event_records(spec, count, exclude_ids = None):
 	joins, wheres, args = [], [], []
 	if spec.exclude_people_groups:
 		wheres.append(f'{spec.table}.people_group is not true')
-	_week_range(spec, joins, wheres, args)
+	_cycle_week_range(spec, joins, wheres, args)
 	_date_range(spec, wheres, args)
 	_exclude_ids(spec, wheres, exclude_ids)
 	result = _random_select(spec, joins, wheres, count)
@@ -111,7 +113,7 @@ async def get_surrounding_event_records(spec, count, event):
 	joins, wheres, args = [], [], []
 	if spec.exclude_people_groups:
 		wheres.append(f'{spec.table}.people_group is not true')
-	_week_range(spec, joins, wheres, args)
+	_cycle_week_range(spec, joins, wheres, args)
 	_date_range(spec, wheres, args)
 
 	# Get keyword-similar events:
@@ -150,6 +152,37 @@ async def get_surrounding_event_records(spec, count, event):
 	return result, answer
 
 
+
+async def get_weekly_resources(db, user_id):
+	# Cycle, Week, Subject, Content (subject-specific presentation, option of "more details"), "essential" resources (e.g., song audio)
+
+	#TODO: TEMP
+	cycles = (1, 0) # "0" refers to "all cycles"
+	week_range = (1, 1)
+
+	@dataclass
+	class Spec:
+		table: str
+		cycles: tuple
+		week_range: tuple
+
+	results = {subject: [] for subject in ('science', 'english', 'vocabulary', 'latin', 'latin_vocabulary')}
+	for subject,  in results:
+		spec = 
+		_get_resources(db, Spec(subject, cycles, week_range), user_id)
+
+
+async def _get_resources(db, spec, user_id):
+
+	joins, wheres, args = [], [], []
+	_cycle_week_range(spec, joins, wheres, args)
+
+	c = await db.execute(f"select * from {spec.table} " + _join(joins) + _where(wheres) + " order by cw.cycle, cw.week", args)
+	return await c.fetchall()
+
+
+
+
 # -----------------------------------------------------------------------------
 # Implementation utilities:
 
@@ -165,11 +198,14 @@ def _where(wheres): # "AND"-joined wheres (i.e., intersection, not union)
 	#else:
 	return ''
  
-def _week_range(spec, joins, wheres, args):
-	if spec.week_range:
+def _cycle_week_range(spec, joins, wheres, args):
+	if spec.week_range or spec.cycle:
 		joins.append(f"cycle_week as cw on {spec.table}.cw = cw.id")
-		wheres.append("? <= cw.week and cw.week <= ?")
-		args.extend(spec.week_range)
+		if spec.week_range:
+			wheres.append("? <= cw.week and cw.week <= ?")
+			args.extend(spec.week_range)
+		if spec.cycles:
+			wheres.append("cw.cycle in (%s)" % ', '.join([str(int(i)) for i in spec.cycles]))
 	#else, no-op
 
 def _date_range(spec, wheres, args):

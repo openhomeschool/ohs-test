@@ -135,6 +135,26 @@ def quiz(ws_url, db_handler, html_function):
 		t.script(_js_dropdown())
 	return d.render()
 
+
+def resources(url): # TODO: this is basically identical to select_user (and presumably other search-driven pages whose content comes via websocket); consolidate!
+	d = _doc('Resources')
+	with d:
+		_text_input('search', None, ('autofocus',), {'autocomplete': 'off', 'oninput': 'search(this.value)'}, 'Search', type_ = 'search')
+		t.div(id = 'search_result') # filtered results themselves are added here, in this `result` div, via websocket, as search text is typed (see javascript)
+		# JS (intentionally at bottom of file; see https://faqs.skillcrush.com/article/176-where-should-js-script-tags-be-linked-in-html-documents and many stackexchange answers):
+		t.script(_js_filter_list(url))
+	return d.render()
+
+def resource_list(results, url): # TODO: GENERALIZE for other lists!
+	table = t.table()
+	with table:
+		for result in results:
+			with t.tr():
+				t.td(t.a(result['username'], href = '%s/%d' % (url, result['id'])))
+		if len(results) >= 9:
+			t.tr(t.td('... (type in search bar to narrow list)'))
+	return table.render()
+
 # -----------------------------------------------------------------------------
 # Question handlers:
 

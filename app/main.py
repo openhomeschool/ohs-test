@@ -311,18 +311,18 @@ async def _ws_handler(request, msg_handler):
 # Init / Shutdown -------------------------------------------------------------
 
 async def init_db(filename):
-	l.debug('Initializing database...')
 	db = await aiosqlite.connect(filename, isolation_level = None) # isolation_level: autocommit TODO: parameterize DB ID!
 		# non-async equivalent would have been: db = sqlite3.connect('test1.db', isolation_level = None) # isolation_level: autocommit
 	db.row_factory = aiosqlite.Row
 	await db.execute('pragma journal_mode = wal') # see https://charlesleifer.com/blog/going-fast-with-sqlite-and-python/ - since we're using async/await from a wsgi stack, this is appropriate
 	#await db.execute('pragma case_sensitive_like = true')
 	#await db.set_trace_callback(l.debug) - not needed with aiosqlite, anyway
-	l.debug('...database initialized')
 	return db
 
 async def _init(app):
+	l.debug('Initializing database...')
 	app['db'] = await init_db('ohs-test.db')
+	l.debug('...database initialized')
 	
 async def _shutdown(app):
 	l.debug('Shutting down...')
