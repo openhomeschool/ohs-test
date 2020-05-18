@@ -319,7 +319,7 @@ def init(argv):
 		return quiz
 	g = web.get
 	app.add_routes([
-		g('/quiz/history/sequence', q('History_Sequence_QT', 'multi_choice_question')),
+		g('/quiz/history/sequence', q('History_Sequence_QT', 'multi_choice_history_sequence_question')),
 		g('/quiz/history/geography', q('get_history_geography_question', 'multi_choice_question')),
 		g('/quiz/history/detail', q('get_history_detail_question', 'multi_choice_question')),
 		g('/quiz/history/submissions', q('get_history_submissions_question', 'multi_choice_question')),
@@ -331,7 +331,7 @@ def init(argv):
 		g('/quiz/science/random', q('get_science_random_question', 'multi_choice_question')),
 		g('/quiz/math/facts/multiplication', q('get_math_facts_question', 'multi_choice_question')),
 		g('/quiz/math/grammar', q('get_math_grammar_question', 'multi_choice_question')),
-		g('/quiz/english/grammar', q('English_Grammar_QT', 'multi_choice_english_question')),
+		g('/quiz/english/grammar', q('English_Grammar_QT', 'multi_choice_english_grammar_question')),
 		g('/quiz/english/vocabulary', q('English_Vocabulary_QT', 'multi_choice_english_vocabulary_question')),
 		g('/quiz/english/random', q('get_english_random_question', 'multi_choice_question')),
 		g('/quiz/latin/grammar', q('get_latin_grammar_question', 'multi_choice_question')),
