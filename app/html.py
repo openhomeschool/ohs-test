@@ -121,6 +121,8 @@ def quiz(ws_url, db_handler, html_function):
 		t.script(_js_socket_quiz_manager(ws_url, db_handler, html_function))
 	return d.render()
 
+# -----------------------------------------------------------------------------
+# Question handlers:
 
 exposed = dict()
 def expose(func):
@@ -128,70 +130,33 @@ def expose(func):
 	return func
 
 @expose
-def multi_choice_question(question, options):
-	d = t.div(cls = 'quiz_question_content')
-	with d:
-		t.div('Where does "%s" belong in this sequence of events?' % question['name'], cls = 'quiz_question')
-		with t.div(cls = 'quiz_answer_option'):
-			t.input(type = 'radio', id = '0', name = 'choice', value = '0')
-			t.label('First', fr = '0', cls = 'answer_option_label')
-		for record in options:
-			with t.div(cls = 'quiz_answer_option'):
-				t.input(type = 'radio', id = record['id'], name = 'choice', value = record['id'])
-				t.label('After "%s"' % record['name'], fr = record['id'], cls = 'answer_option_label')
-
-	return d.render()
-
-@expose
-def multi_choice_english_question(question, options):
-	d = t.div(cls = 'quiz_question_content')
-	with d:
-		t.div('Define or identify "%s".' % question['prompt'], cls = 'quiz_question')
-		for record in options:
-			with t.div(cls = 'quiz_answer_option'):
-				t.input(type = 'radio', id = record['id'], name = 'choice', value = record['id'])
-				t.label('%s' % record['answer'], fr = record['id'], cls = 'answer_option_label')
-					
-	return d.render()
+def multi_choice_english_grammar_question(question, options):
+	return _multi_choice_question(question, options, 'Define or identify', question['prompt'], 'answer')
 
 @expose
 def multi_choice_english_vocabulary_question(question, options):
-	d = t.div(cls = 'quiz_question_content')
-	with d:
-		t.div('What is the definition of "%s".' % question['word'], cls = 'quiz_question')
-		for record in options:
-			with t.div(cls = 'quiz_answer_option'):
-				t.input(type = 'radio', id = record['id'], name = 'choice', value = record['id'])
-				t.label('%s' % record['definition'], fr = record['id'], cls = 'answer_option_label')
-					
-	return d.render()
-
-@expose
-def multi_choice_science_question(question, options):
-	d = t.div(cls = 'quiz_question_content')
-	with d:
-		t.div('Define "%s".' % question['prompt'], cls = 'quiz_question')
-		for record in options:
-			with t.div(cls = 'quiz_answer_option'):
-				t.input(type = 'radio', id = record['id'], name = 'choice', value = record['id'])
-				t.label('%s' % record['answer'], fr = record['id'], cls = 'answer_option_label')
-					
-	return d.render()
+	return _multi_choice_question(question, options, 'What is the definition of', question['word'], 'definition')
 
 @expose
 def multi_choice_latin_vocabulary_question(question, options):
-	d = t.div(cls = 'quiz_question_content')
+	return _multi_choice_question(question, options, 'What is the translation for', question['word'], 'translation')
+
+@expose
+def multi_choice_science_question(question, options):
+	return _multi_choice_question(question, options, 'Define', question['prompt'], 'answer')
+
+@expose
+def multi_choice_history_sequence_question(question, options):
+	d = _start_question('Where does', question['name'], 'belong in this sequence of events?')
 	with d:
-		t.div('What is the translation for "%s".' % question['word'], cls = 'quiz_question')
+		_add_option(d, '0', 'First')
 		for record in options:
-			with t.div(cls = 'quiz_answer_option'):
-				t.input(type = 'radio', id = record['id'], name = 'choice', value = record['id'])
-				t.label('%s' % record['translation'], fr = record['id'], cls = 'answer_option_label')
-					
+			_add_option(d, record['id'], 'After "%s"' % record['name'])
 	return d.render()
 
 
-# Utils -----------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# Utils:
 
 #TODO: deport some of these?
 
@@ -251,6 +216,35 @@ def _text_input(name, value, bool_attrs = None, attrs = None, label = None, inva
 	if invalid_div:
 		result += invalid_div
 	return result
+
+
+# -----------------------------------------------------------------------------
+# Question-handler helpers:
+
+def _start_question(prompt_prefix, prompt_text, prompt_postfix = None):
+	d = t.div(cls = 'quiz_question_content')
+	with d:
+		t.div(prompt_prefix, cls = 'quiz_question_prompt')
+		t.div(prompt_text, cls = 'quiz_question')
+		if prompt_postfix:
+			t.div(prompt_postfix, cls = 'quiz_question_prompt')
+	return d
+
+def _add_option(d, id, label):
+	with d:
+		with t.div(cls = 'quiz_answer_option'):
+			t.input(type = 'radio', id = id, name = 'choice', value = id)
+			t.label(label, fr = id, cls = 'answer_option_label')
+
+def _multi_choice_question(question, options, prompt_prefix, prompt_text, option_field_name, prompt_postfix = None):
+	d = _start_question(prompt_prefix, prompt_text, prompt_postfix)
+	with d:
+		for record in options:
+			_add_option(d, record['id'], record[option_field_name])
+	return d.render()
+
+# -----------------------------------------------------------------------------
+# Javascript:
 
 def _js_socket_quiz_manager(url, db_handler, html_function):
 	# This js not served as a static file for two reasons: 1) it's tiny and single-purpose, and 2) its code is tightly connected to this server code; it's not a candidate for another team to maintain, in other words; it also relies on our URL (for the websocket), whereas true static files might be served by a reverse-proxy server from anywhere, and won't tend to contain any references to the wsgi urls
