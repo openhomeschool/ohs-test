@@ -153,7 +153,7 @@ async def get_surrounding_event_records(spec, count, event):
 
 
 
-async def get_weekly_resources(db, user_id):
+async def get_resources(db, user_id):
 	# Cycle, Week, Subject, Content (subject-specific presentation, option of "more details"), "essential" resources (e.g., song audio)
 
 	#TODO: TEMP
@@ -166,11 +166,11 @@ async def get_weekly_resources(db, user_id):
 		cycles: tuple
 		week_range: tuple
 
-	results = {subject: [] for subject in ('science', 'english', 'vocabulary', 'latin', 'latin_vocabulary')}
-	for subject,  in results:
-		spec = 
-		_get_resources(db, Spec(subject, cycles, week_range), user_id)
+	results = []
+	for subject in ('science', 'english', 'vocabulary', 'latin', 'latin_vocabulary'): # TODO: line thes up the same way our grammar pages are aligned
+		results.append((subject, _get_resources(db, Spec(subject, cycles, week_range), user_id))) # A dict would work, but we'd loose the sort order, which we might like to remain consistent; even if the order itself isn't so important (science first?), consistency is, for the user's expectations
 
+	return results
 
 async def _get_resources(db, spec, user_id):
 
