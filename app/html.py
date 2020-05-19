@@ -145,9 +145,24 @@ def resources(url): # TODO: this is basically identical to select_user (and pres
 		t.script(_js_filter_list(url))
 	return d.render()
 
-def resource_list(results, url): # TODO: GENERALIZE for other lists!
-	table = t.table()
+@subject_resource
+def science_resources(table, records):
 	with table:
+		t.th(td('Science'))
+		for record in records:
+			t.tr(t.td(record['cw.week']), t.td(t.b('Science')), t.td(record['prompt'].title()), t.td(record['cw.cucle'])):
+			t.tr(t.td(''), t.td(record['answer'], colspan = 3))
+				
+
+	
+def resource_list(results, url): # TODO: GENERALIZE for other lists!
+	with t.table():
+		for db_table, records in results:
+			# Cycle, Week, Subject, Content (subject-specific presentation, option of "more details"), "essential" resources (e.g., song audio)
+			subject_resources(db_table, records)
+			
+			
+			
 		for result in results:
 			with t.tr():
 				t.td(t.a(result['username'], href = '%s/%d' % (url, result['id'])))
