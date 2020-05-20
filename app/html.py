@@ -12,6 +12,7 @@ from dominate import tags as t
 from dominate.util import raw
 
 from . import valid
+from . import settings
 
 # Classes ---------------------------------------------------------------------
 
@@ -41,10 +42,10 @@ def home():
 		t.p('This is the stub home-page for ohs-test.')
 	return d.render()
 
-def login(error = None):
+def login(action, error = None):
 	d = _doc('OHS-Test Login')
 	with d:
-		with t.form(action = '/login', method = 'post'):
+		with t.form(action = action, method = 'post'):
 			with t.fieldset(cls = 'small_fieldset'):
 				t.legend('Log in...')
 				_error(error)
@@ -114,11 +115,24 @@ def filter_user_list(results, url): # TODO: GENERALIZE for other lists!
 def quiz(ws_url, db_handler, html_function):
 	d = _doc('Quiz')
 	with d:
-		# Content container - filtered results themselves will be fed into here, via websocket (see _js_socket_quiz_manager):
-		t.div(id = 'content')
-		t.button('Go', id = "go", cls = 'quiz_button')
+		with t.fieldset(cls = 'small_fieldset'):
+			# Content container - filtered results themselves will be fed into here, via websocket (see _js_socket_quiz_manager):
+			t.div(id = 'content', cls = 'quiz_content') # Note: this container will contain another div of the same class, in which everything "real" will go; see _multi_choice_question
+			t.button('Go', id = "go", cls = 'quiz_button')
+
+		with t.fieldset(cls = 'small_fieldset'):
+			with t.div(cls = 'dropdown'):
+				t.button('Subjects...', cls = 'dropdown-button', onclick = 'choose_subject()')
+				with t.div(id = 'subject_dropdown', cls = 'dropdown-content'):
+					t.a('Timeline (sequence)', href = settings.k_url_prefix + settings.k_history_sequence)
+					t.a('Science grammar', href = settings.k_url_prefix + settings.k_science_grammar)
+					t.a('English vocabulary', href = settings.k_url_prefix + settings.k_english_vocabulary)
+					t.a('English grammar', href = settings.k_url_prefix + settings.k_english_grammar)
+					t.a('Latin vocabulary', href = settings.k_url_prefix + settings.k_latin_vocabulary)
+
 		# JS (intentionally at bottom of file; see https://faqs.skillcrush.com/article/176-where-should-js-script-tags-be-linked-in-html-documents and many stackexchange answers):
 		t.script(_js_socket_quiz_manager(ws_url, db_handler, html_function))
+		t.script(_js_dropdown())
 	return d.render()
 
 # -----------------------------------------------------------------------------
@@ -166,7 +180,7 @@ def _doc(title, css = None, scripts = None):
 	d = document(title = title)
 	with d.head:
 		t.meta(name = 'viewport', content = 'width=device-width, initial-scale=1')
-		t.link(href = 'http://localhost:8001/static/css/main.css', rel = 'stylesheet') # TODO: deport!
+		t.link(href = settings.k_static_url + 'css/main.css', rel = 'stylesheet')
 	return d
 
 def _error(error):
@@ -222,12 +236,13 @@ def _text_input(name, value, bool_attrs = None, attrs = None, label = None, inva
 # Question-handler helpers:
 
 def _start_question(prompt_prefix, prompt_text, prompt_postfix = None):
-	d = t.div(cls = 'quiz_question_content')
+	d = t.div(cls = 'quiz_content')
 	with d:
-		t.div(prompt_prefix, cls = 'quiz_question_prompt')
-		t.div(prompt_text, cls = 'quiz_question')
-		if prompt_postfix:
-			t.div(prompt_postfix, cls = 'quiz_question_prompt')
+		with t.div(cls = 'quiz_question_content'):
+			t.div(prompt_prefix, cls = 'quiz_question_prompt')
+			t.div(prompt_text, cls = 'quiz_question')
+			if prompt_postfix:
+				t.div(prompt_postfix, cls = 'quiz_question_prompt_postfix')
 	return d
 
 def _add_option(d, id, label):
@@ -362,3 +377,26 @@ def _js_validate_new_user_fields():
 		$('password_match_message').style.display = $('password_confirmation').value == "" || $('password').value == $('password_confirmation').value ? "none" : "block";
 	};
 	''' + _js_check_validity())
+
+
+def _js_dropdown():
+	return raw('''
+	/* When the user clicks on the button,
+	toggle between hiding and showing the dropdown content */
+	function choose_subject() {
+		document.getElementById("subject_dropdown").classList.toggle("show");
+	};
+
+	// Close the dropdown menu if the user clicks outside of it
+	window.onclick = function(event) {
+	if (!event.target.matches('.dropdown-button')) {
+		var dropdowns = document.getElementsByClassName("dropdown-content");
+		var i;
+		for (i = 0; i < dropdowns.length; i++) {
+			var openDropdown = dropdowns[i];
+			if (openDropdown.classList.contains('show')) {
+			openDropdown.classList.remove('show');
+			}
+		}
+	} };
+	''')
