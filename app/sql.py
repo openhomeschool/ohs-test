@@ -157,7 +157,7 @@ async def get_resources(db, user_id):
 	# Cycle, Week, Subject, Content (subject-specific presentation, option of "more details"), "essential" resources (e.g., song audio)
 
 	#TODO: TEMP
-	cycles = (1, 0) # "0" refers to "all cycles"
+	cycles = (1, 0) # "0" refers to grammar that belongs to "all cycles" (like timeline grammar)
 	week_range = (1, 1)
 
 	@dataclass
@@ -166,9 +166,9 @@ async def get_resources(db, user_id):
 		cycles: tuple
 		week_range: tuple
 
-	results = []
-	for subject in ('science', 'english', 'vocabulary', 'latin', 'latin_vocabulary'): # TODO: line thes up the same way our grammar pages are aligned
-		results.append((subject, _get_resources(db, Spec(subject, cycles, week_range), user_id))) # A dict would work, but we'd loose the sort order, which we might like to remain consistent; even if the order itself isn't so important (science first?), consistency is, for the user's expectations
+	results = [] # list of 2-tuples: [(db_table, recordset), ...]]
+	for db_table in ('science', 'vocabulary', 'latin_vocabulary'):#, 'english', 'latin'): # TODO: line thes up the same way our grammar pages are aligned
+		results.append((db_table, await _get_resources(db, Spec(db_table, cycles, week_range), user_id))) # A dict would work, but we'd loose the sort order, which we might like to remain consistent; even if the order itself isn't so important (science first?), consistency is, for the user's expectations
 
 	return results
 

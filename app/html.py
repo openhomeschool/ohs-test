@@ -122,8 +122,8 @@ def quiz(ws_url, db_handler, html_function):
 
 		with t.fieldset(cls = 'small_fieldset'):
 			with t.div(cls = 'dropdown'):
-				t.button('Subjects...', cls = 'dropdown-button', onclick = 'choose_subject()')
-				with t.div(id = 'subject_dropdown', cls = 'dropdown-content'):
+				t.button('Subjects...', cls = 'dropdown-button', onclick = 'choose_dropdown_item()')
+				with t.div(id = 'dropdown_contents', cls = 'dropdown-content'):
 					t.a('Timeline (sequence)', href = settings.k_url_prefix + settings.k_history_sequence)
 					t.a('Science grammar', href = settings.k_url_prefix + settings.k_science_grammar)
 					t.a('English vocabulary', href = settings.k_url_prefix + settings.k_english_vocabulary)
@@ -139,36 +139,79 @@ def quiz(ws_url, db_handler, html_function):
 def resources(url): # TODO: this is basically identical to select_user (and presumably other search-driven pages whose content comes via websocket); consolidate!
 	d = _doc('Resources')
 	with d:
-		_text_input('search', None, ('autofocus',), {'autocomplete': 'off', 'oninput': 'search(this.value)'}, 'Search', type_ = 'search')
+		with t.div(cls = 'resource_block'):
+			t.div(t.b('S'), cls = 'vertical_title') # TODO: replace with a magnifying-glass gif!
+			with t.table():
+				with t.tr():
+					t.td(_text_input('search', None, ('autofocus',), {'autocomplete': 'off', 'oninput': 'search(this.value)'}, 'Search', type_ = 'search'), style = 'width: 80%')
+					with t.td(style = 'width:10%', cls = 'dropdown'):
+						t.button('Cycle', cls = 'dropdown-button', onclick = 'choose_dropdown_item()')
+						with t.div(id = 'dropdown_contents', cls = 'dropdown-content'):
+							t.a('Cycle 1', href = 'bogus') # TODO: make these real
+							t.a('Cycle 2', href = 'bogus')
+							t.a('Cycle 3', href = 'bogus')
+							t.a('Any', href = 'bogus')
+					t.td('Week', style = 'width:10%') # TODO: replace with drop-selector, below... week 1 to week 28
+					'''
+					with t.td(style = 'width:10%', cls = 'dropdown'):
+						t.button('Week', cls = 'dropdown-button', onclick = 'choose_dropdown_item()')
+						with t.div(id = 'week_dropdown_contents', cls = 'dropdown-content'): # TODO: dropdown JS is currently only for one id ('dropdown_contents'); must generalize to handle two!
+							for week in range(28):
+								t.a('Week %d' % week, href = 'bogus') # TODO: make these real
+					'''
+
 		t.div(id = 'search_result') # filtered results themselves are added here, in this `result` div, via websocket, as search text is typed (see javascript)
 		# JS (intentionally at bottom of file; see https://faqs.skillcrush.com/article/176-where-should-js-script-tags-be-linked-in-html-documents and many stackexchange answers):
 		t.script(_js_filter_list(url))
+		t.script(_js_dropdown())
 	return d.render()
 
-@subject_resource
-def science_resources(table, records):
-	with table:
-		t.th(td('Science'))
-		for record in records:
-			t.tr(t.td(record['cw.week']), t.td(t.b('Science')), t.td(record['prompt'].title()), t.td(record['cw.cucle'])):
-			t.tr(t.td(''), t.td(record['answer'], colspan = 3))
-				
 
-	
-def resource_list(results, url): # TODO: GENERALIZE for other lists!
-	with t.table():
-		for db_table, records in results:
-			# Cycle, Week, Subject, Content (subject-specific presentation, option of "more details"), "essential" resources (e.g., song audio)
-			subject_resources(db_table, records)
-			
-			
-			
-		for result in results:
-			with t.tr():
-				t.td(t.a(result['username'], href = '%s/%d' % (url, result['id'])))
-		if len(results) >= 9:
-			t.tr(t.td('... (type in search bar to narrow list)'))
-	return table.render()
+subject_resources = dict()
+def subject_resource(db_table):
+	def decorator(func):
+		subject_resources[db_table] = func
+		return func
+	return decorator
+
+@subject_resource('science')
+def science_resources(container, records, show_cw):
+	with container:
+		with t.div(cls = 'resource_block'):
+			t.div(t.b('Science'), cls = 'vertical_title')
+			with t.table():
+				for record in records:
+					t.tr(t.td(t.b(record['prompt'])), t.td(record['cycle'], style = "width:10%"), t.td(record['week'], style = "width:10%"))
+					t.tr(t.td(record['answer'], colspan = 3))
+			t.div(cls = 'clear') # force resource_block container to be tall enough for all content
+
+@subject_resource('vocabulary')
+def english_vocabulary_resources(container, records, show_cw):
+	with container:
+		with t.div(cls = 'resource_block'):
+			t.div(t.b('English'), cls = 'vertical_title')
+			with t.table():
+				for record in records:
+					t.tr(t.td(t.b(record['word']), ' = ', record['definition']), t.td(record['cycle'], style = "width:10%"), t.td(record['week'], style = "width:10%"))
+			t.div(cls = 'clear') # force resource_block container to be tall enough for all content
+
+@subject_resource('latin_vocabulary')
+def english_vocabulary_resources(container, records, show_cw):
+	with container:
+		with t.div(cls = 'resource_block'):
+			t.div(t.b('Latin'), cls = 'vertical_title')
+			with t.table():
+				for record in records:
+					t.tr(t.td(t.b(record['word']), ' = ', record['translation']), t.td(record['cycle'], style = "width:10%"), t.td(record['week'], style = "width:10%"))
+			t.div(cls = 'clear') # force resource_block container to be tall enough for all content
+
+
+def resource_list(results, url, show_cw = True):
+	# Cycle, Week, Subject, Content (subject-specific presentation, option of "more details"), "essential" resources (e.g., song audio)
+	container = t.div(cls = 'resource_list')
+	for db_table, records in results:
+		subject_resources[db_table](container, records, show_cw)
+	return container.render()
 
 # -----------------------------------------------------------------------------
 # Question handlers:
@@ -418,8 +461,8 @@ def _js_dropdown():
 	return raw('''
 	/* When the user clicks on the button,
 	toggle between hiding and showing the dropdown content */
-	function choose_subject() {
-		document.getElementById("subject_dropdown").classList.toggle("show");
+	function choose_dropdown_item() {
+		document.getElementById("dropdown_contents").classList.toggle("show");
 	};
 
 	// Close the dropdown menu if the user clicks outside of it

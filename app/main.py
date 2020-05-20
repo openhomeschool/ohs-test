@@ -177,7 +177,7 @@ async def select_user(request):
 
 @r.get('/ws_filter_list')
 async def ws_filter_list(request):
-	edit_url = _http_url(request, 'edit_user')
+	edit_url = _http_url(request, '/edit_user')
 	dbc = request.app['db']
 	
 	async def msg_handler(payload, ws):
@@ -232,7 +232,8 @@ async def resources(request):
 
 @r.get('/ws_filter_resource_list') #TODO: this has strong similarities to ws_filter_list (which should be named ws_filter_user_list)
 async def ws_filter_resource_list(request):
-	open_resource = _http_url(request, 'open_resource') #TODO?!??
+	session = await get_session(request)
+	open_resource = _http_url(request, '/open_resource') #TODO?!??
 	dbc = request.app['db']
 	
 	async def msg_handler(payload, ws):
@@ -246,7 +247,7 @@ async def ws_filter_resource_list(request):
 				l.warning('string fragment sent to ws_filter_resource_list was not a valid string 32-characters or less') # but do nothing else; client code already checks for validity; this must/might be an attack attempt; no need to respond
 		if not records:
 			records = await db.get_weekly_resources(dbc, session['user_id']) # A default list of this week's resources
-		await ws.send_json({'call': 'content', 'content': html.resource_list(records, edit_url)})
+		await ws.send_json({'call': 'content', 'content': html.resource_list(records, open_resource)})
 
 	return await _ws_handler(request, msg_handler)
 

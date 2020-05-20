@@ -224,6 +224,4 @@ class History_Sequence_QT(Question_Transaction):
 # Resource handlers
 
 async def get_weekly_resources(db, user_id):
-	# Cycle, Week, Subject, Content (subject-specific presentation, option of "more details"), "essential" resources (e.g., song audio)
-	c = await db.execute('select * from event where username = ?', (username,))
-	user = await c.fetchone()
+	return await sql.get_resources(db, user_id)
