@@ -206,7 +206,7 @@ def english_vocabulary_resources(container, records, show_cw):
 			t.div(cls = 'clear') # force resource_block container to be tall enough for all content
 
 @subject_resource('event')
-def timeline_resources(container, records, show_cw):
+def event_resources(container, records, show_cw):
 	with container:
 		with t.div(cls = 'resource_block'):
 			t.div(t.b('Timeline'), cls = 'vertical_title')
@@ -220,6 +220,7 @@ def timeline_resources(container, records, show_cw):
 							t.td(record['week'], style = "width:10%")
 							colspan = 3 # next time, skipthe cycle-week cells
 			t.div(cls = 'clear') # force resource_block container to be tall enough for all content
+		# TODO: Add History here too!!!
 
 
 def resource_list(results, url, show_cw = True):
