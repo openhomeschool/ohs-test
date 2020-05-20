@@ -206,12 +206,12 @@ class History_Sequence_QT(Question_Transaction):
 		return self
 
 	@property
-	def date_range(self):
-		return self._date_range
-
-	@property
 	def exclude_people_groups(self):
 		return True # always exclude people_group records (events) for history-sequence questions
+
+	@property
+	def date_range(self):
+		return self._date_range
 
 	def log_user_answer(self, answer_id):
 		l.debug('History_Sequence_QT.log_user_answer(%s)' % answer_id)
