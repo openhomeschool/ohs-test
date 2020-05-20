@@ -36,6 +36,7 @@ getting it started, to try it out from a command-line, do this:
 
 	>>> from app import db_scaffolding as dbs
 	>>> tl = dbs.Test_Loop()
+	>>> from app import sql
 	>>> result = tl.run(sql.foo, arg1, arg2) # Note that you do NOT provide db, just the args in your foo() **after** that first db arg
 
 In this example case, `result` holds the result of the fetchall() -- the records fetched.  You can do as you wish with them at that point.

@@ -171,8 +171,8 @@ label.answer_option_label {
   background-color: #7475b8;
   color: white;
   margin: .5em;
-  padding: 16px;
-  font-size: 16px;
+  padding: 10px;
+  font-size: 12px;
   border: none;
   cursor: pointer;
 }
@@ -193,7 +193,7 @@ label.answer_option_label {
   display: none;
   position: absolute;
   background-color: #f1f1f1;
-  min-width: 160px;
+  min-width: 60px; /* ?!!! */
   box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
   z-index: 1;
 }
@@ -201,7 +201,7 @@ label.answer_option_label {
 /* Links inside the dropdown */
 .dropdown-content a {
   color: black;
-  padding: 12px 16px;
+  padding: 4px;
   text-decoration: none;
   display: block;
 }
@@ -211,3 +211,36 @@ label.answer_option_label {
 
 /* Show the dropdown menu (use JS to add this class to the .dropdown-content container when the user clicks on the dropdown button) */
 .show {display:block;}
+
+
+
+.resource_block {
+	margin: 1em;
+	border: 2px solid black;
+	border-radius: 7px;
+	width: 100%;
+	max-width: 600px;
+}
+
+.resource_block table {
+	width: 90%;
+	border-left: 2px solid blue;
+}
+
+.resource_block .vertical_title {
+	margin: 5px;
+	display: inline-block;
+	-webkit-writing-mode: vertical-lr;
+	-ms-writing-mode: tb-lr;
+	writing-mode: vertical-lr;
+	float: left;
+	clear: left;
+}
+
+.resource_block .clear {
+	clear: both;
+}
+
+.resource_list {
+}
+
