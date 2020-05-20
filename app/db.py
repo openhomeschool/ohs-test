@@ -166,7 +166,7 @@ class English_Grammar_QT(Question_Transaction):
 @qt
 class Latin_Vocabulary_QT(Question_Transaction):
 	@classmethod # need to use factory pattern creation scheme b/c can't await in __init__
-	async def create(cls, db, user_id, week_range = None, date_range = None):
+	async def create(cls, db, user_id, week_range = None):
 		self = Latin_Vocabulary_QT(db, 'latin_vocabulary', user_id, week_range)
 		self._question = await sql.fetchone(db, sql.get_random_latin_vocabulary_records(self, 1))
 		self._options = await sql.fetchall(db, sql.get_random_latin_vocabulary_records(self, self.answer_option_count - 1, [self._question['id'],]))
