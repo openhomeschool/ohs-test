@@ -17,14 +17,16 @@ import base64
 from cryptography import fernet
 
 from aiohttp import web, WSMsgType, WSCloseCode
-from sqlite3 import IntegrityError
 from aiohttp_session import setup as setup_session, get_session
 from aiohttp_session.cookie_storage import EncryptedCookieStorage
+from sqlite3 import IntegrityError
+from yarl import URL
 
 from . import html
 from . import db
 from . import valid
 from . import error
+from . import settings
 
 _debug = True # TODO: parameterize!
 
@@ -34,6 +36,9 @@ logging.basicConfig(format = '%(asctime)s - %(levelname)s : %(name)s:%(lineno)d 
 l = logging.getLogger(__name__)
 
 # Utils -----------------------------------------------------------------------
+
+#_prefix_url_path = lambda url: URL.build(scheme = url.scheme, host = url.host, path = settings.k_url_prefix + url.path, port = url.port, query = url.query, query_string = url.query_string)
+gurl = lambda request, name: settings.k_url_prefix + str(request.app.router[name].url_for())
 
 r = web.RouteTableDef()
 def hr(text): return web.Response(text = text, content_type = 'text/html')
@@ -63,10 +68,10 @@ def auth(roles):
 				# Process the request (handler) as requested:
 				return await func(request)
 			#else, forward to log-in page:
-			session['after_login'] = request.path
+			session['after_login'] = settings.k_url_prefix + request.path
 			if 'roles' in session: # user is logged in, but the above role-intersection test failed, meaning that user is not permitted to access this particular page
 				session['error_flash'] = error.not_permitted
-			raise web.HTTPFound(location = request.app.router['login'].url_for())
+			raise web.HTTPFound(location = gurl(request, 'login'))
 		return wrapper
 	return decorator
 
@@ -80,26 +85,27 @@ async def login(request):
 		del session['user_id']
 	if 'roles' in session:
 		del session['roles']
-	return hr(html.login(await _flash(request)))
+	return hr(html.login(gurl(request, 'login'), await _flash(request)))
 
 @r.post('/login')
 async def login_(request):
 	r = request
+	login_url = gurl(r, 'login')
 	data = await r.post()
 	session = await get_session(r)
 	try:
 		#TODO: validate data!
 		user_id, roles = await db.authenticate(r.app['db'], data['username'], data['password'])
 		if not user_id:
-			return hr(html.login(error.authentication_failure))
+			return hr(html.login(login_url, error.authentication_failure))
 		else:
 			session['user_id'] = user_id
 			session['roles'] = roles
 			# raise web.HTTPFound below, after blanket exception handler...
 	except:
-		return hr(html.login(error.unknown_login_failure))
+		return hr(html.login(login_url, error.unknown_login_failure))
 	if 'user_id' in session:
-		raise web.HTTPFound(location = session['after_login'] if 'after_login' in session else r.app.router['home'].url_for())
+		raise web.HTTPFound(location = session['after_login'] if 'after_login' in session else gurl(r, 'home'))
 
 		
 
@@ -110,7 +116,7 @@ async def home(request):
 @r.view('/new_user')
 class New_User(web.View):
 	async def get(self):
-		return hr(html.new_user(html.Form(self.request.path), _ws_url(self.request, '/ws_check_username')))
+		return hr(html.new_user(html.Form(settings.k_url_prefix + self.request.path), _ws_url(self.request, '/ws_check_username')))
 	
 	async def post(self):
 		r = self.request
@@ -129,7 +135,7 @@ class New_User(web.View):
 
 		if invalids:
 			# Re-present:
-			return hr(html.new_user(html.Form(r.path, data, invalids), ws_url))
+			return hr(html.new_user(html.Form(settings.k_url_prefix + r.path, data, invalids), ws_url))
 		#else, go on...
 
 		# (Try to) add the user:
@@ -138,7 +144,7 @@ class New_User(web.View):
 			user_id = await db.add_user(r.app['db'], data['new_username'], data['password'], data['email'])
 		except IntegrityError: # Note that this should **almost** never happen, as we check username availability in real-time, but it's always possible that another new user with the same username is created milliseconds before the db.add_user() attempt, above; this would make the username suddenly unavailable; we could not possibly have told the user about this in advance, and need to revert to posting an error message now:
 			# Re-present with user_exists error:
-			return hr(html.new_user(html.Form(r.path, data), ws_url, (error.user_exists,)))
+			return hr(html.new_user(html.Form(settings.k_url_prefix + r.path, data), ws_url, (error.user_exists,)))
 
 		#if sess.get('trial'): # TODO!
 		#user = db.update_user(dbs, sess['username'], p.username, p.password, p.email)
@@ -229,11 +235,13 @@ async def _flash(request):
 
 def _ws_url(request, name):
 	# Transform a normal URL like http://domain.tld/quiz/history/sequence into ws://domain.tld/<name>
-	return re.sub('%s$' % request.rel_url, name, re.sub('.*://', 'ws://', str(request.url)))
+	rurl = request.url
+	return URL.build(scheme = settings.k_ws, host = request.host, path = settings.k_ws_url_prefix + name)
 
 def _http_url(request, name):
 	# Transform a ws URL like ws://domain.tld/... into a normal URL: http://domain.tld/<name>  - note: what about HTTPs!?TODO
-	return re.sub('%s$' % request.rel_url, name, re.sub('.*://', 'http://', str(request.url)))
+	rurl = request.url
+	return URL.build(scheme = settings.k_http, host = request.host, path = settings.k_url_prefix + name)
 
 def _validate_regex(data, invalids, tuple_list):
 	for field, regex, required in tuple_list:
@@ -276,18 +284,21 @@ async def _ws_handler(request, msg_handler):
 
 # Init / Shutdown -------------------------------------------------------------
 
-async def init_db(app):
+async def init_db(filename):
 	l.debug('Initializing database...')
-	db = await aiosqlite.connect('ohs-test.db', isolation_level = None) # isolation_level: autocommit TODO: parameterize DB ID!
+	db = await aiosqlite.connect(filename, isolation_level = None) # isolation_level: autocommit TODO: parameterize DB ID!
 		# non-async equivalent would have been: db = sqlite3.connect('test1.db', isolation_level = None) # isolation_level: autocommit
 	db.row_factory = aiosqlite.Row
 	await db.execute('pragma journal_mode = wal') # see https://charlesleifer.com/blog/going-fast-with-sqlite-and-python/ - since we're using async/await from a wsgi stack, this is appropriate
 	#await db.execute('pragma case_sensitive_like = true')
 	#await db.set_trace_callback(l.debug) - not needed with aiosqlite, anyway
-	app['db'] = db
 	l.debug('...database initialized')
+	return db
 
-async def shutdown(app):
+async def _init(app):
+	app['db'] = await init_db('ohs-test.db')
+	
+async def _shutdown(app):
 	l.debug('Shutting down...')
 	await app['db'].close()
 	for ws in set(app['websockets']):
@@ -319,23 +330,23 @@ def init(argv):
 		return quiz
 	g = web.get
 	app.add_routes([
-		g('/quiz/history/sequence', q('History_Sequence_QT', 'multi_choice_history_sequence_question')),
+		g(settings.k_history_sequence, q('History_Sequence_QT', 'multi_choice_history_sequence_question')),
 		g('/quiz/history/geography', q('get_history_geography_question', 'multi_choice_question')),
 		g('/quiz/history/detail', q('get_history_detail_question', 'multi_choice_question')),
 		g('/quiz/history/submissions', q('get_history_submissions_question', 'multi_choice_question')),
 		g('/quiz/history/random', q('get_history_random_question', 'multi_choice_question')),
 		g('/quiz/geography/orientation', q('get_geography_orientation_question', 'multi_choice_question')),
 		g('/quiz/geography/map', q('get_geography_map_question', 'multi_choice_question')),
-		g('/quiz/science/grammar', q('Science_Grammar_QT', 'multi_choice_science_question')),
+		g(settings.k_science_grammar, q('Science_Grammar_QT', 'multi_choice_science_question')),
 		g('/quiz/science/submissions', q('get_science_submissions_question', 'multi_choice_question')),
 		g('/quiz/science/random', q('get_science_random_question', 'multi_choice_question')),
 		g('/quiz/math/facts/multiplication', q('get_math_facts_question', 'multi_choice_question')),
 		g('/quiz/math/grammar', q('get_math_grammar_question', 'multi_choice_question')),
-		g('/quiz/english/grammar', q('English_Grammar_QT', 'multi_choice_english_grammar_question')),
-		g('/quiz/english/vocabulary', q('English_Vocabulary_QT', 'multi_choice_english_vocabulary_question')),
+		g(settings.k_english_grammar, q('English_Grammar_QT', 'multi_choice_english_grammar_question')),
+		g(settings.k_english_vocabulary, q('English_Vocabulary_QT', 'multi_choice_english_vocabulary_question')),
 		g('/quiz/english/random', q('get_english_random_question', 'multi_choice_question')),
 		g('/quiz/latin/grammar', q('get_latin_grammar_question', 'multi_choice_question')),
-		g('/quiz/latin/vocabulary', q('Latin_Vocabulary_QT', 'multi_choice_latin_vocabulary_question')),
+		g(settings.k_latin_vocabulary, q('Latin_Vocabulary_QT', 'multi_choice_latin_vocabulary_question')),
 		g('/quiz/latin/translation', q('get_latin_translation_question', 'multi_choice_question')),
 		g('/quiz/latin/random', q('get_latin_random_question', 'multi_choice_question')),
 		g('/quiz/music/note', q('get_music_note_question', 'multi_choice_question')),
@@ -345,8 +356,8 @@ def init(argv):
 	])
 	
 	# Add startup/shutdown hooks:
-	app.on_startup.append(init_db)
-	app.on_shutdown.append(shutdown)
+	app.on_startup.append(_init)
+	app.on_shutdown.append(_shutdown)
 
 	return app
 
