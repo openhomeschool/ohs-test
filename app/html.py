@@ -205,6 +205,22 @@ def english_vocabulary_resources(container, records, show_cw):
 					t.tr(t.td(t.b(record['word']), ' = ', record['translation']), t.td(record['cycle'], style = "width:10%"), t.td(record['week'], style = "width:10%"))
 			t.div(cls = 'clear') # force resource_block container to be tall enough for all content
 
+@subject_resource('event')
+def timeline_resources(container, records, show_cw):
+	with container:
+		with t.div(cls = 'resource_block'):
+			t.div(t.b('Timeline'), cls = 'vertical_title')
+			with t.table():
+				colspan = 1 # sentinel for first time through
+				for record in records:
+					with t.tr():
+						t.td(record['name'], colspan = colspan)
+						if colspan == 1:
+							t.td(record['cycle'], style = "width:10%")
+							t.td(record['week'], style = "width:10%")
+							colspan = 3 # next time, skipthe cycle-week cells
+			t.div(cls = 'clear') # force resource_block container to be tall enough for all content
+
 
 def resource_list(results, url, show_cw = True):
 	# Cycle, Week, Subject, Content (subject-specific presentation, option of "more details"), "essential" resources (e.g., song audio)
