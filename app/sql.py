@@ -143,12 +143,12 @@ async def get_surrounding_event_records(spec, count, event):
 
 
 
-async def get_resources(db, user_id):
+async def get_resources(db, user_id, search_string = None, week_filter = None):
 	# Cycle, Week, Subject, Content (subject-specific presentation, option of "more details"), "essential" resources (e.g., song audio)
 
 	#TODO: TEMP
 	cycles = (1, 0) # "0" refers to grammar that belongs to "all cycles" (like timeline grammar)
-	week_range = (1, 1)
+	week_range = (week_filter, week_filter) if week_filter else (1, 1)
 
 	@dataclass
 	class Spec:
@@ -160,14 +160,22 @@ async def get_resources(db, user_id):
 	for db_table in ('science', 'vocabulary', 'latin_vocabulary', 'event'):#, 'english', 'latin'): # TODO: line thes up the same way our grammar pages are aligned
 		results.append((db_table, await _get_resources(db, Spec(db_table, cycles, week_range), user_id))) # A dict would work, but we'd loose the sort order, which we might like to remain consistent; even if the order itself isn't so important (science first?), consistency is, for the user's expectations
 
+	# History has a unique table setup:
+	results.append(('history', await _get_resources(db, Spec('history', cycles, week_range), user_id,
+													extra_joins = ('event on history.event = event.id',))))
+
 	return results
 
-async def _get_resources(db, spec, user_id):
-
+def _get_resources_sql(spec, user_id, extra_joins = None):
 	joins, wheres, args = [], [], []
+	if extra_joins:
+		joins.extend(extra_joins)
 	_cycle_week_range(spec, joins, wheres, args)
-
-	c = await db.execute(f"select * from {spec.table} " + _join(joins) + _where(wheres) + " order by cw.cycle, cw.week", args)
+	return (f"select * from {spec.table} " + _join(joins) + _where(wheres) + " order by cw.cycle, cw.week", args)
+	
+async def _get_resources(db, spec, user_id, extra_joins = None):
+	l.debug('!!!: ' + _get_resources_sql(spec, user_id, extra_joins)[0])
+	c = await db.execute(*_get_resources_sql(spec, user_id, extra_joins))
 	return await c.fetchall()
 
 
@@ -178,7 +186,7 @@ async def _get_resources(db, spec, user_id):
 
 def _join(joins):
 	if joins:
-		return ' join ' + ' '.join(joins)
+		return ' join ' + ', '.join(joins)
 	#else:
 	return ''
 

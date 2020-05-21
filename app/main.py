@@ -233,21 +233,29 @@ async def resources(request):
 @r.get('/ws_filter_resource_list') #TODO: this has strong similarities to ws_filter_list (which should be named ws_filter_user_list)
 async def ws_filter_resource_list(request):
 	session = await get_session(request)
+	uid = session['user_id']
 	open_resource = _http_url(request, '/open_resource') #TODO?!??
 	dbc = request.app['db']
 	
 	async def msg_handler(payload, ws):
-		assert(payload['call'] == 'search')
-		records = None
-		if payload['string']:
-			string = str(payload['string'])
-			if valid.rec_string32.match(string):
-				records = await db.find_resources(dbc, string)
-			else:
-				l.warning('string fragment sent to ws_filter_resource_list was not a valid string 32-characters or less') # but do nothing else; client code already checks for validity; this must/might be an attack attempt; no need to respond
-		if not records:
-			records = await db.get_weekly_resources(dbc, session['user_id']) # A default list of this week's resources
-		await ws.send_json({'call': 'content', 'content': html.resource_list(records, open_resource)})
+		if payload['call'] == 'search':
+			records = None
+			if payload['string']:
+				string = str(payload['string'])
+				if valid.rec_string32.match(string):
+					records = await db.find_resources(dbc, string)
+				else:
+					l.warning('string fragment sent to ws_filter_resource_list was not a valid string 32-characters or less') # but do nothing else; client code already checks for validity; this must/might be an attack attempt; no need to respond
+			if not records:
+				records = await db.get_weekly_resources(dbc, uid) # A default list of this week's resources
+			await ws.send_json({'call': 'content', 'content': html.resource_list(records, open_resource)})
+		elif payload['call'] == 'filter_week':
+			if payload['string']:
+				week = int(payload['string'])
+				records = await db.find_resources(dbc, uid, '', week)
+				await ws.send_json({'call': 'content', 'content': html.resource_list(records, open_resource)})
+				
+			
 
 	return await _ws_handler(request, msg_handler)
 

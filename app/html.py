@@ -152,6 +152,7 @@ def resources(url): # TODO: this is basically identical to select_user (and pres
 							t.a('Cycle 3', href = 'bogus')
 							t.a('Any', href = 'bogus')
 					t.td('Week', style = 'width:10%') # TODO: replace with drop-selector, below... week 1 to week 28
+					t.td(t.input(type = 'number', placeholder = 'week', id = 'week_selector', min='1', max='28', oninput = 'filter_week(this.value)'))
 					'''
 					with t.td(style = 'width:10%', cls = 'dropdown'):
 						t.button('Week', cls = 'dropdown-button', onclick = 'choose_dropdown_item()')
@@ -164,6 +165,7 @@ def resources(url): # TODO: this is basically identical to select_user (and pres
 		# JS (intentionally at bottom of file; see https://faqs.skillcrush.com/article/176-where-should-js-script-tags-be-linked-in-html-documents and many stackexchange answers):
 		t.script(_js_filter_list(url))
 		t.script(_js_dropdown())
+		t.script(_js_filter_week())
 	return d.render()
 
 
@@ -212,6 +214,8 @@ def event_resources(container, records, show_cw):
 			t.div(t.b('Timeline'), cls = 'vertical_title')
 			with t.table():
 				colspan = 1 # sentinel for first time through
+				#TODO: make sure 'order by cw.week, sequence'!
+				#TODO: then fix this logic to handle multiple weeks of timeline event sequences!
 				for record in records:
 					with t.tr():
 						t.td(record['name'], colspan = colspan)
@@ -220,7 +224,18 @@ def event_resources(container, records, show_cw):
 							t.td(record['week'], style = "width:10%")
 							colspan = 3 # next time, skipthe cycle-week cells
 			t.div(cls = 'clear') # force resource_block container to be tall enough for all content
-		# TODO: Add History here too!!!
+
+
+@subject_resource('history')
+def english_vocabulary_resources(container, records, show_cw):
+	with container:
+		with t.div(cls = 'resource_block'):
+			t.div(t.b('History'), cls = 'vertical_title')
+			with t.table():
+				for record in records:
+					t.tr(t.td(t.b('%s - tell me more' % record['name'])), t.td(record['cycle'], style = "width:10%"), t.td(record['week'], style = "width:10%"))
+					t.tr(t.td(record['primary_sentence'], colspan = 3))
+			t.div(cls = 'clear') # force resource_block container to be tall enough for all content
 
 
 def resource_list(results, url, show_cw = True):
@@ -433,6 +448,13 @@ def _js_filter_list(url):
 	};
 	
 	''' % {'url': url})
+
+def _js_filter_week():
+	return raw('''
+	function filter_week(week) {
+		ws.send(JSON.stringify({call: "filter_week", string: week}));
+	};
+	''')
 
 def _js_check_username(url):
 	# This js not served as a static file for two reasons: 1) it's tiny and single-purpose, and 2) its code is tightly connected to this server code; it's not a candidate for another team to maintain, in other words; it also relies on our URL (for the websocket), whereas true static files might be served by a reverse-proxy server from anywhere, and won't tend to contain any references to the wsgi urls
