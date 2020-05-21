@@ -225,3 +225,6 @@ class History_Sequence_QT(Question_Transaction):
 
 async def get_weekly_resources(db, user_id):
 	return await sql.get_resources(db, user_id)
+
+async def find_resources(db, user_id, search_string, week_filter):
+	return await sql.get_resources(db, user_id, search_string, week_filter)
