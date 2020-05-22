@@ -11,6 +11,8 @@ import re
 import weakref
 import json
 
+from dataclasses import dataclass
+
 # TODO: These three may be culled once user/session stuff is complete
 import time
 import base64
@@ -233,29 +235,39 @@ async def resources(request):
 @r.get('/ws_filter_resource_list') #TODO: this has strong similarities to ws_filter_list (which should be named ws_filter_user_list)
 async def ws_filter_resource_list(request):
 	session = await get_session(request)
-	uid = session['user_id']
 	open_resource = _http_url(request, '/open_resource') #TODO?!??
-	dbc = request.app['db']
-	
+
+	@dataclass
+	class Spec:
+		db = request.app['db']
+		user_id = session['user_id']
+		search_string = None
+		# TODO: parameterize these next three (actually, week_filter is in, delicately, below....)
+		cycles = (0, 1) # default: "cycle 1" ("0" refers to grammar that belongs to "all cycles" (like timeline grammar) - always include "0")
+		week_range = (1, 6) # default: "week 1" (only)
+		deep_search = False
+
 	async def msg_handler(payload, ws):
 		if payload['call'] == 'search':
 			records = None
+			spec = Spec()
 			if payload['string']:
-				string = str(payload['string'])
-				if valid.rec_string32.match(string):
-					records = await db.find_resources(dbc, string)
+				spec.search_string = str(payload['string'])
+				if valid.rec_string32.match(spec.search_string):
+					records = await db.find_resources(spec)
 				else:
 					l.warning('string fragment sent to ws_filter_resource_list was not a valid string 32-characters or less') # but do nothing else; client code already checks for validity; this must/might be an attack attempt; no need to respond
 			if not records:
-				records = await db.get_weekly_resources(dbc, uid) # A default list of this week's resources
+				records = await db.get_weekly_resources(spec) # A default list of this week's resources
 			await ws.send_json({'call': 'content', 'content': html.resource_list(records, open_resource)})
 		elif payload['call'] == 'filter_week':
 			if payload['string']:
-				week = int(payload['string'])
-				records = await db.find_resources(dbc, uid, '', week)
+				spec = Spec()
+				week = int(payload['string']) # TODO: get range rather than just one!
+				spec.week_range = (week, week)
+				records = await db.find_resources(spec)
 				await ws.send_json({'call': 'content', 'content': html.resource_list(records, open_resource)})
-				
-			
+		#else... TODO: handle unexpected payload calls?
 
 	return await _ws_handler(request, msg_handler)
 
