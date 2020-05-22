@@ -143,39 +143,48 @@ async def get_surrounding_event_records(spec, count, event):
 
 
 
-async def get_resources(db, user_id, search_string = None, week_filter = None):
+async def get_resources(spec):
 	# Cycle, Week, Subject, Content (subject-specific presentation, option of "more details"), "essential" resources (e.g., song audio)
 
-	#TODO: TEMP
-	cycles = (1, 0) # "0" refers to grammar that belongs to "all cycles" (like timeline grammar)
-	week_range = (week_filter, week_filter) if week_filter else (1, 1)
-
 	@dataclass
-	class Spec:
+	class Subject_Spec:
+		subject: str
 		table: str
-		cycles: tuple
-		week_range: tuple
+		search_fields: tuple
+		deep_search_fields: tuple = None
+		extra_joins: tuple = None
+		order_by: str = 'cw.cycle, cw.week'
+		
+	subject_specs = ( # A dict would work, but we'd loose the (sequencial) order, which we might like to remain consistent; even if the order itself isn't so important (timeline first?), consistency is, for the user's expectations
+		Subject_Spec('timeline', 'event', ('name', 'keywords'), ('primary_sentence', 'secondary_sentence'), None, 'cw.cycle, cw.week, event.seq'),
+		Subject_Spec('history', 'history', ('name', 'keywords', 'primary_sentence'), ('secondary_sentence',), ('event on history.event = event.id',)),
+		# Geography
+		# Math
+		Subject_Spec('science', 'science', ('prompt', 'answer'), ('note',)),
+		Subject_Spec('english_vocabulary', 'vocabulary', ('word', 'definition'), ('root','')),
+		Subject_Spec('latin_vocabulary', 'latin_vocabulary', ('word', 'translation')),
+	)
 
-	results = [] # list of 2-tuples: [(db_table, recordset), ...]]
-	for db_table in ('science', 'vocabulary', 'latin_vocabulary', 'event'):#, 'english', 'latin'): # TODO: line thes up the same way our grammar pages are aligned
-		results.append((db_table, await _get_resources(db, Spec(db_table, cycles, week_range), user_id))) # A dict would work, but we'd loose the sort order, which we might like to remain consistent; even if the order itself isn't so important (science first?), consistency is, for the user's expectations
-
-	# History has a unique table setup:
-	results.append(('history', await _get_resources(db, Spec('history', cycles, week_range), user_id,
-													extra_joins = ('event on history.event = event.id',))))
+	results = [] # list of 2-tuples: [(subject_spec, recordset), ...]]
+	for subject_spec in subject_specs:
+		spec.table = subject_spec.table # some lower functions want table in spec
+		results.append((subject_spec.subject, await _get_resources(spec, subject_spec)))
 
 	return results
 
-def _get_resources_sql(spec, user_id, extra_joins = None):
+async def _get_resources(spec, subject_spec):
 	joins, wheres, args = [], [], []
-	if extra_joins:
-		joins.extend(extra_joins)
+	if subject_spec.extra_joins:
+		joins.extend(subject_spec.extra_joins)
 	_cycle_week_range(spec, joins, wheres, args)
-	return (f"select * from {spec.table} " + _join(joins) + _where(wheres) + " order by cw.cycle, cw.week", args)
-	
-async def _get_resources(db, spec, user_id, extra_joins = None):
-	l.debug('!!!: ' + _get_resources_sql(spec, user_id, extra_joins)[0])
-	c = await db.execute(*_get_resources_sql(spec, user_id, extra_joins))
+	if spec.search_string and subject_spec.search_fields:
+		or_wheres = []
+		for field in subject_spec.search_fields:
+			or_wheres.append(f'{field} like ?')
+			args.append('%' + spec.search_string + '%')
+		wheres.append(_or_wheres(or_wheres))
+
+	c = await spec.db.execute(f"select * from {subject_spec.table} " + _join(joins) + _where(wheres) + f" order by {subject_spec.order_by}", args)
 	return await c.fetchall()
 
 
@@ -190,6 +199,12 @@ def _join(joins):
 	#else:
 	return ''
 
+def _or_wheres(wheres):
+	if wheres:
+		return '(%s)' % ' or '.join(wheres)
+	#else:
+	return ''
+
 def _where(wheres): # "AND"-joined wheres (i.e., intersection, not union)
 	if wheres:
 		return ' where ' + ' and '.join(wheres)
@@ -197,7 +212,7 @@ def _where(wheres): # "AND"-joined wheres (i.e., intersection, not union)
 	return ''
  
 def _cycle_week_range(spec, joins, wheres, args):
-	if spec.week_range or spec.cycle:
+	if spec.week_range or spec.cycles:
 		joins.append(f"cycle_week as cw on {spec.table}.cw = cw.id")
 		if spec.week_range:
 			wheres.append("? <= cw.week and cw.week <= ?")

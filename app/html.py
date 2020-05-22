@@ -170,9 +170,9 @@ def resources(url): # TODO: this is basically identical to select_user (and pres
 
 
 subject_resources = dict()
-def subject_resource(db_table):
+def subject_resource(subject):
 	def decorator(func):
-		subject_resources[db_table] = func
+		subject_resources[subject] = func
 		return func
 	return decorator
 
@@ -187,7 +187,7 @@ def science_resources(container, records, show_cw):
 					t.tr(t.td(record['answer'], colspan = 3))
 			t.div(cls = 'clear') # force resource_block container to be tall enough for all content
 
-@subject_resource('vocabulary')
+@subject_resource('english_vocabulary')
 def english_vocabulary_resources(container, records, show_cw):
 	with container:
 		with t.div(cls = 'resource_block'):
@@ -207,22 +207,21 @@ def english_vocabulary_resources(container, records, show_cw):
 					t.tr(t.td(t.b(record['word']), ' = ', record['translation']), t.td(record['cycle'], style = "width:10%"), t.td(record['week'], style = "width:10%"))
 			t.div(cls = 'clear') # force resource_block container to be tall enough for all content
 
-@subject_resource('event')
+@subject_resource('timeline')
 def event_resources(container, records, show_cw):
 	with container:
 		with t.div(cls = 'resource_block'):
 			t.div(t.b('Timeline'), cls = 'vertical_title')
 			with t.table():
 				colspan = 1 # sentinel for first time through
-				#TODO: make sure 'order by cw.week, sequence'!
-				#TODO: then fix this logic to handle multiple weeks of timeline event sequences!
+				#TODO: fix this logic to handle multiple weeks of timeline event sequences! (i.e., each new week should get a colspan=1 followed by cycle & week #s)
 				for record in records:
 					with t.tr():
 						t.td(record['name'], colspan = colspan)
 						if colspan == 1:
 							t.td(record['cycle'], style = "width:10%")
 							t.td(record['week'], style = "width:10%")
-							colspan = 3 # next time, skipthe cycle-week cells
+							colspan = 3 # next time, skip the cycle-week cells
 			t.div(cls = 'clear') # force resource_block container to be tall enough for all content
 
 
@@ -241,8 +240,8 @@ def english_vocabulary_resources(container, records, show_cw):
 def resource_list(results, url, show_cw = True):
 	# Cycle, Week, Subject, Content (subject-specific presentation, option of "more details"), "essential" resources (e.g., song audio)
 	container = t.div(cls = 'resource_list')
-	for db_table, records in results:
-		subject_resources[db_table](container, records, show_cw)
+	for subject, records in results:
+		subject_resources[subject](container, records, show_cw)
 	return container.render()
 
 # -----------------------------------------------------------------------------
