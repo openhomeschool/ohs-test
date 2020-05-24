@@ -153,6 +153,7 @@ def resources(url): # TODO: this is basically identical to select_user (and pres
 							t.a('Any', href = 'bogus')
 					t.td('Week', style = 'width:10%') # TODO: replace with drop-selector, below... week 1 to week 28
 					t.td(t.input(type = 'number', placeholder = 'week', id = 'week_selector', min='1', max='28', oninput = 'filter_week(this.value)'))
+					t.td() # <- new widget in here, instead of the line above (comment out line above)  Commented-out code below was a "drop-down" trial run that will now be deprecated, too.
 					'''
 					with t.td(style = 'width:10%', cls = 'dropdown'):
 						t.button('Week', cls = 'dropdown-button', onclick = 'choose_dropdown_item()')
@@ -166,6 +167,7 @@ def resources(url): # TODO: this is basically identical to select_user (and pres
 		t.script(_js_filter_list(url))
 		t.script(_js_dropdown())
 		t.script(_js_filter_week())
+		t.script(_js_calendar_widget())
 	return d.render()
 
 
@@ -515,4 +517,9 @@ def _js_dropdown():
 			}
 		}
 	} };
+	''')
+
+def _js_calendar_widget():
+	return raw('''
+		/* javascript here... */
 	''')
