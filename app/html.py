@@ -151,7 +151,6 @@ def resources(url): # TODO: this is basically identical to select_user (and pres
 							t.a('Cycle 2', href = 'bogus')
 							t.a('Cycle 3', href = 'bogus')
 							t.a('Any', href = 'bogus')
-					t.td('Week', style = 'width:10%') # TODO: replace with drop-selector, below... week 1 to week 28
 					t.td(t.input(type = 'number', placeholder = 'week', id = 'week_selector', min='1', max='28', oninput = 'filter_week(this.value)'))
 					t.td() # <- new widget in here, instead of the line above (comment out line above)  Commented-out code below was a "drop-down" trial run that will now be deprecated, too.
 					'''
