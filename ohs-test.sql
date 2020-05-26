@@ -1,5 +1,5 @@
 --
--- File generated with SQLiteStudio v3.2.1 on Thu May 14 09:24:28 2020
+-- File generated with SQLiteStudio v3.2.1 on Tue May 26 15:49:05 2020
 --
 -- Text encoding used: UTF-8
 --
@@ -566,6 +566,19 @@ CREATE TABLE extent (id INTEGER PRIMARY KEY AUTOINCREMENT, north INTEGER REFEREN
 INSERT INTO extent (id, north, south, east, west) VALUES (1, NULL, 18, 2, 1);
 INSERT INTO extent (id, north, south, east, west) VALUES (2, 20, 16, 12, NULL);
 
+-- Table: grammar_audio
+DROP TABLE IF EXISTS grammar_audio;
+CREATE TABLE grammar_audio (id INTEGER PRIMARY KEY AUTOINCREMENT, base_url STRING);
+INSERT INTO grammar_audio (id, base_url) VALUES (1, 'history/c1w1-creation');
+INSERT INTO grammar_audio (id, base_url) VALUES (2, 'history/c1w2-sumerians');
+INSERT INTO grammar_audio (id, base_url) VALUES (3, 'history/c1w3-egyptians');
+INSERT INTO grammar_audio (id, base_url) VALUES (4, 'history/c1w4-israelites');
+INSERT INTO grammar_audio (id, base_url) VALUES (5, 'history/c1w5-hammurabi');
+INSERT INTO grammar_audio (id, base_url) VALUES (6, 'history/c1w6-israel-united');
+INSERT INTO grammar_audio (id, base_url) VALUES (7, 'science/c1w1-atom');
+INSERT INTO grammar_audio (id, base_url) VALUES (8, 'science/c1w2-molecule');
+INSERT INTO grammar_audio (id, base_url) VALUES (9, 'science/c1w3-mass');
+
 -- Table: history
 DROP TABLE IF EXISTS history;
 CREATE TABLE history (id INTEGER PRIMARY KEY AUTOINCREMENT, cw INTEGER REFERENCES cycle_week (id) ON DELETE RESTRICT ON UPDATE CASCADE, event INTEGER REFERENCES event (id) ON DELETE RESTRICT ON UPDATE CASCADE UNIQUE NOT NULL);
@@ -584,6 +597,16 @@ INSERT INTO history (id, cw, event) VALUES (12, 11, 59);
 INSERT INTO history (id, cw, event) VALUES (13, 12, 71);
 INSERT INTO history (id, cw, event) VALUES (14, 13, 76);
 INSERT INTO history (id, cw, event) VALUES (15, 14, 98);
+
+-- Table: history_grammar_audio
+DROP TABLE IF EXISTS history_grammar_audio;
+CREATE TABLE history_grammar_audio (history INTEGER REFERENCES history (id) ON DELETE CASCADE ON UPDATE CASCADE, audio INTEGER REFERENCES grammar_audio (id) ON DELETE CASCADE ON UPDATE CASCADE);
+INSERT INTO history_grammar_audio (history, audio) VALUES (3, 1);
+INSERT INTO history_grammar_audio (history, audio) VALUES (2, 2);
+INSERT INTO history_grammar_audio (history, audio) VALUES (1, 3);
+INSERT INTO history_grammar_audio (history, audio) VALUES (5, 4);
+INSERT INTO history_grammar_audio (history, audio) VALUES (6, 5);
+INSERT INTO history_grammar_audio (history, audio) VALUES (7, 6);
 
 -- Table: latin
 DROP TABLE IF EXISTS latin;
@@ -649,7 +672,7 @@ INSERT INTO latin_vocabulary (id, cw, word, pos, translation) VALUES (600, 1, 'f
 
 -- Table: location
 DROP TABLE IF EXISTS location;
-CREATE TABLE location (id INTEGER, cw INTEGER NOT NULL, name TEXT NOT NULL, city BOOLEAN NOT NULL DEFAULT 0, feature BOOLEAN NOT NULL DEFAULT 0, FOREIGN KEY (cw) REFERENCES cycle_week (id) ON UPDATE RESTRICT ON DELETE RESTRICT, PRIMARY KEY (id), UNIQUE (cw, name));
+CREATE TABLE location (id INTEGER PRIMARY KEY AUTOINCREMENT, cw INTEGER NOT NULL, name TEXT NOT NULL, city BOOLEAN NOT NULL DEFAULT 0, feature BOOLEAN NOT NULL DEFAULT 0, FOREIGN KEY (cw) REFERENCES cycle_week (id) ON UPDATE RESTRICT ON DELETE RESTRICT, UNIQUE (cw, name));
 INSERT INTO location (id, cw, name, city, feature) VALUES (1, 1, 'Euphrates River', 0, 1);
 INSERT INTO location (id, cw, name, city, feature) VALUES (2, 1, 'Tigris River', 0, 1);
 INSERT INTO location (id, cw, name, city, feature) VALUES (3, 1, 'Mesopotamia', 0, 0);
@@ -672,6 +695,8 @@ INSERT INTO location (id, cw, name, city, feature) VALUES (19, 2, 'Nile Delta', 
 INSERT INTO location (id, cw, name, city, feature) VALUES (20, 2, 'Mediterranean Sea', 0, 1);
 INSERT INTO location (id, cw, name, city, feature) VALUES (21, 29, 'Mediterranean Sea', 0, 1);
 INSERT INTO location (id, cw, name, city, feature) VALUES (22, 29, 'Europe', 0, 0);
+INSERT INTO location (id, cw, name, city, feature) VALUES (23, 5, 'India', 0, 0);
+INSERT INTO location (id, cw, name, city, feature) VALUES (24, 169, 'World', 0, 0);
 
 -- Table: orientation
 DROP TABLE IF EXISTS orientation;
@@ -752,9 +777,42 @@ INSERT INTO region (location, region) VALUES (20, 9);
 
 -- Table: resource
 DROP TABLE IF EXISTS resource;
-CREATE TABLE resource (id INTEGER PRIMARY KEY AUTOINCREMENT, name STRING NOT NULL, version STRING, volume STRING, UNIQUE (name, version, volume));
-INSERT INTO resource (id, name, version, volume) VALUES (1, 'Story of the World', NULL, 1);
-INSERT INTO resource (id, name, version, volume) VALUES (2, 'Story of the World', NULL, 2);
+CREATE TABLE resource (id INTEGER PRIMARY KEY AUTOINCREMENT, name STRING NOT NULL, version STRING, volume STRING, note STRING, region INTEGER REFERENCES location (id) ON DELETE CASCADE ON UPDATE CASCADE, UNIQUE (name, version, volume));
+INSERT INTO resource (id, name, version, volume, note, region) VALUES (1, 'Story of the World', NULL, 1, NULL, 24);
+INSERT INTO resource (id, name, version, volume, note, region) VALUES (2, 'Story of the World', NULL, 2, NULL, 24);
+INSERT INTO resource (id, name, version, volume, note, region) VALUES (3, 'Just So Stories', NULL, NULL, NULL, 23);
+
+-- Table: resource_instance
+DROP TABLE IF EXISTS resource_instance;
+CREATE TABLE resource_instance (id INTEGER PRIMARY KEY AUTOINCREMENT, resource INTEGER REFERENCES resource (id) ON DELETE CASCADE ON UPDATE CASCADE, type INTEGER REFERENCES resource_type (id) ON DELETE CASCADE ON UPDATE CASCADE, source INTEGER REFERENCES resource_source (id) ON DELETE CASCADE ON UPDATE CASCADE, url STRING, cost_cents INTEGER, pages INTEGER, listening_hours INTEGER, note STRING);
+INSERT INTO resource_instance (id, resource, type, source, url, cost_cents, pages, listening_hours, note) VALUES (1, 3, 4, 2, 'https://www.gutenberg.org/ebooks/32488', NULL, NULL, NULL, NULL);
+INSERT INTO resource_instance (id, resource, type, source, url, cost_cents, pages, listening_hours, note) VALUES (2, 3, 3, 1, 'https://www.amazon.com/Just-So-Stories-Illustrated-Author-ebook/dp/B075Y3GWX3/', NULL, NULL, NULL, NULL);
+INSERT INTO resource_instance (id, resource, type, source, url, cost_cents, pages, listening_hours, note) VALUES (3, 3, 1, 1, 'https://www.amazon.com/Just-Stories-Illustrated-Rudyard-Kipling-dp-1515428311/dp/1515428311/
+', NULL, NULL, NULL, NULL);
+INSERT INTO resource_instance (id, resource, type, source, url, cost_cents, pages, listening_hours, note) VALUES (4, 3, 2, 1, 'https://www.amazon.com/Illustrated-Just-So-Stories/dp/149730170X/', NULL, NULL, NULL, 'paperbacks on Amazon seem to be notoriously bad quality / cheap; search for a good amazon option and make sure to publish librivox');
+INSERT INTO resource_instance (id, resource, type, source, url, cost_cents, pages, listening_hours, note) VALUES (5, 3, 6, 4, 'https://librivox.org/just-so-stories-ver-6-by-rudyard-kipling/ (there are several librivox recordings; this is just one)
+', NULL, NULL, 3, NULL);
+INSERT INTO resource_instance (id, resource, type, source, url, cost_cents, pages, listening_hours, note) VALUES (6, 3, 5, 1, 'https://www.amazon.com/Just-So-Stories/dp/B01E7I34EY/
+', NULL, NULL, 3, NULL);
+
+-- Table: resource_source
+DROP TABLE IF EXISTS resource_source;
+CREATE TABLE resource_source (id INTEGER PRIMARY KEY AUTOINCREMENT, name STRING);
+INSERT INTO resource_source (id, name) VALUES (1, 'Amazon');
+INSERT INTO resource_source (id, name) VALUES (2, 'Gutenberg');
+INSERT INTO resource_source (id, name) VALUES (3, 'CBD');
+INSERT INTO resource_source (id, name) VALUES (4, 'Librivox');
+INSERT INTO resource_source (id, name) VALUES (5, 'Audible');
+
+-- Table: resource_type
+DROP TABLE IF EXISTS resource_type;
+CREATE TABLE resource_type (id INTEGER PRIMARY KEY AUTOINCREMENT, name STRING UNIQUE);
+INSERT INTO resource_type (id, name) VALUES (1, 'hardback book');
+INSERT INTO resource_type (id, name) VALUES (2, 'paperback book');
+INSERT INTO resource_type (id, name) VALUES (3, 'commercial ebook');
+INSERT INTO resource_type (id, name) VALUES (4, 'open ebook');
+INSERT INTO resource_type (id, name) VALUES (5, 'commercial audiobook');
+INSERT INTO resource_type (id, name) VALUES (6, 'open audiobook');
 
 -- Table: role
 DROP TABLE IF EXISTS role;
@@ -781,6 +839,24 @@ INSERT INTO science (id, cw, prompt, answer, note) VALUES (11, 11, 'velocity', '
 INSERT INTO science (id, cw, prompt, answer, note) VALUES (12, 12, 'acceleration', 'the rate of change in velocity, usually measured in meters per second per second', 'Meters per second per second can also be written meters per second-squared, but meters per second per second is easier to visualize.  If a car is accelerating at 3 m/s/s, then it is increasing in speed by 3 m/s every second ("per second").');
 INSERT INTO science (id, cw, prompt, answer, note) VALUES (13, 13, 'force', 'an interaction which can change the velocity of an object; force = mass x acceleration (F = ma), usually measured in Newtons', NULL);
 INSERT INTO science (id, cw, prompt, answer, note) VALUES (14, 14, 'momentum', 'the product of an object''s mass and its velocity (p = mv), usually measured in kilogram-meters per second', 'Momentum = mass times velocity.');
+
+-- Table: science_grammar_audio
+DROP TABLE IF EXISTS science_grammar_audio;
+CREATE TABLE science_grammar_audio (science INTEGER REFERENCES science (id) ON DELETE CASCADE ON UPDATE CASCADE, audio INTEGER REFERENCES grammar_audio (id) ON DELETE CASCADE ON UPDATE CASCADE);
+INSERT INTO science_grammar_audio (science, audio) VALUES (3, 7);
+INSERT INTO science_grammar_audio (science, audio) VALUES (4, 8);
+INSERT INTO science_grammar_audio (science, audio) VALUES (1, 9);
+
+-- Table: subject
+DROP TABLE IF EXISTS subject;
+CREATE TABLE subject (id INTEGER PRIMARY KEY AUTOINCREMENT, name strig UNIQUE);
+INSERT INTO subject (id, name) VALUES (1, 'Timeline');
+INSERT INTO subject (id, name) VALUES (2, 'History');
+INSERT INTO subject (id, name) VALUES (3, 'Geography');
+INSERT INTO subject (id, name) VALUES (4, 'Math');
+INSERT INTO subject (id, name) VALUES (5, 'Science');
+INSERT INTO subject (id, name) VALUES (6, 'English');
+INSERT INTO subject (id, name) VALUES (7, 'Latin');
 
 -- Table: test_event_sequence_answer
 DROP TABLE IF EXISTS test_event_sequence_answer;

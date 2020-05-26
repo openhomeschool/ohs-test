@@ -121,54 +121,57 @@ def quiz(ws_url, db_handler, html_function):
 			t.button('Go', id = "go", cls = 'quiz_button')
 
 		with t.fieldset(cls = 'small_fieldset'):
-			with t.div(cls = 'dropdown'):
-				t.button('Subjects...', cls = 'dropdown-button', onclick = 'choose_dropdown_item()')
-				with t.div(id = 'dropdown_contents', cls = 'dropdown-content'):
-					t.a('Timeline (sequence)', href = settings.k_url_prefix + settings.k_history_sequence)
-					t.a('Science grammar', href = settings.k_url_prefix + settings.k_science_grammar)
-					t.a('English vocabulary', href = settings.k_url_prefix + settings.k_english_vocabulary)
-					t.a('English grammar', href = settings.k_url_prefix + settings.k_english_grammar)
-					t.a('Latin vocabulary', href = settings.k_url_prefix + settings.k_latin_vocabulary)
+			_dropdown(t.div(cls = 'dropdown'), 'subject_dropdown', (
+				('Timeline (sequence)', _gurl(settings.k_history_sequence)),
+				('Science grammar', _gurl(settings.k_science_grammar)),
+				('English vocabulary', _gurl(settings.k_english_vocabulary)),
+				('English grammar', _gurl(settings.k_english_grammar)),
+				('Latin vocabulary', _gurl(settings.k_latin_vocabulary))), 'Subjects...')
 
 		# JS (intentionally at bottom of file; see https://faqs.skillcrush.com/article/176-where-should-js-script-tags-be-linked-in-html-documents and many stackexchange answers):
 		t.script(_js_socket_quiz_manager(ws_url, db_handler, html_function))
 		t.script(_js_dropdown())
 	return d.render()
 
-
 def resources(url): # TODO: this is basically identical to select_user (and presumably other search-driven pages whose content comes via websocket); consolidate!
 	d = _doc('Resources')
 	with d:
 		with t.div(cls = 'resource_block'):
-			t.div(t.b('S'), cls = 'vertical_title') # TODO: replace with a magnifying-glass gif!
+			t.div(t.b('Search'), cls = 'vertical_title') # TODO: replace with a magnifying-glass gif!
 			with t.table():
 				with t.tr():
-					t.td(_text_input('search', None, ('autofocus',), {'autocomplete': 'off', 'oninput': 'search(this.value)'}, 'Search', type_ = 'search'), style = 'width: 80%')
-					with t.td(style = 'width:10%', cls = 'dropdown'):
-						t.button('Cycle', cls = 'dropdown-button', onclick = 'choose_dropdown_item()')
-						with t.div(id = 'dropdown_contents', cls = 'dropdown-content'):
-							t.a('Cycle 1', href = 'bogus') # TODO: make these real
-							t.a('Cycle 2', href = 'bogus')
-							t.a('Cycle 3', href = 'bogus')
-							t.a('Any', href = 'bogus')
-					t.td(t.input(type = 'number', placeholder = 'week', id = 'week_selector', min='1', max='28', oninput = 'filter_week(this.value)'))
-					t.td() # <- new widget in here, instead of the line above (comment out line above)  Commented-out code below was a "drop-down" trial run that will now be deprecated, too.
-					'''
-					with t.td(style = 'width:10%', cls = 'dropdown'):
-						t.button('Week', cls = 'dropdown-button', onclick = 'choose_dropdown_item()')
-						with t.div(id = 'week_dropdown_contents', cls = 'dropdown-content'): # TODO: dropdown JS is currently only for one id ('dropdown_contents'); must generalize to handle two!
-							for week in range(28):
-								t.a('Week %d' % week, href = 'bogus') # TODO: make these real
-					'''
+					_dropdown(t.td(cls = 'dropdown', colspan = 2), 'level_dropdown', (
+						('Grammar', 'bogus'), 
+						('4th-6th', 'bogus'),
+						('7th-9th', 'bogus'),
+						('10th-12th', 'bogus'),
+						('All', 'bogus')))
+					_dropdown(t.td(cls = 'dropdown', colspan = 2), 'subject_dropdown', (
+						('All Subjects', 'bogus'),
+						('Timeline', 'bogus'),
+						('History', 'bogus'), 
+						('Geography', 'bogus'),
+						('Math', 'bogus'),
+						('Science', 'bogus'),
+						('Latin', 'bogus'),
+						('English', 'bogus'),
+						('All', 'bogus')))
+				with t.tr():
+					t.td(_text_input('search', None, ('autofocus',), {'autocomplete': 'off', 'oninput': 'search(this.value)'}, 'Search', type_ = 'search'), style = 'width: 87%', colspan = 6)
+					_dropdown(t.td(style = 'width:10%', cls = 'dropdown'), 'cycle_dropdown', (
+						('Any Cycle', 'bogus'), ('Cycle 1', 'bogus'), ('Cycle 2', 'bogus'), ('Cycle 3', 'bogus')))
+					with t.td(style = 'width:20%'):
+						t.input(type = 'number', placeholder = 'first wk', id = 'first_week_selector', min='1', max='28', oninput = 'filter_first_week(this.value)')
+						t.br()
+						t.input(type = 'number', placeholder = 'last wk', id = 'last_week_selector', min='1', max='28', oninput = 'filter_last_week(this.value)')
 
 		t.div(id = 'search_result') # filtered results themselves are added here, in this `result` div, via websocket, as search text is typed (see javascript)
 		# JS (intentionally at bottom of file; see https://faqs.skillcrush.com/article/176-where-should-js-script-tags-be-linked-in-html-documents and many stackexchange answers):
 		t.script(_js_filter_list(url))
 		t.script(_js_dropdown())
-		t.script(_js_filter_week())
+		t.script(_js_filter_weeks())
 		t.script(_js_calendar_widget())
 	return d.render()
-
 
 subject_resources = dict()
 def subject_resource(subject):
@@ -235,6 +238,9 @@ def english_vocabulary_resources(container, records, show_cw):
 				for record in records:
 					t.tr(t.td(t.b('%s - tell me more' % record['name'])), t.td(record['cycle'], style = "width:10%"), t.td(record['week'], style = "width:10%"))
 					t.tr(t.td(record['primary_sentence'], colspan = 3))
+					t.tr(t.td(t.audio(t.source(src = _surl('audio/history/c1w2-sumerians.mp3'), type = 'audio/mpeg'), id = record['name'] + '.ogg')))
+					t.tr(t.td(t.button('>', onclick = 'getElementById("%s.ogg").play()' % record['name'])))
+
 			t.div(cls = 'clear') # force resource_block container to be tall enough for all content
 
 
@@ -285,6 +291,10 @@ def multi_choice_history_sequence_question(question, options):
 #TODO: deport some of these?
 
 _dress_bool_attrs = lambda attrs: dict([(f, True) for f in attrs])
+_gurl = lambda url: settings.k_url_prefix + url # 
+_surl = lambda url: settings.k_static_url + url # static
+_aurl = lambda url: settings.k_static_url + 'audio/' # audio
+
 
 def _doc(title, css = None, scripts = None):
 	d = document(title = title)
@@ -340,6 +350,15 @@ def _text_input(name, value, bool_attrs = None, attrs = None, label = None, inva
 	if invalid_div:
 		result += invalid_div
 	return result
+
+def _dropdown(container, id, options, title = None):
+	if not title:
+		title = options[0][0]
+	with container:
+		t.button(title, cls = 'dropdown-button', onclick = 'choose_dropdown_item(%s)' % id)
+		with t.div(id = id, cls = 'dropdown-content'):
+			for option_title, href in options:
+				t.a(option_title, href = href)
 
 
 # -----------------------------------------------------------------------------
@@ -449,10 +468,13 @@ def _js_filter_list(url):
 	
 	''' % {'url': url})
 
-def _js_filter_week():
+def _js_filter_weeks():
 	return raw('''
-	function filter_week(week) {
-		ws.send(JSON.stringify({call: "filter_week", string: week}));
+	function filter_first_week(week) {
+		ws.send(JSON.stringify({call: "filter_week", string: week, which: 'first'}));
+	};
+	function filter_last_week(week) {
+		ws.send(JSON.stringify({call: "filter_week", string: week, which: 'last'}));
 	};
 	''')
 
@@ -500,8 +522,8 @@ def _js_dropdown():
 	return raw('''
 	/* When the user clicks on the button,
 	toggle between hiding and showing the dropdown content */
-	function choose_dropdown_item() {
-		document.getElementById("dropdown_contents").classList.toggle("show");
+	function choose_dropdown_item(element) {
+		element.classList.toggle("show");
 	};
 
 	// Close the dropdown menu if the user clicks outside of it

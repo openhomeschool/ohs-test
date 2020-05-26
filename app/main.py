@@ -242,15 +242,14 @@ async def ws_filter_resource_list(request):
 		db = request.app['db']
 		user_id = session['user_id']
 		search_string = None
-		# TODO: parameterize these next three (actually, week_filter is in, delicately, below....)
-		cycles = (0, 1) # default: "cycle 1" ("0" refers to grammar that belongs to "all cycles" (like timeline grammar) - always include "0")
-		week_range = (1, 6) # default: "week 1" (only)
 		deep_search = False
+		cycles = (0, 1) # default: "cycle 1" ("0" refers to grammar that belongs to "all cycles" (like timeline grammar) - always include "0")
+		week_range = (1, 1) # default: "week 1" (only)
 
 	async def msg_handler(payload, ws):
+		spec = Spec()
 		if payload['call'] == 'search':
 			records = None
-			spec = Spec()
 			if payload['string']:
 				spec.search_string = str(payload['string'])
 				if valid.rec_string32.match(spec.search_string):
@@ -261,10 +260,19 @@ async def ws_filter_resource_list(request):
 				records = await db.get_weekly_resources(spec) # A default list of this week's resources
 			await ws.send_json({'call': 'content', 'content': html.resource_list(records, open_resource)})
 		elif payload['call'] == 'filter_week':
+			# TODO: this is ugly.... let javascript do the work, and just assert(first_week <= last_week here)
+			first_week = last_week = 1
 			if payload['string']:
-				spec = Spec()
 				week = int(payload['string']) # TODO: get range rather than just one!
-				spec.week_range = (week, week)
+				if payload['which'] == 'first':
+					first_week = week
+					if last_week < first_week:
+						last_week = first_week
+				else:
+					last_week = week
+					if first_week > last_week:
+						first_week = last_week
+				spec.week_range = (first_week, last_week)
 				records = await db.find_resources(spec)
 				await ws.send_json({'call': 'content', 'content': html.resource_list(records, open_resource)})
 		#else... TODO: handle unexpected payload calls?
