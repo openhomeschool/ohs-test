@@ -93,6 +93,7 @@ class Question_Transaction: # Abstract base class; see actual functional impleme
 		self._table = table
 		self._user_id = user_id
 		self._week_range = week_range # constrain to records only within week_range; expected to be two-tuple of week numbers, as integers, like (3, 10) for weeks 3-10
+		self._cycles = None
 		self._answer_option_count = answer_option_count
 		# Subclasses expected to set self._question and self._options here
 
@@ -111,6 +112,10 @@ class Question_Transaction: # Abstract base class; see actual functional impleme
 	@property
 	def week_range(self):
 		return self._week_range
+
+	@property
+	def cycles(self):
+		return self._cycles
 
 	@property
 	def question(self):
