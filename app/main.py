@@ -230,7 +230,11 @@ async def ws_quiz_handler(request):
 @r.get('/resources')
 @auth('student')
 async def resources(request):
-	return hr(html.resources(_ws_url(request, '/ws_filter_resource_list')))
+	dbc = request.app['db']
+	filters = {'choose_context': [(context['name'], context['id']) for context in await db.get_contexts(dbc)] }
+
+	return hr(html.resources(_ws_url(request, '/ws_filter_resource_list'), filters))
+
 
 @r.get('/ws_filter_resource_list') #TODO: this has strong similarities to ws_filter_list (which should be named ws_filter_user_list)
 async def ws_filter_resource_list(request):
@@ -245,6 +249,7 @@ async def ws_filter_resource_list(request):
 		deep_search = False
 		cycles = (0, 1) # default: "cycle 1" ("0" refers to grammar that belongs to "all cycles" (like timeline grammar) - always include "0")
 		week_range = (1, 1) # default: "week 1" (only)
+		context = 0 # "all"
 
 	async def msg_handler(payload, ws):
 		spec = Spec()
@@ -253,12 +258,12 @@ async def ws_filter_resource_list(request):
 			if payload['string']:
 				spec.search_string = str(payload['string'])
 				if valid.rec_string32.match(spec.search_string):
-					records = await db.find_resources(spec)
+					records = await db.find_resources(spec) # TODO: consolidate repetition!
 				else:
 					l.warning('string fragment sent to ws_filter_resource_list was not a valid string 32-characters or less') # but do nothing else; client code already checks for validity; this must/might be an attack attempt; no need to respond
 			if not records:
 				records = await db.get_weekly_resources(spec) # A default list of this week's resources
-			await ws.send_json({'call': 'content', 'content': html.resource_list(records, open_resource)})
+			await ws.send_json({'call': 'content', 'content': html.resource_list(records, open_resource)}) # TODO: consolidate repetition!
 		elif payload['call'] == 'filter_week':
 			# TODO: this is ugly.... let javascript do the work, and just assert(first_week <= last_week here)
 			first_week = last_week = 1
@@ -273,8 +278,12 @@ async def ws_filter_resource_list(request):
 					if first_week > last_week:
 						first_week = last_week
 				spec.week_range = (first_week, last_week)
-				records = await db.find_resources(spec)
-				await ws.send_json({'call': 'content', 'content': html.resource_list(records, open_resource)})
+				records = await db.find_resources(spec) # TODO: consolidate repetition!
+				await ws.send_json({'call': 'content', 'content': html.resource_list(records, open_resource)}) # TODO: consolidate repetition!
+		elif payload['call'] == 'choose_context':
+			spec.context = int(payload['option'])
+			records = await db.find_resources(spec) # TODO: consolidate repetition!
+			await ws.send_json({'call': 'content', 'content': html.resource_list(records, open_resource)}) # TODO: consolidate repetition!
 		#else... TODO: handle unexpected payload calls?
 
 	return await _ws_handler(request, msg_handler)

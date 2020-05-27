@@ -203,6 +203,8 @@ label.answer_option_label {
   z-index: 1;
 }
 
+
+/* TODO: Below: we want to deprecate the 'a', and use 'div' only... but currently there are still references to both within dropdown-content divs.... */
 /* Links inside the dropdown */
 .dropdown-content a {
   color: black;
@@ -213,6 +215,21 @@ label.answer_option_label {
 
 /* Change color of dropdown links on hover */
 .dropdown-content a:hover {background-color: #ddd}
+
+/* Links inside the dropdown */
+.dropdown-content div {
+  color: black;
+  padding: 4px;
+  text-decoration: none;
+  display: block;
+  cursor: pointer;
+}
+
+/* Change color of dropdown links on hover */
+.dropdown-content div:hover {background-color: #ddd}
+
+
+
 
 /* Show the dropdown menu (use JS to add this class to the .dropdown-content container when the user clicks on the dropdown button) */
 .show {display:block;}

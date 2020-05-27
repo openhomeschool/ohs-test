@@ -121,32 +121,40 @@ def quiz(ws_url, db_handler, html_function):
 			t.button('Go', id = "go", cls = 'quiz_button')
 
 		with t.fieldset(cls = 'small_fieldset'):
-			_dropdown(t.div(cls = 'dropdown'), 'subject_dropdown', (
+			_dropdown(t.div(cls = 'dropdown'), 'choose_subject', (
 				('Timeline (sequence)', _gurl(settings.k_history_sequence)),
 				('Science grammar', _gurl(settings.k_science_grammar)),
 				('English vocabulary', _gurl(settings.k_english_vocabulary)),
 				('English grammar', _gurl(settings.k_english_grammar)),
-				('Latin vocabulary', _gurl(settings.k_latin_vocabulary))), 'Subjects...')
+				('Latin vocabulary', _gurl(settings.k_latin_vocabulary))), True, 'Subjects...')
+			_dropdown(t.div(cls = 'dropdown'), 'cycle_dropdown', (
+				('Cycle 1', 'bogus'),
+				('Cycle 2', 'bogus'),
+				('Cycle 3', 'bogus'),
+				('All Cycles', 'bogus'),
+				('My Cycle', 'bogus')), True, 'Cycles...')
+			_dropdown(t.div(cls = 'dropdown'), 'weeks_dropdown', (
+				('...', 'bogus'),
+				('All Weeks', 'bogus')), True, 'Weeks...')
+			_dropdown(t.div(cls = 'dropdown'), 'difficulty_dropdown', (
+				('Easy', 'bogus'),
+				('Medium', 'bogus'),
+				('Difficult', 'bogus')), True, 'Difficulty...')
 
 		# JS (intentionally at bottom of file; see https://faqs.skillcrush.com/article/176-where-should-js-script-tags-be-linked-in-html-documents and many stackexchange answers):
 		t.script(_js_socket_quiz_manager(ws_url, db_handler, html_function))
 		t.script(_js_dropdown())
 	return d.render()
 
-def resources(url): # TODO: this is basically identical to select_user (and presumably other search-driven pages whose content comes via websocket); consolidate!
+def resources(url, filters): # TODO: this is basically identical to select_user (and presumably other search-driven pages whose content comes via websocket); consolidate!
 	d = _doc('Resources')
 	with d:
 		with t.div(cls = 'resource_block'):
 			t.div(t.b('Search'), cls = 'vertical_title') # TODO: replace with a magnifying-glass gif!
 			with t.table():
 				with t.tr():
-					_dropdown(t.td(cls = 'dropdown', colspan = 2), 'level_dropdown', (
-						('Grammar', 'bogus'), 
-						('4th-6th', 'bogus'),
-						('7th-9th', 'bogus'),
-						('10th-12th', 'bogus'),
-						('All', 'bogus')))
-					_dropdown(t.td(cls = 'dropdown', colspan = 2), 'subject_dropdown', (
+					_dropdown(t.td(cls = 'dropdown', colspan = 2), 'choose_context', filters['choose_context'], False)
+					_dropdown(t.td(cls = 'dropdown', colspan = 2), 'choose_subject', (
 						('All Subjects', 'bogus'),
 						('Timeline', 'bogus'),
 						('History', 'bogus'), 
@@ -155,11 +163,11 @@ def resources(url): # TODO: this is basically identical to select_user (and pres
 						('Science', 'bogus'),
 						('Latin', 'bogus'),
 						('English', 'bogus'),
-						('All', 'bogus')))
+						('All', 'bogus')), False)
 				with t.tr():
 					t.td(_text_input('search', None, ('autofocus',), {'autocomplete': 'off', 'oninput': 'search(this.value)'}, 'Search', type_ = 'search'), style = 'width: 87%', colspan = 6)
 					_dropdown(t.td(style = 'width:10%', cls = 'dropdown'), 'cycle_dropdown', (
-						('Any Cycle', 'bogus'), ('Cycle 1', 'bogus'), ('Cycle 2', 'bogus'), ('Cycle 3', 'bogus')))
+						('Any Cycle', 'bogus'), ('Cycle 1', 'bogus'), ('Cycle 2', 'bogus'), ('Cycle 3', 'bogus')), False)
 					with t.td(style = 'width:20%'):
 						t.input(type = 'number', placeholder = 'first wk', id = 'first_week_selector', min='1', max='28', oninput = 'filter_first_week(this.value)')
 						t.br()
@@ -189,6 +197,11 @@ def science_resources(container, records, show_cw):
 				for record in records:
 					t.tr(t.td(t.b(record['prompt'])), t.td(record['cycle'], style = "width:10%"), t.td(record['week'], style = "width:10%"))
 					t.tr(t.td(record['answer'], colspan = 3))
+					with t.tr():
+						with t.td():
+							t.button('>', onclick = '')
+							t.button('$', onclick = '')
+							t.button('@', onclick = '')
 			t.div(cls = 'clear') # force resource_block container to be tall enough for all content
 
 @subject_resource('english_vocabulary')
@@ -199,6 +212,11 @@ def english_vocabulary_resources(container, records, show_cw):
 			with t.table():
 				for record in records:
 					t.tr(t.td(t.b(record['word']), ' = ', record['definition']), t.td(record['cycle'], style = "width:10%"), t.td(record['week'], style = "width:10%"))
+				with t.tr():
+					with t.td():
+						t.button('>', onclick = '')
+						t.button('$', onclick = '')
+						t.button('@', onclick = '')
 			t.div(cls = 'clear') # force resource_block container to be tall enough for all content
 
 @subject_resource('latin_vocabulary')
@@ -209,6 +227,11 @@ def english_vocabulary_resources(container, records, show_cw):
 			with t.table():
 				for record in records:
 					t.tr(t.td(t.b(record['word']), ' = ', record['translation']), t.td(record['cycle'], style = "width:10%"), t.td(record['week'], style = "width:10%"))
+				with t.tr():
+					with t.td():
+						t.button('>', onclick = '')
+						t.button('$', onclick = '')
+						t.button('@', onclick = '')
 			t.div(cls = 'clear') # force resource_block container to be tall enough for all content
 
 @subject_resource('timeline')
@@ -239,9 +262,41 @@ def english_vocabulary_resources(container, records, show_cw):
 					t.tr(t.td(t.b('%s - tell me more' % record['name'])), t.td(record['cycle'], style = "width:10%"), t.td(record['week'], style = "width:10%"))
 					t.tr(t.td(record['primary_sentence'], colspan = 3))
 					t.tr(t.td(t.audio(t.source(src = _surl('audio/history/c1w2-sumerians.mp3'), type = 'audio/mpeg'), id = record['name'] + '.ogg')))
-					t.tr(t.td(t.button('>', onclick = 'getElementById("%s.ogg").play()' % record['name'])))
-
+					with t.tr():
+						with t.td():
+							t.button('>', onclick = 'getElementById("%s.ogg").play()' % record['name'])
+							t.button('$', onclick = '')
+							t.button('@', onclick = '')
 			t.div(cls = 'clear') # force resource_block container to be tall enough for all content
+
+@subject_resource('external_resources')
+def external_resources(container, records, show_cw):
+	if records:
+			resource_block = None
+			subject_name = None
+			table = None
+			resource_name = None
+			for record in records:
+				if record['subject_name'] != subject_name:
+					if resource_block:
+						resource_block += t.div(cls = 'clear') # force resource_block container to be tall enough for all content
+						container += resource_block # add old one before creating new one
+					table = t.table() # will be filled in below
+					resource_block = t.div(cls = 'resource_block')
+					resource_block += t.div(t.b(record['subject_name']), cls = 'vertical_title')
+					resource_block += table
+					subject_name = record['subject_name']
+				else: # working on the same subject, just keep adding rows to the table:
+					with table:
+						with t.tr():
+							t.td(t.b(record['resource_name']) if record['resource_name'] != resource_name else '')
+							resource_name = record['resource_name']
+							t.td(t.a('%s (%s)' % (record['resource_source_name'], record['resource_type_name']), href = record['url']))
+			#TODO: the next 3 lines duplicates 3 lines above; consolidate!
+			if resource_block:
+				resource_block += t.div(cls = 'clear') # force resource_block container to be tall enough for all content
+				container += resource_block # add old one before creating new one
+			
 
 
 def resource_list(results, url, show_cw = True):
@@ -351,14 +406,14 @@ def _text_input(name, value, bool_attrs = None, attrs = None, label = None, inva
 		result += invalid_div
 	return result
 
-def _dropdown(container, id, options, title = None):
+def _dropdown(container, id, options, urls, title = None):
 	if not title:
 		title = options[0][0]
 	with container:
 		t.button(title, cls = 'dropdown-button', onclick = 'choose_dropdown_item(%s)' % id)
 		with t.div(id = id, cls = 'dropdown-content'):
-			for option_title, href in options:
-				t.a(option_title, href = href)
+			for option_title, option in options:
+				t.div(option_title, onclick = 'choose_dropdown_option("%s", "%s", %s)' % (id, option, 'true' if urls else 'false'))
 
 
 # -----------------------------------------------------------------------------
@@ -524,6 +579,15 @@ def _js_dropdown():
 	toggle between hiding and showing the dropdown content */
 	function choose_dropdown_item(element) {
 		element.classList.toggle("show");
+	};
+
+	function choose_dropdown_option(call, option, url) {
+		if (url == true) {
+			this.document.location.href = option;
+		}
+		else {
+			ws.send(JSON.stringify({call: call, option: option}));
+		}
 	};
 
 	// Close the dropdown menu if the user clicks outside of it

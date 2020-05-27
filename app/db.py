@@ -233,3 +233,10 @@ async def get_weekly_resources(spec):
 
 async def find_resources(spec):
 	return await sql.get_resources(spec)
+
+
+# -----------------------------------------------------------------------------
+# 
+
+async def get_contexts(dbc):
+	return await sql.get_contexts(dbc)
