@@ -166,13 +166,16 @@ async def get_resources(spec):
 	)
 
 	results = [] # list of 2-tuples: [(subject_spec, recordset), ...]]
-	for subject_spec in subject_specs:
-		spec.table = subject_spec.table # some lower functions want table in spec
-		results.append((subject_spec.subject, await _get_resources(spec, subject_spec)))
+	if spec.context <= 1: # TODO: this is a temporary hardcode to grab 'grammar' resources only if the context 'Grammar' (or 'All') is chosen, since this isn't in the database yet!
+		for subject_spec in subject_specs:
+			spec.table = subject_spec.table # some lower functions want table in spec
+			results.append((subject_spec.subject, await _get_grammar_resources(spec, subject_spec)))
+	else:
+		results.append(('external_resources', await _get_external_resources(spec)))
 
 	return results
 
-async def _get_resources(spec, subject_spec):
+async def _get_grammar_resources(spec, subject_spec):
 	joins, wheres, args = [], [], []
 	if subject_spec.extra_joins:
 		joins.extend(subject_spec.extra_joins)
@@ -187,7 +190,14 @@ async def _get_resources(spec, subject_spec):
 	c = await spec.db.execute(f"select * from {subject_spec.table} " + _join(joins) + _where(wheres) + f" order by {subject_spec.order_by}", args)
 	return await c.fetchall()
 
+async def _get_external_resources(spec):
+	c = await spec.db.execute('select subject.name as subject_name, resource.name as resource_name, resource_type.name as resource_type_name, resource_source.name as resource_source_name, resource_instance.url from resource_use join resource on resource_use.resource = resource.id join subject on resource_use.subject = subject.id join resource_instance on resource_instance.resource = resource.id join resource_type on resource_instance.type = resource_type.id join resource_source on resource_instance.source = resource_source.id join context on resource_use.context = context.id where context.id = ? order by subject_name', (spec.context,))
+	return await c.fetchall()
 
+
+async def get_contexts(dbc):
+	c = await dbc.execute('select * from context')
+	return await c.fetchall()
 
 
 # -----------------------------------------------------------------------------

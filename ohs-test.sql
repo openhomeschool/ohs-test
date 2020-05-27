@@ -1,14 +1,23 @@
 --
--- File generated with SQLiteStudio v3.2.1 on Tue May 26 15:49:05 2020
+-- File generated with SQLiteStudio v3.2.1 on Wed May 27 13:59:50 2020
 --
 -- Text encoding used: UTF-8
 --
 PRAGMA foreign_keys = off;
 BEGIN TRANSACTION;
 
+-- Table: context
+DROP TABLE IF EXISTS context;
+CREATE TABLE context (id INTEGER PRIMARY KEY AUTOINCREMENT, name STRING UNIQUE);
+INSERT INTO context (id, name) VALUES (1, 'Grammar');
+INSERT INTO context (id, name) VALUES (2, '4th-6th');
+INSERT INTO context (id, name) VALUES (3, '7th-9th');
+INSERT INTO context (id, name) VALUES (4, '10th-12th');
+INSERT INTO context (id, name) VALUES (5, 'All');
+
 -- Table: cycle_week
 DROP TABLE IF EXISTS cycle_week;
-CREATE TABLE cycle_week (id INTEGER, cycle INTEGER NOT NULL CHECK (cycle >= 0 and cycle < 4), week INTEGER NOT NULL CHECK (week > 0 and week < 29), level INTEGER NOT NULL DEFAULT (1), PRIMARY KEY (id), UNIQUE (cycle, week, level));
+CREATE TABLE cycle_week (id INTEGER PRIMARY KEY AUTOINCREMENT, cycle INTEGER NOT NULL CHECK (cycle >= 0 and cycle < 4), week INTEGER NOT NULL CHECK (week >= 0 and week < 29), level INTEGER NOT NULL DEFAULT (1), UNIQUE (cycle, week, level));
 INSERT INTO cycle_week (id, cycle, week, level) VALUES (1, 1, 1, 1);
 INSERT INTO cycle_week (id, cycle, week, level) VALUES (2, 1, 2, 1);
 INSERT INTO cycle_week (id, cycle, week, level) VALUES (3, 1, 3, 1);
@@ -205,6 +214,14 @@ INSERT INTO cycle_week (id, cycle, week, level) VALUES (193, 0, 25, 1);
 INSERT INTO cycle_week (id, cycle, week, level) VALUES (194, 0, 26, 1);
 INSERT INTO cycle_week (id, cycle, week, level) VALUES (195, 0, 27, 1);
 INSERT INTO cycle_week (id, cycle, week, level) VALUES (196, 0, 28, 1);
+INSERT INTO cycle_week (id, cycle, week, level) VALUES (197, 1, 0, 1);
+INSERT INTO cycle_week (id, cycle, week, level) VALUES (198, 1, 0, 2);
+INSERT INTO cycle_week (id, cycle, week, level) VALUES (199, 2, 0, 1);
+INSERT INTO cycle_week (id, cycle, week, level) VALUES (200, 2, 0, 2);
+INSERT INTO cycle_week (id, cycle, week, level) VALUES (201, 3, 0, 1);
+INSERT INTO cycle_week (id, cycle, week, level) VALUES (202, 3, 0, 2);
+INSERT INTO cycle_week (id, cycle, week, level) VALUES (203, 0, 0, 1);
+INSERT INTO cycle_week (id, cycle, week, level) VALUES (204, 0, 0, 2);
 
 -- Table: direction
 DROP TABLE IF EXISTS direction;
@@ -781,6 +798,27 @@ CREATE TABLE resource (id INTEGER PRIMARY KEY AUTOINCREMENT, name STRING NOT NUL
 INSERT INTO resource (id, name, version, volume, note, region) VALUES (1, 'Story of the World', NULL, 1, NULL, 24);
 INSERT INTO resource (id, name, version, volume, note, region) VALUES (2, 'Story of the World', NULL, 2, NULL, 24);
 INSERT INTO resource (id, name, version, volume, note, region) VALUES (3, 'Just So Stories', NULL, NULL, NULL, 23);
+INSERT INTO resource (id, name, version, volume, note, region) VALUES (4, 'Sweet and Sour: Tales from China', NULL, NULL, NULL, NULL);
+INSERT INTO resource (id, name, version, volume, note, region) VALUES (5, 'Tales of Ancient Egypt', NULL, NULL, NULL, NULL);
+INSERT INTO resource (id, name, version, volume, note, region) VALUES (6, 'The Golden Goblet', NULL, NULL, NULL, NULL);
+INSERT INTO resource (id, name, version, volume, note, region) VALUES (7, 'Where the Mountain Meets the Moon', NULL, NULL, NULL, NULL);
+INSERT INTO resource (id, name, version, volume, note, region) VALUES (8, 'Young Fu of the Upper Yangtze', NULL, NULL, NULL, NULL);
+INSERT INTO resource (id, name, version, volume, note, region) VALUES (9, 'The Book of Virtues', NULL, NULL, NULL, NULL);
+INSERT INTO resource (id, name, version, volume, note, region) VALUES (10, 'Seven Daughters and Seven Sons', NULL, NULL, NULL, NULL);
+INSERT INTO resource (id, name, version, volume, note, region) VALUES (11, 'Inside Out and Back Again', NULL, NULL, NULL, NULL);
+INSERT INTO resource (id, name, version, volume, note, region) VALUES (12, 'The Kite Fighters', NULL, NULL, NULL, NULL);
+INSERT INTO resource (id, name, version, volume, note, region) VALUES (13, 'Heart of a Samurai', NULL, NULL, NULL, NULL);
+INSERT INTO resource (id, name, version, volume, note, region) VALUES (14, 'Breaking Stalin’s Nose', NULL, NULL, NULL, NULL);
+INSERT INTO resource (id, name, version, volume, note, region) VALUES (15, 'The Endless Steppe', NULL, NULL, NULL, NULL);
+INSERT INTO resource (id, name, version, volume, note, region) VALUES (16, 'Daughter of the Mountains', NULL, NULL, NULL, NULL);
+INSERT INTO resource (id, name, version, volume, note, region) VALUES (17, 'Around the World in 80 Days', NULL, NULL, NULL, NULL);
+INSERT INTO resource (id, name, version, volume, note, region) VALUES (18, 'Red Sand, Blue Sky', NULL, NULL, NULL, NULL);
+INSERT INTO resource (id, name, version, volume, note, region) VALUES (19, 'Story of the World', NULL, 3, NULL, NULL);
+INSERT INTO resource (id, name, version, volume, note, region) VALUES (20, 'Story of the World', NULL, 4, NULL, NULL);
+
+-- Table: resource_details
+DROP TABLE IF EXISTS resource_details;
+CREATE TABLE resource_details (id INTEGER PRIMARY KEY AUTOINCREMENT, resource INTEGER REFERENCES resource (id) ON DELETE CASCADE ON UPDATE CASCADE, author STRING);
 
 -- Table: resource_instance
 DROP TABLE IF EXISTS resource_instance;
@@ -790,10 +828,34 @@ INSERT INTO resource_instance (id, resource, type, source, url, cost_cents, page
 INSERT INTO resource_instance (id, resource, type, source, url, cost_cents, pages, listening_hours, note) VALUES (3, 3, 1, 1, 'https://www.amazon.com/Just-Stories-Illustrated-Rudyard-Kipling-dp-1515428311/dp/1515428311/
 ', NULL, NULL, NULL, NULL);
 INSERT INTO resource_instance (id, resource, type, source, url, cost_cents, pages, listening_hours, note) VALUES (4, 3, 2, 1, 'https://www.amazon.com/Illustrated-Just-So-Stories/dp/149730170X/', NULL, NULL, NULL, 'paperbacks on Amazon seem to be notoriously bad quality / cheap; search for a good amazon option and make sure to publish librivox');
-INSERT INTO resource_instance (id, resource, type, source, url, cost_cents, pages, listening_hours, note) VALUES (5, 3, 6, 4, 'https://librivox.org/just-so-stories-ver-6-by-rudyard-kipling/ (there are several librivox recordings; this is just one)
-', NULL, NULL, 3, NULL);
+INSERT INTO resource_instance (id, resource, type, source, url, cost_cents, pages, listening_hours, note) VALUES (5, 3, 6, 4, 'https://librivox.org/just-so-stories-ver-6-by-rudyard-kipling/', NULL, NULL, 3, 'there are several librivox recordings; this is just one');
 INSERT INTO resource_instance (id, resource, type, source, url, cost_cents, pages, listening_hours, note) VALUES (6, 3, 5, 1, 'https://www.amazon.com/Just-So-Stories/dp/B01E7I34EY/
 ', NULL, NULL, 3, NULL);
+INSERT INTO resource_instance (id, resource, type, source, url, cost_cents, pages, listening_hours, note) VALUES (7, 4, 2, 1, 'https://www.amazon.com/Sweet-Sour-Tales-Yao-Wen-Li/dp/0618752455/', NULL, NULL, NULL, NULL);
+INSERT INTO resource_instance (id, resource, type, source, url, cost_cents, pages, listening_hours, note) VALUES (8, 5, 5, 1, 'https://www.amazon.com/Tales-Ancient-Egypt-Puffin-Classics-ebook/dp/B005BPBN8C/', NULL, NULL, NULL, NULL);
+INSERT INTO resource_instance (id, resource, type, source, url, cost_cents, pages, listening_hours, note) VALUES (9, 5, 1, 1, 'https://www.amazon.com/Tales-Ancient-Egypt-Puffin-Pixels/dp/0147519179/', NULL, NULL, NULL, NULL);
+INSERT INTO resource_instance (id, resource, type, source, url, cost_cents, pages, listening_hours, note) VALUES (10, 5, 2, 1, 'https://www.amazon.com/Tales-Ancient-Egypt-Puffin-Classics/dp/014133259X/', NULL, NULL, NULL, NULL);
+INSERT INTO resource_instance (id, resource, type, source, url, cost_cents, pages, listening_hours, note) VALUES (11, 6, 2, 1, 'https://www.amazon.com/Golden-Goblet-Newbery-Library-Puffin/dp/0140303359/', NULL, NULL, NULL, NULL);
+INSERT INTO resource_instance (id, resource, type, source, url, cost_cents, pages, listening_hours, note) VALUES (12, 6, 5, 5, 'https://www.amazon.com/The-Golden-Goblet/dp/B008RNZY4O/', NULL, NULL, NULL, NULL);
+INSERT INTO resource_instance (id, resource, type, source, url, cost_cents, pages, listening_hours, note) VALUES (13, 7, 5, 1, 'https://www.amazon.com/Where-Mountain-Meets-Moon-Grace-ebook/dp/B0029KHT80/', NULL, NULL, NULL, NULL);
+INSERT INTO resource_instance (id, resource, type, source, url, cost_cents, pages, listening_hours, note) VALUES (14, 7, 1, 1, 'https://www.amazon.com/Where-Mountain-Meets-Moon-Grace/dp/0316114278/', NULL, NULL, NULL, NULL);
+INSERT INTO resource_instance (id, resource, type, source, url, cost_cents, pages, listening_hours, note) VALUES (15, 7, 2, 1, 'https://www.amazon.com/Where-Mountain-Meets-Moon-Grace/dp/0316038636/', NULL, NULL, NULL, NULL);
+INSERT INTO resource_instance (id, resource, type, source, url, cost_cents, pages, listening_hours, note) VALUES (16, 7, 5, 5, 'https://www.amazon.com/Where-Mountain-Meets-Moon/dp/B003CN7DYI/', NULL, NULL, NULL, NULL);
+INSERT INTO resource_instance (id, resource, type, source, url, cost_cents, pages, listening_hours, note) VALUES (17, 9, 1, 1, 'https://www.amazon.com/Book-Virtues-Treasury-Great-Stories/dp/0671683063/', NULL, NULL, NULL, NULL);
+INSERT INTO resource_instance (id, resource, type, source, url, cost_cents, pages, listening_hours, note) VALUES (18, 8, 2, 1, 'https://www.amazon.com/Young-Upper-Yangtze-Elizabeth-Foreman/dp/0312380070/', NULL, NULL, NULL, NULL);
+INSERT INTO resource_instance (id, resource, type, source, url, cost_cents, pages, listening_hours, note) VALUES (19, 10, 2, 1, 'https://www.amazon.com/Seven-Daughters-Sons-Barbara-Cohen/dp/0688135633/', NULL, NULL, NULL, NULL);
+INSERT INTO resource_instance (id, resource, type, source, url, cost_cents, pages, listening_hours, note) VALUES (20, 11, 2, 1, 'https://www.amazon.com/Inside-Out-Back-Again-Thanhha/dp/0061962791/', NULL, NULL, NULL, NULL);
+INSERT INTO resource_instance (id, resource, type, source, url, cost_cents, pages, listening_hours, note) VALUES (21, 12, 2, 1, 'https://www.amazon.com/Kite-Fighters-Linda-Sue-Park/dp/054732863X/', NULL, NULL, NULL, NULL);
+INSERT INTO resource_instance (id, resource, type, source, url, cost_cents, pages, listening_hours, note) VALUES (22, 13, 2, 1, 'https://www.amazon.com/Heart-Samurai-Margi-Preus/dp/1419702009/', NULL, NULL, NULL, NULL);
+INSERT INTO resource_instance (id, resource, type, source, url, cost_cents, pages, listening_hours, note) VALUES (23, 14, 2, 1, 'https://www.amazon.com/Breaking-Stalins-Nose-Eugene-Yelchin/dp/1250034108/', NULL, NULL, NULL, NULL);
+INSERT INTO resource_instance (id, resource, type, source, url, cost_cents, pages, listening_hours, note) VALUES (24, 15, 2, 1, 'https://www.amazon.com/Endless-Steppe-Growing-Up-Siberia/dp/006440577X/', NULL, NULL, NULL, NULL);
+INSERT INTO resource_instance (id, resource, type, source, url, cost_cents, pages, listening_hours, note) VALUES (25, 16, 2, 1, 'https://www.amazon.com/Daughter-Mountains-Newbery-Library-Puffin/dp/0140363351/', NULL, NULL, NULL, NULL);
+INSERT INTO resource_instance (id, resource, type, source, url, cost_cents, pages, listening_hours, note) VALUES (26, 17, 2, 1, 'https://www.amazon.com/Around-World-Days-Jules-Verne/dp/1514683687/', NULL, NULL, NULL, NULL);
+INSERT INTO resource_instance (id, resource, type, source, url, cost_cents, pages, listening_hours, note) VALUES (27, 18, 2, 1, 'https://www.amazon.com/Red-Sand-Blue-Girls-First/dp/1558612785/', NULL, NULL, NULL, NULL);
+INSERT INTO resource_instance (id, resource, type, source, url, cost_cents, pages, listening_hours, note) VALUES (31, 1, 2, 1, 'https://www.amazon.com/Story-World-History-Classical-Earliest-dp-1933339004/dp/1933339004/', NULL, NULL, NULL, NULL);
+INSERT INTO resource_instance (id, resource, type, source, url, cost_cents, pages, listening_hours, note) VALUES (32, 2, 2, 1, 'https://www.amazon.com/Story-World-History-Classical-Renaissance/dp/1933339098/', NULL, NULL, NULL, NULL);
+INSERT INTO resource_instance (id, resource, type, source, url, cost_cents, pages, listening_hours, note) VALUES (33, 19, 2, 1, 'https://www.amazon.com/History-Classical-Child-Elizabeth-Forty-Niners-dp-1945841443/dp/1945841443/', NULL, NULL, NULL, NULL);
+INSERT INTO resource_instance (id, resource, type, source, url, cost_cents, pages, listening_hours, note) VALUES (34, 20, 2, 1, 'https://www.amazon.com/Story-World-History-Classical-Victorias-ebook/dp/B00U75KJ9U/', NULL, NULL, NULL, NULL);
 
 -- Table: resource_source
 DROP TABLE IF EXISTS resource_source;
@@ -803,6 +865,7 @@ INSERT INTO resource_source (id, name) VALUES (2, 'Gutenberg');
 INSERT INTO resource_source (id, name) VALUES (3, 'CBD');
 INSERT INTO resource_source (id, name) VALUES (4, 'Librivox');
 INSERT INTO resource_source (id, name) VALUES (5, 'Audible');
+INSERT INTO resource_source (id, name) VALUES (6, 'Web');
 
 -- Table: resource_type
 DROP TABLE IF EXISTS resource_type;
@@ -813,6 +876,31 @@ INSERT INTO resource_type (id, name) VALUES (3, 'commercial ebook');
 INSERT INTO resource_type (id, name) VALUES (4, 'open ebook');
 INSERT INTO resource_type (id, name) VALUES (5, 'commercial audiobook');
 INSERT INTO resource_type (id, name) VALUES (6, 'open audiobook');
+INSERT INTO resource_type (id, name) VALUES (7, 'web page');
+
+-- Table: resource_use
+DROP TABLE IF EXISTS resource_use;
+CREATE TABLE resource_use (id INTEGER PRIMARY KEY AUTOINCREMENT, subject INTEGER REFERENCES subject (id) ON DELETE CASCADE ON UPDATE CASCADE, resource INTEGER REFERENCES resource (id) ON DELETE CASCADE ON UPDATE CASCADE, cw INTEGER REFERENCES cycle_week (id) ON DELETE CASCADE ON UPDATE CASCADE, context INTEGER REFERENCES context (id) ON DELETE CASCADE ON UPDATE CASCADE, pages STRING, chapters STRING);
+INSERT INTO resource_use (id, subject, resource, cw, context, pages, chapters) VALUES (1, 6, 3, 197, 3, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw, context, pages, chapters) VALUES (2, 6, 4, 197, 3, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw, context, pages, chapters) VALUES (3, 6, 5, 197, 3, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw, context, pages, chapters) VALUES (4, 6, 6, 197, 3, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw, context, pages, chapters) VALUES (5, 6, 7, 197, 3, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw, context, pages, chapters) VALUES (6, 6, 8, 197, 3, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw, context, pages, chapters) VALUES (7, 6, 9, 197, 3, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw, context, pages, chapters) VALUES (8, 6, 10, 197, 3, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw, context, pages, chapters) VALUES (9, 6, 11, 197, 3, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw, context, pages, chapters) VALUES (10, 6, 12, 197, 3, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw, context, pages, chapters) VALUES (11, 6, 13, 197, 3, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw, context, pages, chapters) VALUES (12, 6, 14, 197, 3, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw, context, pages, chapters) VALUES (13, 6, 15, 197, 3, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw, context, pages, chapters) VALUES (14, 6, 16, 197, 3, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw, context, pages, chapters) VALUES (15, 6, 17, 197, 3, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw, context, pages, chapters) VALUES (16, 6, 18, 197, 3, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw, context, pages, chapters) VALUES (20, 2, 1, 203, 3, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw, context, pages, chapters) VALUES (21, 2, 2, 203, 3, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw, context, pages, chapters) VALUES (22, 2, 19, 203, 3, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw, context, pages, chapters) VALUES (23, 2, 20, 203, 3, NULL, NULL);
 
 -- Table: role
 DROP TABLE IF EXISTS role;
