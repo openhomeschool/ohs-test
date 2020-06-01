@@ -96,7 +96,15 @@ async def login_(request):
 	data = await r.post()
 	session = await get_session(r)
 	try:
-		#TODO: validate data!
+		# Validate:
+		invalids = []
+		_validate_regex(data, invalids, (
+				('username', valid.rec_username, True),
+				('password', valid.rec_password, True),
+			))
+		if invalids:
+			raise Exception('login failure') # TODO: password retrieval mechanism
+
 		user_id, roles = await db.authenticate(r.app['db'], data['username'], data['password'])
 		if not user_id:
 			return hr(html.login(login_url, error.authentication_failure))
@@ -231,9 +239,10 @@ async def ws_quiz_handler(request):
 @auth('student')
 async def resources(request):
 	dbc = request.app['db']
+	context = request.query.get('context')
 	filters = {'choose_context': [(context['name'], context['id']) for context in await db.get_contexts(dbc)] }
 
-	return hr(html.resources(_ws_url(request, '/ws_filter_resource_list'), filters))
+	return hr(html.resources(_ws_url(request, '/ws_filter_resource_list'), filters, context))
 
 
 @r.get('/ws_filter_resource_list') #TODO: this has strong similarities to ws_filter_list (which should be named ws_filter_user_list)
@@ -250,20 +259,19 @@ async def ws_filter_resource_list(request):
 		cycles = (0, 1) # default: "cycle 1" ("0" refers to grammar that belongs to "all cycles" (like timeline grammar) - always include "0")
 		week_range = (1, 1) # default: "week 1" (only)
 		context = 0 # "all"
+	spec = Spec()
 
 	async def msg_handler(payload, ws):
-		spec = Spec()
+		nonlocal spec
+		records = None
 		if payload['call'] == 'search':
-			records = None
 			if payload['string']:
-				spec.search_string = str(payload['string'])
-				if valid.rec_string32.match(spec.search_string):
-					records = await db.find_resources(spec) # TODO: consolidate repetition!
-				else:
+				search_string = str(payload['string'])
+				if not valid.rec_string32.match(search_string):
 					l.warning('string fragment sent to ws_filter_resource_list was not a valid string 32-characters or less') # but do nothing else; client code already checks for validity; this must/might be an attack attempt; no need to respond
-			if not records:
-				records = await db.get_weekly_resources(spec) # A default list of this week's resources
-			await ws.send_json({'call': 'content', 'content': html.resource_list(records, open_resource)}) # TODO: consolidate repetition!
+				else:
+					spec.search_string = search_string # db. call below....
+
 		elif payload['call'] == 'filter_week':
 			# TODO: this is ugly.... let javascript do the work, and just assert(first_week <= last_week here)
 			first_week = last_week = 1
@@ -277,14 +285,16 @@ async def ws_filter_resource_list(request):
 					last_week = week
 					if first_week > last_week:
 						first_week = last_week
-				spec.week_range = (first_week, last_week)
-				records = await db.find_resources(spec) # TODO: consolidate repetition!
-				await ws.send_json({'call': 'content', 'content': html.resource_list(records, open_resource)}) # TODO: consolidate repetition!
+				spec.week_range = (first_week, last_week) # db. call below....
 		elif payload['call'] == 'choose_context':
-			spec.context = int(payload['option'])
-			records = await db.find_resources(spec) # TODO: consolidate repetition!
-			await ws.send_json({'call': 'content', 'content': html.resource_list(records, open_resource)}) # TODO: consolidate repetition!
-		#else... TODO: handle unexpected payload calls?
+			spec.context = int(payload['option']) # db. call below...
+		else:
+			l.warning('unexpected payload["call"] in ws_filter_resource_list::msg_handler()')
+
+		records = await db.get_resources(spec) # A default list of this week's resources
+
+		await ws.send_json({'call': 'content', 'content': html.resource_list(records, open_resource)}) # TODO: consolidate repetition!
+
 
 	return await _ws_handler(request, msg_handler)
 
