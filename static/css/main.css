@@ -244,20 +244,94 @@ label.answer_option_label {
 	max-width: 600px;
 }
 
+.resource_block .subject_title {
+	margin: 5px;
+	float: left;
+	clear: left;
+	display: inline-block;
+	-webkit-writing-mode: vertical-lr;
+	-ms-writing-mode: tb-lr;
+	writing-mode: vertical-lr;
+}
+
+.resource_block .subject_content {
+	display: inline-block;
+	border-left: 2px solid blue;
+	width: 90%;
+}
+
+.subject_content .resource_name {
+	margin: 5px;
+}
+
+.subject_content .resource_details {
+	margin: 5px;
+	margin-left: 20px;
+	vertical-align: middle;
+}
+
+.subject_content .shopping_links {
+	display: inline-block;
+	height: 20px;
+	line-height: 20px;
+	text-align: center;
+}
+
+.subject_content .shopping_links  img {
+	max-height: 100%;
+}
+
+/*
 .resource_block table {
 	width: 90%;
 	border-left: 2px solid blue;
 }
 
-.resource_block .vertical_title {
+.resource_block table td.resource_namee {
+	font-weight: bold;
+	text-align: right;
+	width: 30%;
+	vertical-align: bottom;
+}
+
+.resource_block table td.resource_detaile {
+	text-align: left;
+	vertical-align: bottom;
+}
+
+
+.resource_block .subject_title {
 	margin: 5px;
+	float: left;
+	clear: left;
 	display: inline-block;
 	-webkit-writing-mode: vertical-lr;
 	-ms-writing-mode: tb-lr;
 	writing-mode: vertical-lr;
-	float: left;
-	clear: left;
 }
+
+.resource_block .subject_content {
+  float: right;
+  display: inline-block;
+  border-left: 2px solid blue;
+  width: 95%;
+}
+
+.subject_content .resource_name {
+	margin: 5px;
+	float: left;
+	text-align: right;
+	font-weight: bold;
+	display: inline-block;
+}
+
+.subject_content .resource_detail {
+  float: right;
+  width: 60%;
+  display: inline-block;
+}
+
+*/
 
 .resource_block .clear {
 	clear: both;

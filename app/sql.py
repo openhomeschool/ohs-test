@@ -34,46 +34,16 @@ Main database functions
 Expectation / pattern: these typically return 2-tuples: (sql, arg_list)
 '''
 
-def get_random_spec_records(spec, count, exclude_ids):
+def get_random_records(spec, count, exclude_ids = None):
 	'''
-	Get `count` random records from the spec table using `spec` object
+	Get `count` random records from the spec table using `spec` object.
+	`spec` object expected to be a English_Vocabulary_QT object.
+	Any records with ids in `exclude_ids` are excluded.
 	'''
 	joins, wheres, args = [], [], []
 	_cycle_week_range(spec, joins, wheres, args)
 	_exclude_ids(spec, wheres, exclude_ids)
 	return _random_select(spec, joins, wheres, count), args
-
-def get_random_english_vocabulary_records(spec, count, exclude_ids = None):
-	'''
-	`spec` object expected to be a English_Vocabulary_QT object
-	Exclude any records with ids in `exclude_ids`.
-	'''
-	assert(spec.table == 'vocabulary') # sanity check
-	return get_random_spec_records(spec, count, exclude_ids)
-
-def get_random_english_grammar_records(spec, count, exclude_ids = None):
-	'''
-	`spec` object expected to be a English_Grammar_QT object
-	Exclude any records with ids in `exclude_ids`.
-	'''
-	assert(spec.table == 'english') # sanity check
-	return get_random_spec_records(spec, count, exclude_ids)
-
-def get_random_latin_vocabulary_records(spec, count, exclude_ids = None):
-	'''
-	`spec` object expected to be a Latin_Vocabulary_QT object
-	Exclude any records with ids in `exclude_ids`.
-	'''
-	assert(spec.table == 'latin_vocabulary') # sanity check
-	return get_random_spec_records(spec, count, exclude_ids)
-
-def get_random_science_records(spec, count, exclude_ids = None):
-	'''
-	`spec` object expected to be a Science_Grammar_QT object
-	Exclude any records with ids in `exclude_ids`.
-	'''
-	assert(spec.table == 'science') # sanity check
-	return get_random_spec_records(spec, count, exclude_ids)
 
 
 def get_random_event_records(spec, count, exclude_ids = None):
@@ -187,17 +157,13 @@ async def _get_grammar_resources(spec, subject_spec):
 			args.append('%' + spec.search_string + '%')
 		wheres.append(_or_wheres(or_wheres))
 
-	c = await spec.db.execute(f"select * from {subject_spec.table} " + _join(joins) + _where(wheres) + f" order by {subject_spec.order_by}", args)
-	return await c.fetchall()
+	return await fetchall(spec.db, (f"select * from {subject_spec.table} " + _join(joins) + _where(wheres) + f" order by {subject_spec.order_by}", args))
 
 async def _get_external_resources(spec):
-	c = await spec.db.execute('select subject.name as subject_name, resource.name as resource_name, resource_type.name as resource_type_name, resource_source.name as resource_source_name, resource_instance.url from resource_use join resource on resource_use.resource = resource.id join subject on resource_use.subject = subject.id join resource_instance on resource_instance.resource = resource.id join resource_type on resource_instance.type = resource_type.id join resource_source on resource_instance.source = resource_source.id join context on resource_use.context = context.id where context.id = ? order by subject_name', (spec.context,))
-	return await c.fetchall()
-
+	return await fetchall(spec.db, ('select subject.name as subject_name, resource.name as resource_name, resource.note, resource_instance.note as instance_note, resource_type.name as resource_type_name, resource_source.name as resource_source_name, resource_source.logo as resource_source_logo, resource_instance.url, resource_use.optional from resource_use join resource on resource_use.resource = resource.id join subject on resource_use.subject = subject.id join resource_instance on resource_instance.resource = resource.id join resource_type on resource_instance.type = resource_type.id join resource_source on resource_instance.source = resource_source.id join context on resource_use.context = context.id where context.id = ? order by subject_name, optional, resource_name, instance_note, resource.note', (spec.context,)))
 
 async def get_contexts(dbc):
-	c = await dbc.execute('select * from context')
-	return await c.fetchall()
+	return await fetchall(dbc, ('select * from context', []))
 
 
 # -----------------------------------------------------------------------------

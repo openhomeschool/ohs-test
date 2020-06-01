@@ -88,9 +88,10 @@ async def get_handler(class_name, db, user_id):
 
 	
 class Question_Transaction: # Abstract base class; see actual functional implementations below
-	def __init__(self, db, table, user_id, week_range = None, answer_option_count = 5):
+	table = None
+	
+	def __init__(self, db, user_id, week_range = None, answer_option_count = 5):
 		self._db = db
-		self._table = table
 		self._user_id = user_id
 		self._week_range = week_range # constrain to records only within week_range; expected to be two-tuple of week numbers, as integers, like (3, 10) for weeks 3-10
 		self._cycles = None
@@ -100,10 +101,6 @@ class Question_Transaction: # Abstract base class; see actual functional impleme
 	@property
 	def db(self):
 		return self._db
-
-	@property
-	def table(self):
-		return self._table
 
 	@property
 	def user_id(self):
@@ -136,75 +133,44 @@ class Question_Transaction: # Abstract base class; see actual functional impleme
 	def log_user_answer(self, answer_id):
 		raise Exception("Must be implemented by subclass")
 
-@qt
-class English_Vocabulary_QT(Question_Transaction):
+
+class Basic_Grammar_QT(Question_Transaction):
 	@classmethod # need to use factory pattern creation scheme b/c can't await in __init__
 	async def create(cls, db, user_id, week_range = None):
-		self = English_Vocabulary_QT(db, 'vocabulary', user_id, week_range)
-		self._question = await sql.fetchone(db, sql.get_random_english_vocabulary_records(self, 1))
-		self._options = await sql.fetchall(db, sql.get_random_english_vocabulary_records(self, self.answer_option_count - 1, [self._question['id'],]))
+		self = cls(db, user_id, week_range)
+		self._question = await sql.fetchone(db, sql.get_random_records(self, 1))
+		self._options = await sql.fetchall(db, sql.get_random_records(self, self.answer_option_count - 1, [self._question['id'],]))
 		self._options.append(self._question)
 		shuffle(self._options)
 		self._answer_id = self._question['id']
 		return self
 
 	def log_user_answer(self, answer_id):
-		l.debug('English_Vocabulary_QT.log_user_answer(%s)' % answer_id)
+		l.debug('Basic_Grammar_QT.log_user_answer(%s)' % answer_id)
 
 
 @qt
-class English_Grammar_QT(Question_Transaction):
-	@classmethod # need to use factory pattern creation scheme b/c can't await in __init__
-	async def create(cls, db, user_id, week_range = None):
-		self = English_Vocabulary_QT(db, 'english', user_id, week_range)
-		self._question = await sql.fetchone(db, sql.get_random_english_grammar_records(self, 1))
-		self._options = await sql.fetchall(db, sql.get_random_english_grammar_records(self, self.answer_option_count - 1, [self._question['id'],]))
-		self._options.append(self._question)
-		shuffle(self._options)
-		self._answer_id = self._question['id']
-		return self
-
-	def log_user_answer(self, answer_id):
-		l.debug('English_Grammar_QT.log_user_answer(%s)' % answer_id)
-
+class English_Vocabulary_QT(Basic_Grammar_QT):
+	table = 'vocabulary'
 
 @qt
-class Latin_Vocabulary_QT(Question_Transaction):
-	@classmethod # need to use factory pattern creation scheme b/c can't await in __init__
-	async def create(cls, db, user_id, week_range = None):
-		self = Latin_Vocabulary_QT(db, 'latin_vocabulary', user_id, week_range)
-		self._question = await sql.fetchone(db, sql.get_random_latin_vocabulary_records(self, 1))
-		self._options = await sql.fetchall(db, sql.get_random_latin_vocabulary_records(self, self.answer_option_count - 1, [self._question['id'],]))
-		self._options.append(self._question)
-		shuffle(self._options)
-		self._answer_id = self._question['id']
-		return self
-
-	def log_user_answer(self, answer_id):
-		l.debug('Latin_Vocabulary_QT.log_user_answer(%s)' % answer_id)
-
+class English_Grammar_QT(Basic_Grammar_QT):
+	table = 'english'
 
 @qt
-class Science_Grammar_QT(Question_Transaction):
-	@classmethod # need to use factory pattern creation scheme b/c can't await in __init__
-	async def create(cls, db, user_id, week_range = None):
-		self = Science_Grammar_QT(db, 'science', user_id, week_range)
-		self._question = await sql.fetchone(db, sql.get_random_science_records(self, 1))
-		self._options = await sql.fetchall(db, sql.get_random_science_records(self, self.answer_option_count - 1, [self._question['id'],]))
-		self._options.append(self._question)
-		shuffle(self._options)
-		self._answer_id = self._question['id']
-		return self
+class Latin_Vocabulary_QT(Basic_Grammar_QT):
+	table = 'latin_vocabulary'
 
-	def log_user_answer(self, answer_id):
-		l.debug('Science_Grammar_QT.log_user_answer(%s)' % answer_id)
-
+@qt
+class Science_Grammar_QT(Basic_Grammar_QT):
+	table = 'science'
 
 @qt
 class History_Sequence_QT(Question_Transaction):
+	table = 'event'
 	@classmethod # need to use factory pattern creation scheme b/c can't await in __init__
 	async def create(cls, db, user_id, week_range = None, date_range = None):
-		self = History_Sequence_QT(db, 'event', user_id, week_range)
+		self = History_Sequence_QT(db, user_id, week_range)
 		self._date_range = date_range # constrain to history events only within date_range; expected to be two-tuple of years, as integers, like (1500, 1750); BC dates are simply negative integers
 		self._question = await sql.fetchone(db, sql.get_random_event_records(self, 1))
 		self._options, self._answer_id = await sql.get_surrounding_event_records(self, self.answer_option_count, self._question)
@@ -228,15 +194,12 @@ class History_Sequence_QT(Question_Transaction):
 # -----------------------------------------------------------------------------
 # Resource handlers
 
-async def get_weekly_resources(spec):
-	return await sql.get_resources(spec)
-
-async def find_resources(spec):
+async def get_resources(spec):
 	return await sql.get_resources(spec)
 
 
 # -----------------------------------------------------------------------------
-# 
+# Sundry
 
 async def get_contexts(dbc):
 	return await sql.get_contexts(dbc)

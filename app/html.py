@@ -146,14 +146,14 @@ def quiz(ws_url, db_handler, html_function):
 		t.script(_js_dropdown())
 	return d.render()
 
-def resources(url, filters): # TODO: this is basically identical to select_user (and presumably other search-driven pages whose content comes via websocket); consolidate!
+def resources(url, filters, context): # TODO: this is basically identical to select_user (and presumably other search-driven pages whose content comes via websocket); consolidate!
 	d = _doc('Resources')
 	with d:
 		with t.div(cls = 'resource_block'):
-			t.div(t.b('Search'), cls = 'vertical_title') # TODO: replace with a magnifying-glass gif!
+			t.div(t.b('Search'), cls = 'subject_title') # TODO: replace with a magnifying-glass gif!
 			with t.table():
 				with t.tr():
-					_dropdown(t.td(cls = 'dropdown', colspan = 2), 'choose_context', filters['choose_context'], False)
+					_dropdown(t.td(cls = 'dropdown', colspan = 2), 'choose_context', filters['choose_context'], False, context)
 					_dropdown(t.td(cls = 'dropdown', colspan = 2), 'choose_subject', (
 						('All Subjects', 'bogus'),
 						('Timeline', 'bogus'),
@@ -175,7 +175,7 @@ def resources(url, filters): # TODO: this is basically identical to select_user 
 
 		t.div(id = 'search_result') # filtered results themselves are added here, in this `result` div, via websocket, as search text is typed (see javascript)
 		# JS (intentionally at bottom of file; see https://faqs.skillcrush.com/article/176-where-should-js-script-tags-be-linked-in-html-documents and many stackexchange answers):
-		t.script(_js_filter_list(url))
+		t.script(_js_filter_list(url, (('choose_context', context),) ))
 		t.script(_js_dropdown())
 		t.script(_js_filter_weeks())
 		t.script(_js_calendar_widget())
@@ -192,7 +192,7 @@ def subject_resource(subject):
 def science_resources(container, records, show_cw):
 	with container:
 		with t.div(cls = 'resource_block'):
-			t.div(t.b('Science'), cls = 'vertical_title')
+			t.div(t.b('Science'), cls = 'subject_title')
 			with t.table():
 				for record in records:
 					t.tr(t.td(t.b(record['prompt'])), t.td(record['cycle'], style = "width:10%"), t.td(record['week'], style = "width:10%"))
@@ -208,7 +208,7 @@ def science_resources(container, records, show_cw):
 def english_vocabulary_resources(container, records, show_cw):
 	with container:
 		with t.div(cls = 'resource_block'):
-			t.div(t.b('English'), cls = 'vertical_title')
+			t.div(t.b('English'), cls = 'subject_title')
 			with t.table():
 				for record in records:
 					t.tr(t.td(t.b(record['word']), ' = ', record['definition']), t.td(record['cycle'], style = "width:10%"), t.td(record['week'], style = "width:10%"))
@@ -223,7 +223,7 @@ def english_vocabulary_resources(container, records, show_cw):
 def english_vocabulary_resources(container, records, show_cw):
 	with container:
 		with t.div(cls = 'resource_block'):
-			t.div(t.b('Latin'), cls = 'vertical_title')
+			t.div(t.b('Latin'), cls = 'subject_title')
 			with t.table():
 				for record in records:
 					t.tr(t.td(t.b(record['word']), ' = ', record['translation']), t.td(record['cycle'], style = "width:10%"), t.td(record['week'], style = "width:10%"))
@@ -238,7 +238,7 @@ def english_vocabulary_resources(container, records, show_cw):
 def event_resources(container, records, show_cw):
 	with container:
 		with t.div(cls = 'resource_block'):
-			t.div(t.b('Timeline'), cls = 'vertical_title')
+			t.div(t.b('Timeline'), cls = 'subject_title')
 			with t.table():
 				colspan = 1 # sentinel for first time through
 				#TODO: fix this logic to handle multiple weeks of timeline event sequences! (i.e., each new week should get a colspan=1 followed by cycle & week #s)
@@ -256,7 +256,7 @@ def event_resources(container, records, show_cw):
 def english_vocabulary_resources(container, records, show_cw):
 	with container:
 		with t.div(cls = 'resource_block'):
-			t.div(t.b('History'), cls = 'vertical_title')
+			t.div(t.b('History'), cls = 'subject_title')
 			with t.table():
 				for record in records:
 					t.tr(t.td(t.b('%s - tell me more' % record['name'])), t.td(record['cycle'], style = "width:10%"), t.td(record['week'], style = "width:10%"))
@@ -274,29 +274,50 @@ def external_resources(container, records, show_cw):
 	if records:
 			resource_block = None
 			subject_name = None
-			table = None
+			content = None
 			resource_name = None
+			resource_detail = None
 			for record in records:
 				if record['subject_name'] != subject_name:
+					subject_name = record['subject_name']
+					
 					if resource_block:
 						resource_block += t.div(cls = 'clear') # force resource_block container to be tall enough for all content
 						container += resource_block # add old one before creating new one
-					table = t.table() # will be filled in below
 					resource_block = t.div(cls = 'resource_block')
-					resource_block += t.div(t.b(record['subject_name']), cls = 'vertical_title')
-					resource_block += table
-					subject_name = record['subject_name']
-				else: # working on the same subject, just keep adding rows to the table:
-					with table:
-						with t.tr():
-							t.td(t.b(record['resource_name']) if record['resource_name'] != resource_name else '')
-							resource_name = record['resource_name']
-							t.td(t.a('%s (%s)' % (record['resource_source_name'], record['resource_type_name']), href = record['url']))
+					resource_block += t.div(t.b(record['subject_name']), cls = 'subject_title')
+
+					content = t.div(cls = 'subject_content')
+					resource_block += content # will be filled in below
+
+				with content:
+					if record['resource_name'] != resource_name:
+						resource_name = record['resource_name']
+						resource_title = t.div(cls = 'resource_name')
+						if record['optional']:
+							resource_title += '[optional] '
+						resource_title += t.b(resource_name)
+						if record['note']:
+							resource_title += ' (%s)' % record['note']
+						resource_detail = t.div(cls = 'resource_details')
+
+				_add_shopping_links(resource_detail, record)
+
 			#TODO: the next 3 lines duplicates 3 lines above; consolidate!
 			if resource_block:
 				resource_block += t.div(cls = 'clear') # force resource_block container to be tall enough for all content
 				container += resource_block # add old one before creating new one
 			
+
+def _add_shopping_links(container, record):
+	s = t.div(t.a(t.img(src = _lurl(record['resource_source_logo'])), href = record['url'], target = '_blank'), cls = 'shopping_links')
+	if record['instance_note']:
+		s += '(' + record['instance_note'] + ')'
+		container += t.br()
+		container += s
+		container += t.br()
+	else:
+		container += s
 
 
 def resource_list(results, url, show_cw = True):
@@ -348,7 +369,8 @@ def multi_choice_history_sequence_question(question, options):
 _dress_bool_attrs = lambda attrs: dict([(f, True) for f in attrs])
 _gurl = lambda url: settings.k_url_prefix + url # 
 _surl = lambda url: settings.k_static_url + url # static
-_aurl = lambda url: settings.k_static_url + 'audio/' # audio
+_aurl = lambda url: settings.k_static_url + 'audio/' + url # audio
+_lurl = lambda url: settings.k_static_url + 'images/logos/' + url # logos
 
 
 def _doc(title, css = None, scripts = None):
@@ -502,9 +524,9 @@ def _js_socket_quiz_manager(url, db_handler, html_function):
 	};
 	''' % {'url': url, 'db_handler': db_handler, 'html_function': html_function})
 
-def _js_filter_list(url):
+def _js_filter_list(url, selections):
 	# This js not served as a static file for two reasons: 1) it's tiny and single-purpose, and 2) its code is tightly connected to this server code; it's not a candidate for another team to maintain, in other words; it also relies on our URL (for the websocket), whereas true static files might be served by a reverse-proxy server from anywhere, and won't tend to contain any references to the wsgi urls
-	return raw('''
+	r = raw('''
 	var ws = new WebSocket("%(url)s");
 	ws.onmessage = function(event) {
 		var payload = JSON.parse(event.data);
@@ -520,8 +542,12 @@ def _js_filter_list(url):
 	function search(str) {
 		ws.send(JSON.stringify({call: "search", string: str}));
 	};
-	
 	''' % {'url': url})
+	
+	if selections:
+		r += 'choose_dropdown_option("%s", "%s", false);' % (selections[0][0], selections[0][1])
+
+	return r
 
 def _js_filter_weeks():
 	return raw('''
