@@ -146,14 +146,16 @@ def quiz(ws_url, db_handler, html_function):
 		t.script(_js_dropdown())
 	return d.render()
 
-def resources(url, filters, context): # TODO: this is basically identical to select_user (and presumably other search-driven pages whose content comes via websocket); consolidate!
+def resources(url, filters, gets): # TODO: this is basically identical to select_user (and presumably other search-driven pages whose content comes via websocket); consolidate!
 	d = _doc('Resources')
 	with d:
-		with t.div(cls = 'resource_block'):
+		with t.div(cls = 'resource_block'): # TODO: make a 'header_block' or something; different border color, perhaps
 			t.div(t.b('Search'), cls = 'subject_title') # TODO: replace with a magnifying-glass gif!
 			with t.table():
 				with t.tr():
-					_dropdown(t.td(cls = 'dropdown', colspan = 2), 'choose_context', filters['choose_context'], False, context)
+					for f in filters:
+						_dropdown2(t.td(cls = 'dropdown', colspan = 2), f, gets, False)
+					_dropdown(t.td(cls = 'dropdown', colspan = 2), 'choose_context', filters['context'], False, gets.get('context'))
 					_dropdown(t.td(cls = 'dropdown', colspan = 2), 'choose_subject', (
 						('All Subjects', 'bogus'),
 						('Timeline', 'bogus'),
@@ -175,7 +177,7 @@ def resources(url, filters, context): # TODO: this is basically identical to sel
 
 		t.div(id = 'search_result') # filtered results themselves are added here, in this `result` div, via websocket, as search text is typed (see javascript)
 		# JS (intentionally at bottom of file; see https://faqs.skillcrush.com/article/176-where-should-js-script-tags-be-linked-in-html-documents and many stackexchange answers):
-		t.script(_js_filter_list(url, (('choose_context', context),) ))
+		t.script(_js_filter_list(url, (('choose_context', gets.get('context')),) ))
 		t.script(_js_dropdown())
 		t.script(_js_filter_weeks())
 		t.script(_js_calendar_widget())
@@ -429,13 +431,31 @@ def _text_input(name, value, bool_attrs = None, attrs = None, label = None, inva
 	return result
 
 def _dropdown(container, id, options, urls, title = None):
+	# TODO: new style has options[0] IS id! (i.e., we can get rid of the extra "id" arg, above
 	if not title:
-		title = options[0][0]
+		title = options[0][1]
 	with container:
 		t.button(title, cls = 'dropdown-button', onclick = 'choose_dropdown_item(%s)' % id)
 		with t.div(id = id, cls = 'dropdown-content'):
-			for option_title, option in options:
+			for div_id, option_title, option in options:
 				t.div(option_title, onclick = 'choose_dropdown_option("%s", "%s", %s)' % (id, option, 'true' if urls else 'false'))
+
+def _dropdown2(container, args, gets, urls, title = None):
+	key, div_id, options = args
+	start_option_id = gets.get(key)
+
+	drop_contents = t.div(id = div_id, cls = 'dropdown-content')
+	with drop_contents:
+		for option_title, option_id in options:
+			t.div(option_title, onclick = 'choose_dropdown_option("%s", "%s", %s)' % (div_id, option_id, 'true' if urls else 'false'))
+			if start_option_id == option_id:
+				title = option_title # override title with selected option
+	if not title:
+		title = options[0][0]
+
+	container += t.button(title, cls = 'dropdown-button', onclick = 'choose_dropdown_item(%s)' % args)
+	container += drop_contents
+
 
 
 # -----------------------------------------------------------------------------
@@ -524,7 +544,7 @@ def _js_socket_quiz_manager(url, db_handler, html_function):
 	};
 	''' % {'url': url, 'db_handler': db_handler, 'html_function': html_function})
 
-def _js_filter_list(url, selections):
+def _js_filter_list(url, selections = None):
 	# This js not served as a static file for two reasons: 1) it's tiny and single-purpose, and 2) its code is tightly connected to this server code; it's not a candidate for another team to maintain, in other words; it also relies on our URL (for the websocket), whereas true static files might be served by a reverse-proxy server from anywhere, and won't tend to contain any references to the wsgi urls
 	r = raw('''
 	var ws = new WebSocket("%(url)s");
