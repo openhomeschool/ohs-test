@@ -153,13 +153,21 @@ def resources(url): # TODO: this is basically identical to select_user (and pres
 							t.a('Any', href = 'bogus')
 					t.td(t.input(type = 'number', placeholder = 'week', id = 'week_selector', min='1', max='28', oninput = 'filter_week(this.value)'))
 					t.td() # <- new widget in here, instead of the line above (comment out line above)  Commented-out code below was a "drop-down" trial run that will now be deprecated, too.
-					'''
-					with t.td(style = 'width:10%', cls = 'dropdown'):
-						t.button('Week', cls = 'dropdown-button', onclick = 'choose_dropdown_item()')
-						with t.div(id = 'week_dropdown_contents', cls = 'dropdown-content'): # TODO: dropdown JS is currently only for one id ('dropdown_contents'); must generalize to handle two!
-							for week in range(28):
-								t.a('Week %d' % week, href = 'bogus') # TODO: make these real
-					'''
+					
+			with t.div(cls = 'calendar'):
+				t.b('Date:')
+				t.input(type = 'date', id = 'dte', onchange = 'showCalendar((new Date(this.value)));')
+			with t.div():
+				t.b('Week:')
+				t.input(type = 'number', id = 'wkno')
+					
+			'''
+			with t.td(style = 'width:10%', cls = 'dropdown'):
+				t.button('Week', cls = 'dropdown-button', onclick = 'choose_dropdown_item()')
+				with t.div(id = 'week_dropdown_contents', cls = 'dropdown-content'): # TODO: dropdown JS is currently only for one id ('dropdown_contents'); must generalize to handle two!
+					for week in range(28):
+						t.a('Week %d' % week, href = 'bogus') # TODO: make these real
+			'''
 
 		t.div(id = 'search_result') # filtered results themselves are added here, in this `result` div, via websocket, as search text is typed (see javascript)
 		# JS (intentionally at bottom of file; see https://faqs.skillcrush.com/article/176-where-should-js-script-tags-be-linked-in-html-documents and many stackexchange answers):
@@ -512,13 +520,37 @@ def _js_dropdown():
 		for (i = 0; i < dropdowns.length; i++) {
 			var openDropdown = dropdowns[i];
 			if (openDropdown.classList.contains('show')) {
-			openDropdown.classList.remove('show');
+				openDropdown.classList.remove('show');
 			}
 		}
 	} };
 	''')
 
-def _js_calendar_widget():
+'''
+dates = [
+	(1, '2020-9-20'),
+	(2, '2020-9-27'),
+	(3, '2020-10-1'),
+	
+	(4, '2020-10-14'),
+	
+	]
+'''
+def _js_calendar_widget(dates = None):
 	return raw('''
-		/* javascript here... */
+		function getWeekNum(dt) {
+			let wkdate = new Date(dt.getTime());
+			wkdate.setHours(0, 0, 0, 0);
+			// Thursday of current week determines year.
+			wkdate.setDate(wkdate.getDate() + 3 - (wkdate.getDay() + 6) % 7);
+			// Jan 4 is always in week 1.
+			let week1 = new Date(wkdate.getFullYear(), 0, 4);
+			// Adjust to Thursday of week 1 and count number of weeks from date to week1.
+			return 1 + Math.round(((wkdate.getTime() - week1.getTime()) / 86400000 -
+				3 + (week1.getDay() + 6) % 7) / 7);
+		};
+			
+		function showCalendar (cdate) {
+			document.getElementById("wkno").value = getWeekNum(cdate);
+		};
 	''')
