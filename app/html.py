@@ -146,16 +146,16 @@ def quiz(ws_url, db_handler, html_function):
 		t.script(_js_dropdown())
 	return d.render()
 
-def resources(url, filters, gets): # TODO: this is basically identical to select_user (and presumably other search-driven pages whose content comes via websocket); consolidate!
+def resources(url, filters, qargs): # TODO: this is basically identical to select_user (and presumably other search-driven pages whose content comes via websocket); consolidate!
 	d = _doc('Resources')
 	with d:
 		with t.div(cls = 'resource_block'): # TODO: make a 'header_block' or something; different border color, perhaps
 			t.div(t.b('Search'), cls = 'subject_title') # TODO: replace with a magnifying-glass gif!
 			with t.table():
 				with t.tr():
-					for f in filters:
-						_dropdown2(t.td(cls = 'dropdown', colspan = 2), f, gets, False)
-					_dropdown(t.td(cls = 'dropdown', colspan = 2), 'choose_context', filters['context'], False, gets.get('context'))
+					for filt in filters:
+						_dropdown2(t.td(cls = 'dropdown', colspan = 2), filt, qargs, False)
+					#TODO:DEPRECATE: _dropdown(t.td(cls = 'dropdown', colspan = 2), 'choose_context', filters['context'], False, qargs.get('context'))
 					_dropdown(t.td(cls = 'dropdown', colspan = 2), 'choose_subject', (
 						('All Subjects', 'bogus'),
 						('Timeline', 'bogus'),
@@ -176,8 +176,9 @@ def resources(url, filters, gets): # TODO: this is basically identical to select
 						t.input(type = 'number', placeholder = 'last wk', id = 'last_week_selector', min='1', max='28', oninput = 'filter_last_week(this.value)')
 
 		t.div(id = 'search_result') # filtered results themselves are added here, in this `result` div, via websocket, as search text is typed (see javascript)
+
 		# JS (intentionally at bottom of file; see https://faqs.skillcrush.com/article/176-where-should-js-script-tags-be-linked-in-html-documents and many stackexchange answers):
-		t.script(_js_filter_list(url, (('choose_context', gets.get('context')),) ))
+		t.script(_js_filter_list(url, (('choose_context', qargs.get('context')),) ))
 		t.script(_js_dropdown())
 		t.script(_js_filter_weeks())
 		t.script(_js_calendar_widget())
@@ -437,12 +438,12 @@ def _dropdown(container, id, options, urls, title = None):
 	with container:
 		t.button(title, cls = 'dropdown-button', onclick = 'choose_dropdown_item(%s)' % id)
 		with t.div(id = id, cls = 'dropdown-content'):
-			for div_id, option_title, option in options:
+			for option_title, option in options:
 				t.div(option_title, onclick = 'choose_dropdown_option("%s", "%s", %s)' % (id, option, 'true' if urls else 'false'))
 
-def _dropdown2(container, args, gets, urls, title = None):
-	key, div_id, options = args
-	start_option_id = gets.get(key)
+def _dropdown2(container, filt, qargs, urls, title = None):
+	key, div_id, options = filt
+	start_option_id = qargs.get(key)
 
 	drop_contents = t.div(id = div_id, cls = 'dropdown-content')
 	with drop_contents:
@@ -453,7 +454,7 @@ def _dropdown2(container, args, gets, urls, title = None):
 	if not title:
 		title = options[0][0]
 
-	container += t.button(title, cls = 'dropdown-button', onclick = 'choose_dropdown_item(%s)' % args)
+	container += t.button(title, cls = 'dropdown-button', onclick = 'choose_dropdown_item(%s)' % div_id)
 	container += drop_contents
 
 
@@ -544,8 +545,14 @@ def _js_socket_quiz_manager(url, db_handler, html_function):
 	};
 	''' % {'url': url, 'db_handler': db_handler, 'html_function': html_function})
 
+
 def _js_filter_list(url, selections = None):
 	# This js not served as a static file for two reasons: 1) it's tiny and single-purpose, and 2) its code is tightly connected to this server code; it's not a candidate for another team to maintain, in other words; it also relies on our URL (for the websocket), whereas true static files might be served by a reverse-proxy server from anywhere, and won't tend to contain any references to the wsgi urls
+
+	filter_call = ''
+	if selections:
+		filter_call = 'ws.send(JSON.stringify({call: "%s", option: "%s"}));' % (selections[0][0], selections[0][1])
+
 	r = raw('''
 	var ws = new WebSocket("%(url)s");
 	ws.onmessage = function(event) {
@@ -553,6 +560,7 @@ def _js_filter_list(url, selections = None):
 		switch(payload.call) {
 			case "start":
 				search("");
+				%(filter_call)s
 				break;
 			case "content":
 				document.getElementById("search_result").innerHTML = payload.content;
@@ -562,12 +570,10 @@ def _js_filter_list(url, selections = None):
 	function search(str) {
 		ws.send(JSON.stringify({call: "search", string: str}));
 	};
-	''' % {'url': url})
-	
-	if selections:
-		r += 'choose_dropdown_option("%s", "%s", false);' % (selections[0][0], selections[0][1])
+	''' % {'url': url, 'filter_call': filter_call})
 
 	return r
+
 
 def _js_filter_weeks():
 	return raw('''
