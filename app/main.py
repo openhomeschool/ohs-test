@@ -236,7 +236,6 @@ async def ws_quiz_handler(request):
 
 
 @r.get('/resources')
-@auth('student')
 async def resources(request):
 	dbc = request.app['db']
 	qargs = request.query
@@ -255,7 +254,7 @@ async def ws_filter_resource_list(request):
 	@dataclass
 	class Spec:
 		db = request.app['db']
-		user_id = session['user_id']
+		#user_id = session['user_id']
 		search_string = None
 		deep_search = False
 		cycles = (0, 1) # default: "cycle 1" ("0" refers to grammar that belongs to "all cycles" (like timeline grammar) - always include "0")
