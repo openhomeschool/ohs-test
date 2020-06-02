@@ -241,6 +241,9 @@ async def resources(request):
 	qargs = request.query
 	filters = (
 		('context', 'choose_context', [(context['name'], context['id']) for context in await db.get_contexts(dbc)]),
+		#('cycle', 'choose_cycle', [(cycle['name'], cycle['id']) for cycle in await db.get_cycles(dbc)]),
+		#('start_week', 'choose_start_week', [(cycle['name'], cycle['id']) for week in await db.get_weeks(dbc)]),
+		#('end_week', 'choose_end_week', [(cycle['name'], cycle['id']) for week in await db.get_weeks(dbc)]),
 	)
 
 	return hr(html.resources(_ws_url(request, '/ws_filter_resource_list'), filters, qargs))
