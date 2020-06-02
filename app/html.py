@@ -449,7 +449,7 @@ def _dropdown2(container, filt, qargs, urls, title = None):
 	with drop_contents:
 		for option_title, option_id in options:
 			t.div(option_title, onclick = 'choose_dropdown_option("%s", "%s", %s)' % (div_id, option_id, 'true' if urls else 'false'))
-			if start_option_id == option_id:
+			if int(start_option_id) == int(option_id):
 				title = option_title # override title with selected option
 	if not title:
 		title = options[0][0]
