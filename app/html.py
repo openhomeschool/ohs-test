@@ -191,54 +191,72 @@ def subject_resource(subject):
 		return func
 	return decorator
 
-@subject_resource('science')
-def science_resources(container, records, show_cw):
+def _resources(container, records, show_cw, subject_title, subject_directory, add_record, audio_widgets):
 	with container:
 		with t.div(cls = 'resource_block'):
-			t.div(t.b('Science'), cls = 'subject_title')
-			with t.table():
-				for record in records:
-					t.tr(t.td(t.b(record['prompt'])), t.td(record['cycle'], style = "width:10%"), t.td(record['week'], style = "width:10%"))
-					t.tr(t.td(record['answer'], colspan = 3))
-					with t.tr():
-						with t.td():
-							t.button('>', onclick = '')
-							t.button('$', onclick = '')
+			t.div(t.b(subject_title), cls = 'subject_title')
+			table = t.table()
+			for record in records:
+				add_record(record, table)
+				filename_base = subject_directory + '/c%sw%s' % (record['cycle'], record['week'])
+				if audio_widgets:
+					with table:
+						t.tr(t.td(t.audio(t.source(src = _aurl(filename_base + '.mp3'), type = 'audio/mpeg'), id = filename_base))) # invisible row; just here to store the related audio
+						t.tr(t.td(
+							t.button('>', onclick = 'getElementById("%s").play();' % filename_base),
+							t.button('$', onclick = 'window.open("%s","_blank");' % _aurl(filename_base + '.pdf')),
 							t.button('@', onclick = '')
+						))
+				
 			t.div(cls = 'clear') # force resource_block container to be tall enough for all content
+
+	
+@subject_resource('science')
+def science_resources(container, records, show_cw):
+	def add_record(record, table): # callback function, see _resources()
+		with table:
+			t.tr(t.td(t.b(record['prompt'])), t.td(record['cycle'], style = "width:10%"), t.td(record['week'], style = "width:10%"))
+			t.tr(t.td(record['answer'], colspan = 3))
+
+	_resources(container, records, show_cw, 'Science', 'science', add_record, True)
+
 
 @subject_resource('english_vocabulary')
 def english_vocabulary_resources(container, records, show_cw):
-	with container:
-		with t.div(cls = 'resource_block'):
-			t.div(t.b('English'), cls = 'subject_title')
-			with t.table():
-				for record in records:
-					t.tr(t.td(t.b(record['word']), ' = ', record['definition']), t.td(record['cycle'], style = "width:10%"), t.td(record['week'], style = "width:10%"))
-				with t.tr():
-					with t.td():
-						t.button('>', onclick = '')
-						t.button('$', onclick = '')
-						t.button('@', onclick = '')
-			t.div(cls = 'clear') # force resource_block container to be tall enough for all content
+	def add_record(record, table): # callback function, see _resources()
+		table += t.tr(t.td(t.b(record['word']), ' = ', record['definition']), t.td(record['cycle'], style = "width:10%"), t.td(record['week'], style = "width:10%"))
+
+	_resources(container, records, show_cw, 'English', 'english', add_record, False)
+
 
 @subject_resource('latin_vocabulary')
 def english_vocabulary_resources(container, records, show_cw):
-	with container:
-		with t.div(cls = 'resource_block'):
-			t.div(t.b('Latin'), cls = 'subject_title')
-			with t.table():
-				for record in records:
-					t.tr(t.td(t.b(record['word']), ' = ', record['translation']), t.td(record['cycle'], style = "width:10%"), t.td(record['week'], style = "width:10%"))
-				with t.tr():
-					with t.td():
-						t.button('>', onclick = '')
-						t.button('$', onclick = '')
-						t.button('@', onclick = '')
-			t.div(cls = 'clear') # force resource_block container to be tall enough for all content
+	def add_record(record, table): # callback function, see _resources()
+		table += t.tr(t.td(t.b(record['word']), ' = ', record['translation']), t.td(record['cycle'], style = "width:10%"), t.td(record['week'], style = "width:10%"))
+
+	_resources(container, records, show_cw, 'Latin', 'latin', add_record, False)
+
+
+@subject_resource('history')
+def history_resources(container, records, show_cw):
+	def add_record(record, table): # callback function, see _resources()
+		with table:
+			t.tr(t.td(t.b('%s - tell me more' % record['name'])), t.td(record['cycle'], style = "width:10%"), t.td(record['week'], style = "width:10%"))
+			t.tr(t.td(record['primary_sentence'], colspan = 3))
+
+	_resources(container, records, show_cw, 'History', 'history', add_record, True)
+
+
 
 @subject_resource('timeline')
 def event_resources(container, records, show_cw):
+	def add_record(record, table): # callback function, see _resources()
+		table += t.tr(t.td(record['name']))
+
+	_resources(container, records, show_cw, 'Timeline', 'history', add_record, False)
+
+'''
+OLD: - not colspan behavior -- figure out how to translate this to our new format!
 	with container:
 		with t.div(cls = 'resource_block'):
 			t.div(t.b('Timeline'), cls = 'subject_title')
@@ -253,24 +271,7 @@ def event_resources(container, records, show_cw):
 							t.td(record['week'], style = "width:10%")
 							colspan = 3 # next time, skip the cycle-week cells
 			t.div(cls = 'clear') # force resource_block container to be tall enough for all content
-
-
-@subject_resource('history')
-def english_vocabulary_resources(container, records, show_cw):
-	with container:
-		with t.div(cls = 'resource_block'):
-			t.div(t.b('History'), cls = 'subject_title')
-			with t.table():
-				for record in records:
-					t.tr(t.td(t.b('%s - tell me more' % record['name'])), t.td(record['cycle'], style = "width:10%"), t.td(record['week'], style = "width:10%"))
-					t.tr(t.td(record['primary_sentence'], colspan = 3))
-					t.tr(t.td(t.audio(t.source(src = _surl('audio/history/c1w2-sumerians.mp3'), type = 'audio/mpeg'), id = record['name'] + '.ogg')))
-					with t.tr():
-						with t.td():
-							t.button('>', onclick = 'getElementById("%s.ogg").play()' % record['name'])
-							t.button('$', onclick = '')
-							t.button('@', onclick = '')
-			t.div(cls = 'clear') # force resource_block container to be tall enough for all content
+'''
 
 @subject_resource('external_resources')
 def external_resources(container, records, show_cw):
@@ -449,7 +450,7 @@ def _dropdown2(container, filt, qargs, urls, title = None):
 	with drop_contents:
 		for option_title, option_id in options:
 			t.div(option_title, onclick = 'choose_dropdown_option("%s", "%s", %s)' % (div_id, option_id, 'true' if urls else 'false'))
-			if int(start_option_id) == int(option_id):
+			if start_option_id and int(start_option_id) == int(option_id):
 				title = option_title # override title with selected option
 	if not title:
 		title = options[0][0]
@@ -550,7 +551,7 @@ def _js_filter_list(url, selections = None):
 	# This js not served as a static file for two reasons: 1) it's tiny and single-purpose, and 2) its code is tightly connected to this server code; it's not a candidate for another team to maintain, in other words; it also relies on our URL (for the websocket), whereas true static files might be served by a reverse-proxy server from anywhere, and won't tend to contain any references to the wsgi urls
 
 	filter_call = ''
-	if selections:
+	if selections and selections[0][1]: # TODO - bogus... clean this up, enable multiple simultaneous filters
 		filter_call = 'ws.send(JSON.stringify({call: "%s", option: "%s"}));' % (selections[0][0], selections[0][1])
 
 	r = raw('''
