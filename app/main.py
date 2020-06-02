@@ -239,12 +239,12 @@ async def ws_quiz_handler(request):
 @auth('student')
 async def resources(request):
 	dbc = request.app['db']
-	gets = request.query
+	qargs = request.query
 	filters = (
-		('context', 'choose_context', [context['name'], context['id'] for context in await db.get_contexts(dbc)]),
+		('context', 'choose_context', [(context['name'], context['id']) for context in await db.get_contexts(dbc)]),
 	)
 
-	return hr(html.resources(_ws_url(request, '/ws_filter_resource_list'), filters, gets))
+	return hr(html.resources(_ws_url(request, '/ws_filter_resource_list'), filters, qargs))
 
 
 @r.get('/ws_filter_resource_list') #TODO: this has strong similarities to ws_filter_list (which should be named ws_filter_user_list)
