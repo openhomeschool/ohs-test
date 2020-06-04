@@ -62,6 +62,10 @@ def new_user_success(id): # TODO: this is just a lame placeholder
 		t.p('New user (%s) successfully created! ....' % id)
 	return d.render()
 
+def new_person(form, errors = None):
+	title = 'New Person'
+	#TODO
+	
 def new_user(form, ws_url, errors = None):
 	title = 'New User'
 	d = _doc(title)
@@ -195,54 +199,62 @@ def _resources(container, records, show_cw, subject_title, subject_directory, ad
 	with container:
 		with t.div(cls = 'resource_block'):
 			t.div(t.b(subject_title), cls = 'subject_title')
-			table = t.table()
+			cycle_week = None
 			for record in records:
-				add_record(record, table)
-				filename_base = subject_directory + '/c%sw%s' % (record['cycle'], record['week'])
-				if audio_widgets:
-					with table:
-						t.tr(t.td(t.audio(t.source(src = _aurl(filename_base + '.mp3'), type = 'audio/mpeg'), id = filename_base))) # invisible row; just here to store the related audio
-						t.tr(t.td(
+				if cycle_week != (record['cycle'], record['week']):
+					# For each new week encountered, add the cycle and week numbers on rhs...
+					cycle_week = (record['cycle'], record['week'])
+					resource_div = t.div(cls = 'resource_record')
+					buttonstrip = t.div(cls = 'buttonstrip')
+				
+					if audio_widgets:
+						filename_base = subject_directory + '/c%sw%s' % (record['cycle'], record['week'])
+						with buttonstrip:
+							t.audio(t.source(src = _aurl(filename_base + '.mp3'), type = 'audio/mpeg'), id = filename_base) # invisible
 							t.button('>', onclick = 'getElementById("%s").play();' % filename_base),
 							t.button('$', onclick = 'window.open("%s","_blank");' % _aurl(filename_base + '.pdf')),
 							t.button('@', onclick = '')
-						))
+							
+					_add_cw(record, buttonstrip)
+					resource_div += buttonstrip
+
+				add_record(record, resource_div)
 				
 			t.div(cls = 'clear') # force resource_block container to be tall enough for all content
 
 	
 @subject_resource('science')
 def science_resources(container, records, show_cw):
-	def add_record(record, table): # callback function, see _resources()
-		with table:
-			t.tr(t.td(t.b(record['prompt'])), t.td(record['cycle'], style = "width:10%"), t.td(record['week'], style = "width:10%"))
-			t.tr(t.td(record['answer'], colspan = 3))
+	def add_record(record, div): # callback function, see _resources()
+		div += t.div(t.b(record['prompt']))
+		div += t.div(record['answer'])
 
 	_resources(container, records, show_cw, 'Science', 'science', add_record, True)
 
 
 @subject_resource('english_vocabulary')
 def english_vocabulary_resources(container, records, show_cw):
-	def add_record(record, table): # callback function, see _resources()
-		table += t.tr(t.td(t.b(record['word']), ' = ', record['definition']), t.td(record['cycle'], style = "width:10%"), t.td(record['week'], style = "width:10%"))
+	def add_record(record, div): # callback function, see _resources()
+		div += t.div(t.b(record['word']), ' = ', cls = 'pair')
+		div += t.div(record['definition'])
 
 	_resources(container, records, show_cw, 'English', 'english', add_record, False)
 
 
 @subject_resource('latin_vocabulary')
 def english_vocabulary_resources(container, records, show_cw):
-	def add_record(record, table): # callback function, see _resources()
-		table += t.tr(t.td(t.b(record['word']), ' = ', record['translation']), t.td(record['cycle'], style = "width:10%"), t.td(record['week'], style = "width:10%"))
+	def add_record(record, div): # callback function, see _resources()
+		div += t.div(t.b(record['word']), ' = ', cls = 'pair')
+		div += t.div(record['translation'])
 
 	_resources(container, records, show_cw, 'Latin', 'latin', add_record, False)
 
-
 @subject_resource('history')
 def history_resources(container, records, show_cw):
-	def add_record(record, table): # callback function, see _resources()
-		with table:
-			t.tr(t.td(t.b('%s - tell me more' % record['name'])), t.td(record['cycle'], style = "width:10%"), t.td(record['week'], style = "width:10%"))
-			t.tr(t.td(record['primary_sentence'], colspan = 3))
+	def add_record(record, div): # callback function, see _resources()
+		with div:
+			t.div(t.b('%s - tell me more' % record['name']))
+			t.div(record['primary_sentence'])
 
 	_resources(container, records, show_cw, 'History', 'history', add_record, True)
 
@@ -250,28 +262,11 @@ def history_resources(container, records, show_cw):
 
 @subject_resource('timeline')
 def event_resources(container, records, show_cw):
-	def add_record(record, table): # callback function, see _resources()
-		table += t.tr(t.td(record['name']))
+	def add_record(record, div): # callback function, see _resources()
+		div += t.div(_event_formatted(record))
 
 	_resources(container, records, show_cw, 'Timeline', 'history', add_record, False)
 
-'''
-OLD: - not colspan behavior -- figure out how to translate this to our new format!
-	with container:
-		with t.div(cls = 'resource_block'):
-			t.div(t.b('Timeline'), cls = 'subject_title')
-			with t.table():
-				colspan = 1 # sentinel for first time through
-				#TODO: fix this logic to handle multiple weeks of timeline event sequences! (i.e., each new week should get a colspan=1 followed by cycle & week #s)
-				for record in records:
-					with t.tr():
-						t.td(record['name'], colspan = colspan)
-						if colspan == 1:
-							t.td(record['cycle'], style = "width:10%")
-							t.td(record['week'], style = "width:10%")
-							colspan = 3 # next time, skip the cycle-week cells
-			t.div(cls = 'clear') # force resource_block container to be tall enough for all content
-'''
 
 @subject_resource('external_resources')
 def external_resources(container, records, show_cw):
@@ -459,6 +454,40 @@ def _dropdown2(container, filt, qargs, urls, title = None):
 	container += drop_contents
 
 
+def _add_cw(record, div):
+	with div:
+		t.div('C-', record['cycle'], cls = 'cw')
+		t.div('W-', record['week'], cls = 'cw')
+
+
+def _event_formatted(record):
+	result = record['name']
+	if not record['fake_start_date']:
+		result += ' ('
+		# Start date:
+		if record['start_circa']:
+			result += 'c.'
+		start = record['start']
+		if start < 0:
+			start = str(-start) + ' BC'
+		else:
+			start = str(start)
+		result += start
+		# End date:
+		end = record['end']
+		if end:
+			result += ' - '
+			if record['end_circa']:
+				result += 'c.'
+			if end < 0:
+				end = str(-end) + ' BC'
+			elif record['start'] < 0:
+				end = str(end) + ' AD'
+			else:
+				end = str(end)
+			result += end
+		result += ')'
+	return result
 
 # -----------------------------------------------------------------------------
 # Question-handler helpers:

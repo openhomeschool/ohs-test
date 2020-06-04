@@ -350,3 +350,44 @@ label.answer_option_label {
 .resource_list {
 }
 
+/*
+.resource_main_cell {
+	width: 75%;
+}
+
+.resource_cycle_week_cell {
+	width: 10%;
+}
+*/
+/*
+.resource_block table {
+	table-layout: fixed;
+	width: 100%;
+}*/
+
+.resource_record {
+	clear: right;
+}
+
+
+.resource_record .cw {
+	margin: 2px;
+	border: 1px solid black;
+	border-radius: 4px;
+	text-align: center;
+	display: inline-block;
+}
+
+.resource_record .buttonstrip {
+	display: inline-block;
+	float: right;
+}
+
+.resource_record .pair {
+	display: inline-block;
+	float: left;
+	width: 25%;
+	text-align: right;
+	white-space: nowrap;
+}
+
