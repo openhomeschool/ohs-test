@@ -203,3 +203,7 @@ async def get_resources(spec):
 
 async def get_contexts(dbc):
 	return await sql.get_contexts(dbc)
+
+async def get_new_user_invitation(dbc, code):
+	return await sql.get_new_user_invitation(dbc, code)
+

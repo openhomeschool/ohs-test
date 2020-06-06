@@ -165,6 +165,11 @@ async def _get_external_resources(spec):
 async def get_contexts(dbc):
 	return await fetchall(dbc, ('select * from context', []))
 
+async def get_new_user_invitation(dbc, code):
+	result = await fetchone(dbc, ('select * from new_user_invitation where code = ?', (code,)))
+	
+	
+	return result
 
 # -----------------------------------------------------------------------------
 # Implementation utilities:
