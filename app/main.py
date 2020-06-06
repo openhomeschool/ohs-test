@@ -162,6 +162,24 @@ class New_User(web.View):
 		
 		return hr(html.new_user_success(user_id)) # TODO: lame placeholder - need to redirect, anyway!
 
+@r.view('/invite/{code}')
+class Invite(web.View):
+	async def get(self):
+		code = request.match_info['code']
+		if valid.rec_invitation.match(code):
+			dbc = request.app['db']
+			invitation = await db.get_invitation(dbc, code)
+			return hr(html.invite(html.Form(settings.k_url_prefix + self.request.path), invitation))
+			
+		else:
+			return hr(html.invalid_invitation()) # this might be an attack attempt!
+		
+	
+	async def post(self):
+		r = self.request
+		data = await r.post()
+		
+
 @r.get('/ws_check_username')
 async def ws_check_username(request):
 	dbc = request.app['db']

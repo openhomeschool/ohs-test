@@ -17,6 +17,8 @@ re_email = r'(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)' # TODO: how can
 rec_email = re.compile(re_email)
 re_slug = r'^[\w\-_]{2,32}$'
 rec_slug = re.compile(re_slug)
+re_invitation = r'^.{12,12}$'
+rec_invitation = re.compile(re_invitation)
 
 inv_username = "Username must be a single word (no spaces) made of letters and/or numbers, 16 characters or less."
 inv_username_exists = "Sorry, this username is already in use by somebody else.  Please add more characters or try another."

@@ -65,7 +65,13 @@ def new_user_success(id): # TODO: this is just a lame placeholder
 def new_person(form, errors = None):
 	title = 'New Person'
 	#TODO
-	
+
+def invite(form, errors = None):
+	d = _doc('Invitation')
+	with d:
+		t.p('New user (%s) successfully created! ....' % id)
+		return d.render()
+
 def new_user(form, ws_url, errors = None):
 	title = 'New User'
 	d = _doc(title)
