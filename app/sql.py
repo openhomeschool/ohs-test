@@ -139,7 +139,7 @@ async def get_resources(spec):
 	)
 
 	results = [] # list of 2-tuples: [(subject_spec, recordset), ...]]
-	if spec.context <= 1: # TODO: this is a temporary hardcode to grab 'grammar' resources only if the context 'Grammar' (or 'All') is chosen, since this isn't in the database yet!
+	if spec.program <= 1: # TODO: this is a temporary hardcode to grab 'grammar' resources only if the program 'Grammar' (or 'All' ?!!!) is chosen, since this isn't in the database yet!
 		for subject_spec in subject_specs:
 			spec.table = subject_spec.table # some lower functions want table in spec
 			results.append((subject_spec.subject, await _get_grammar_resources(spec, subject_spec)))
@@ -163,10 +163,10 @@ async def _get_grammar_resources(spec, subject_spec):
 	return await fetchall(spec.db, (f"select * from {subject_spec.table} " + _join(joins) + _where(wheres) + f" order by {subject_spec.order_by}", args))
 
 async def _get_external_resources(spec):
-	return await fetchall(spec.db, ('select subject.name as subject_name, resource.name as resource_name, resource.note, resource_instance.note as instance_note, resource_type.name as resource_type_name, resource_source.name as resource_source_name, resource_source.logo as resource_source_logo, resource_instance.url, resource_use.optional from resource_use join resource on resource_use.resource = resource.id join subject on resource_use.subject = subject.id join resource_instance on resource_instance.resource = resource.id join resource_type on resource_instance.type = resource_type.id join resource_source on resource_instance.source = resource_source.id join context on resource_use.context = context.id where context.id = ? order by subject_name, optional, resource_name, instance_note, resource.note', (spec.context,)))
+	return await fetchall(spec.db, ('select subject.name as subject_name, resource.name as resource_name, resource.note, resource_instance.note as instance_note, resource_type.name as resource_type_name, resource_source.name as resource_source_name, resource_source.logo as resource_source_logo, resource_instance.url, resource_use.optional from resource_use join resource on resource_use.resource = resource.id join subject on resource_use.subject = subject.id join resource_instance on resource_instance.resource = resource.id join resource_type on resource_instance.type = resource_type.id join resource_source on resource_instance.source = resource_source.id join program on resource_use.program = program.id where program.id = ? order by subject_name, optional, resource_name, instance_note, resource.note', (spec.program,)))
 
-async def get_contexts(dbc):
-	return await fetchall(dbc, ('select * from context', []))
+async def get_programs(dbc):
+	return await fetchall(dbc, ('select * from program', []))
 
 async def get_new_user_invitation(dbc, code):
 	return await fetchone(dbc, ('select * from new_user_invitation where code = ?', (code,)))

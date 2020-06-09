@@ -431,6 +431,16 @@ label.answer_option_label {
 	order: 2;                       /* NEW, Spec - Opera 12.1, Firefox 20+ */
 }
 
+.flex-wrap .main button {
+	margin: 2px;
+	font-size: 1em;
+	border-radius: 4px;
+	color: white;
+	background-color: #7475b8;
+	border: none;
+	cursor: pointer;
+}
+
 .flex-wrap .title {
 
 	font-size: 1.2rem;
@@ -456,4 +466,25 @@ label.answer_option_label {
 
 .contact_line_inset {
 	margin-left: 1rem;
+}
+
+.flex-wrap .main .resource_name {
+	margin: 5px;
+}
+
+.flex-wrap .main .resource_details {
+	margin: 5px;
+	margin-left: 20px;
+	vertical-align: middle;
+}
+
+.resource_details .shopping_links {
+	display: inline-block;
+	height: 20px;
+	line-height: 20px;
+	text-align: center;
+}
+
+.resource_details .shopping_links  img {
+	max-height: 100%;
 }

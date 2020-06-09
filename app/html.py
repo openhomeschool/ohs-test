@@ -99,7 +99,7 @@ def invitation(form, invitation, person, family, contact, costs, payments, error
 			t.p('Hello %s %s!  Please confirm that all of the following is correct...' % (person['first_name'], person['last_name']))
 			
 		with t.div(cls = 'flex-wrap'):
-			t.div(t.b('Contact'), cls = 'title')
+			t.div('Contact', cls = 'title')
 			with t.div(cls = 'main'):
 				with t.div(cls = 'resource_record'):
 					for address in contact.addresses:
@@ -133,7 +133,7 @@ def invitation(form, invitation, person, family, contact, costs, payments, error
 						cl(result)
 					
 		with t.div(cls = 'flex-wrap'):
-			t.div(t.b('Family'), cls = 'title')
+			t.div('Family', cls = 'title')
 			with t.div(cls = 'main'):
 				with t.div(cls = 'resource_record'):
 					fg = family.guardians
@@ -153,7 +153,7 @@ def invitation(form, invitation, person, family, contact, costs, payments, error
 						cli(_format_person(child))
 		
 		with t.div(cls = 'flex-wrap'):
-			t.div(t.b('Costs'), cls = 'title')
+			t.div('Costs', cls = 'title')
 			with t.div(cls = 'main'):
 				total = 0
 				total_payments = 0
@@ -275,36 +275,37 @@ def quiz(ws_url, db_handler, html_function):
 def resources(url, filters, qargs): # TODO: this is basically identical to select_user (and presumably other search-driven pages whose content comes via websocket); consolidate!
 	d = _doc('Resources')
 	with d:
-		with t.div(cls = 'resource_block'): # TODO: make a 'header_block' or something; different border color, perhaps
-			t.div(t.b('Search'), cls = 'subject_title') # TODO: replace with a magnifying-glass gif!
-			with t.table():
-				with t.tr():
-					for filt in filters:
-						_dropdown2(t.td(cls = 'dropdown', colspan = 2), filt, qargs, False)
-					#TODO:DEPRECATE: _dropdown(t.td(cls = 'dropdown', colspan = 2), 'choose_context', filters['context'], False, qargs.get('context'))
-					_dropdown(t.td(cls = 'dropdown', colspan = 2), 'choose_subject', (
-						('All Subjects', 'bogus'),
-						('Timeline', 'bogus'),
-						('History', 'bogus'), 
-						('Geography', 'bogus'),
-						('Math', 'bogus'),
-						('Science', 'bogus'),
-						('Latin', 'bogus'),
-						('English', 'bogus'),
-						('All', 'bogus')), False)
-				with t.tr():
-					t.td(_text_input('search', None, ('autofocus',), {'autocomplete': 'off', 'oninput': 'search(this.value)'}, 'Search', type_ = 'search'), style = 'width: 87%', colspan = 6)
-					_dropdown(t.td(style = 'width:10%', cls = 'dropdown'), 'cycle_dropdown', (
-						('Any Cycle', 'bogus'), ('Cycle 1', 'bogus'), ('Cycle 2', 'bogus'), ('Cycle 3', 'bogus')), False)
-					with t.td(style = 'width:20%'):
-						t.input(type = 'number', placeholder = 'first wk', id = 'first_week_selector', min='1', max='28', oninput = 'filter_first_week(this.value)')
-						t.br()
-						t.input(type = 'number', placeholder = 'last wk', id = 'last_week_selector', min='1', max='28', oninput = 'filter_last_week(this.value)')
+		with t.div(cls = 'flex-wrap'): # TODO: make a 'header_block' or something; different border color, perhaps
+			t.div(t.b('Search'), cls = 'title') # TODO: replace with a magnifying-glass gif!
+			with t.div(cls = 'main'):
+				with t.table():
+					with t.tr():
+						for filt in filters:
+							_dropdown2(t.td(cls = 'dropdown', colspan = 2), filt, qargs, False)
+						#TODO:DEPRECATE: _dropdown(t.td(cls = 'dropdown', colspan = 2), 'choose_program', filters['program'], False, qargs.get('program'))
+						_dropdown(t.td(cls = 'dropdown', colspan = 2), 'choose_subject', (
+							('All Subjects', 'bogus'),
+							('Timeline', 'bogus'),
+							('History', 'bogus'), 
+							('Geography', 'bogus'),
+							('Math', 'bogus'),
+							('Science', 'bogus'),
+							('Latin', 'bogus'),
+							('English', 'bogus'),
+							('All', 'bogus')), False)
+					with t.tr():
+						t.td(_text_input('search', None, ('autofocus',), {'autocomplete': 'off', 'oninput': 'search(this.value)'}, 'Search', type_ = 'search'), style = 'width: 87%', colspan = 6)
+						_dropdown(t.td(style = 'width:10%', cls = 'dropdown'), 'cycle_dropdown', (
+							('Any Cycle', 'bogus'), ('Cycle 1', 'bogus'), ('Cycle 2', 'bogus'), ('Cycle 3', 'bogus')), False)
+						with t.td(style = 'width:20%'):
+							t.input(type = 'number', placeholder = 'first wk', id = 'first_week_selector', min='1', max='28', oninput = 'filter_first_week(this.value)')
+							t.br()
+							t.input(type = 'number', placeholder = 'last wk', id = 'last_week_selector', min='1', max='28', oninput = 'filter_last_week(this.value)')
 
 		t.div(id = 'search_result') # filtered results themselves are added here, in this `result` div, via websocket, as search text is typed (see javascript)
 
 		# JS (intentionally at bottom of file; see https://faqs.skillcrush.com/article/176-where-should-js-script-tags-be-linked-in-html-documents and many stackexchange answers):
-		t.script(_js_filter_list(url, (('choose_context', qargs.get('context')),) ))
+		t.script(_js_filter_list(url, (('choose_program', qargs.get('program')),) ))
 		t.script(_js_dropdown())
 		t.script(_js_filter_weeks())
 		t.script(_js_calendar_widget())
@@ -319,30 +320,30 @@ def subject_resource(subject):
 
 def _resources(container, records, show_cw, subject_title, subject_directory, add_record, audio_widgets):
 	with container:
-		with t.div(cls = 'resource_block'):
-			t.div(t.b(subject_title), cls = 'subject_title')
+		with t.div(cls = 'flex-wrap'):
+			t.div(subject_title, cls = 'title')
 			cycle_week = None
-			for record in records:
-				if cycle_week != (record['cycle'], record['week']):
-					# For each new week encountered, add the cycle and week numbers on rhs...
-					cycle_week = (record['cycle'], record['week'])
-					resource_div = t.div(cls = 'resource_record')
-					buttonstrip = t.div(cls = 'buttonstrip')
-				
-					if audio_widgets:
-						filename_base = subject_directory + '/c%sw%s' % (record['cycle'], record['week'])
-						with buttonstrip:
-							t.audio(t.source(src = _aurl(filename_base + '.mp3'), type = 'audio/mpeg'), id = filename_base) # invisible
-							t.button('>', onclick = 'getElementById("%s").play();' % filename_base),
-							t.button('$', onclick = 'window.open("%s","_blank");' % _aurl(filename_base + '.pdf')),
-							t.button('@', onclick = '')
-							
-					_add_cw(record, buttonstrip)
-					resource_div += buttonstrip
+			with t.div(cls = 'main'):
+				for record in records:
+					if cycle_week != (record['cycle'], record['week']):
+						# For each new week encountered, add the cycle and week numbers on rhs...
+						cycle_week = (record['cycle'], record['week'])
+						resource_div = t.div(cls = 'resource_record')
+						buttonstrip = t.div(cls = 'buttonstrip')
+					
+						if audio_widgets:
+							filename_base = subject_directory + '/c%sw%s' % (record['cycle'], record['week'])
+							with buttonstrip:
+								t.audio(t.source(src = _aurl(filename_base + '.mp3'), type = 'audio/mpeg'), id = filename_base) # invisible
+								t.button('>', onclick = 'getElementById("%s").play();' % filename_base),
+								t.button('$', onclick = 'window.open("%s","_blank");' % _aurl(filename_base + '.pdf')),
+								t.button('@', onclick = '')
+								
+						_add_cw(record, buttonstrip)
+						resource_div += buttonstrip
 
-				add_record(record, resource_div)
+					add_record(record, resource_div)
 				
-			t.div(cls = 'clear') # force resource_block container to be tall enough for all content
 
 	
 @subject_resource('science')
@@ -381,7 +382,6 @@ def history_resources(container, records, show_cw):
 	_resources(container, records, show_cw, 'History', 'history', add_record, True)
 
 
-
 @subject_resource('timeline')
 def event_resources(container, records, show_cw):
 	def add_record(record, div): # callback function, see _resources()
@@ -403,12 +403,11 @@ def external_resources(container, records, show_cw):
 					subject_name = record['subject_name']
 					
 					if resource_block:
-						resource_block += t.div(cls = 'clear') # force resource_block container to be tall enough for all content
 						container += resource_block # add old one before creating new one
-					resource_block = t.div(cls = 'resource_block')
-					resource_block += t.div(t.b(record['subject_name']), cls = 'subject_title')
+					resource_block = t.div(cls = 'flex-wrap')
+					resource_block += t.div(record['subject_name'], cls = 'title')
 
-					content = t.div(cls = 'subject_content')
+					content = t.div(cls = 'main')
 					resource_block += content # will be filled in below
 
 				with content:
