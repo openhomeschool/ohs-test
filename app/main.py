@@ -11,6 +11,7 @@ import re
 import weakref
 import json
 
+from sqlite3 import PARSE_DECLTYPES
 from dataclasses import dataclass
 
 # TODO: These three may be culled once user/session stuff is complete
@@ -162,15 +163,21 @@ class New_User(web.View):
 		
 		return hr(html.new_user_success(user_id)) # TODO: lame placeholder - need to redirect, anyway!
 
-@r.view('/invite/{code}')
-class Invite(web.View):
+@r.view('/invitation/{code}')
+class Invitation(web.View):
 	async def get(self):
-		code = request.match_info['code']
+		r = self.request
+		code = r.match_info['code']
 		if valid.rec_invitation.match(code):
-			dbc = request.app['db']
-			invitation = await db.get_invitation(dbc, code)
-			return hr(html.invite(html.Form(settings.k_url_prefix + self.request.path), invitation))
-			
+			dbc = r.app['db']
+			invitation = await db.get_new_user_invitation(dbc, code)
+			person_id = invitation['person']
+			person = await db.get_person(dbc, person_id)
+			family = await db.get_family(dbc, person_id)
+			contact = await db.get_person_contact_info(dbc, person_id)
+			costs = await db.get_costs(dbc)
+			payments = await db.get_payments(dbc, [g['id'] for g in family.guardians])
+			return hr(html.invitation(html.Form(settings.k_url_prefix + r.path), invitation, person, family, contact, costs, payments))
 		else:
 			return hr(html.invalid_invitation()) # this might be an attack attempt!
 		
@@ -381,7 +388,7 @@ async def _ws_handler(request, msg_handler):
 # Init / Shutdown -------------------------------------------------------------
 
 async def init_db(filename):
-	db = await aiosqlite.connect(filename, isolation_level = None) # isolation_level: autocommit TODO: parameterize DB ID!
+	db = await aiosqlite.connect(filename, isolation_level = None, detect_types = PARSE_DECLTYPES) # isolation_level: autocommit TODO: parameterize DB ID!
 		# non-async equivalent would have been: db = sqlite3.connect('test1.db', isolation_level = None) # isolation_level: autocommit
 	db.row_factory = aiosqlite.Row
 	await db.execute('pragma journal_mode = wal') # see https://charlesleifer.com/blog/going-fast-with-sqlite-and-python/ - since we're using async/await from a wsgi stack, this is appropriate

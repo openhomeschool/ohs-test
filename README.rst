@@ -25,7 +25,7 @@ And run your app::
 	
 (Or, with `aiohttp-devtools <https://github.com/aio-libs/aiohttp-devtools>`_)::
 
-	$ adev runserver --livereload app
+	$ adev runserver -s static --livereload app
 
 The adev server will run on port 8000 by default.  Other adev options may be
 desirable, and additions like

@@ -5,7 +5,10 @@ __license__ = 'MIT'
 
 import re
 
+from datetime import date, timedelta
 from dataclasses import dataclass
+
+from . import util
 
 import logging
 l = logging.getLogger(__name__)
@@ -166,11 +169,57 @@ async def get_contexts(dbc):
 	return await fetchall(dbc, ('select * from context', []))
 
 async def get_new_user_invitation(dbc, code):
-	result = await fetchone(dbc, ('select * from new_user_invitation where code = ?', (code,)))
-	
-	
-	return result
+	return await fetchone(dbc, ('select * from new_user_invitation where code = ?', (code,)))
 
+async def get_person(dbc, id):
+	return await fetchone(dbc, ('select * from person where id = ?', (id,)))
+
+async def get_person_phones(dbc, person_id):
+	return await fetchall(dbc, ('select phone.* from phone join person_phone on phone.id = person_phone.phone join person on person_phone.person = person.id where person.id = ?', (person_id,)))
+
+async def get_person_emails(dbc, person_id):
+	return await fetchall(dbc, ('select email.* from email join person_email on email.id = person_email.email join person on person_email.person = person.id where person.id = ?', (person_id,)))
+
+async def get_person_addresses(dbc, person_id):
+	return await fetchall(dbc, ('select address.* from address join person_address on address.id = person_address.address join person on person_address.person = person.id where person.id = ?', (person_id,)))
+
+_children_programs = '''select c.*, program.name as program_name, program.schedule as program_schedule, program.id as program_id from child_guardian 
+	join person as c on child_guardian.child = c.id
+	join person as g on child_guardian.guardian = g.id
+	join enrollment on enrollment.student = c.id
+	join program on program.id = enrollment.program'''
+
+_order_group_children = ' order by c.birthdate desc'
+
+async def get_family(dbc, person_id):
+	guardians = await fetchall(dbc, ('select g.* from child_guardian join person as g on child_guardian.guardian = g.id join person as c on child_guardian.child = c.id where c.id = ?', (person_id,)))
+	if guardians:
+		# person_id is a child, and we just got the guardians; now get the other children:
+		ids = [g['id'] for g in guardians]
+		children = fetchall(dbc, (_children_programs + ' where g.id in ({seq})'.format(seq = ','.join(['?']*len(ids))) + _order_group_children, ids))
+	else:
+		# person_id is a guardian, get children, and other guardians:
+		children = await fetchall(dbc, (_children_programs + ' where g.id = ? ' + _order_group_children, (person_id,)))
+		ids = [c['id'] for c in children]
+		guardians = await fetchall(dbc, ('select g.* from child_guardian join person as g on child_guardian.guardian = g.id join person as c on child_guardian.child = c.id where c.id in ({seq}) group by g.id'.format(seq= ','.join(['?']*len(ids))), ids))
+
+	return util.Struct(
+		children = children,
+		guardians = guardians,
+	)
+
+async def get_heads_of_households(dbc):
+	return await fetchall(dbc, 'select * from person where head_of_household = 1')
+
+async def get_family_children(dbc, parent_id):
+	return await fetchall(dbc, (_children_programs + ' where g.id = ?' + _order_group_children, (parent_id,)))
+
+async def get_costs(dbc):
+	return await fetchall(dbc, ('select * from cost', ()))
+
+async def get_payments(dbc, guardian_ids):
+	return await fetchall(dbc, ('select * from payment where person in ({seq})'.format(seq = ','.join(['?']*len(guardian_ids))), guardian_ids))
+	
 # -----------------------------------------------------------------------------
 # Implementation utilities:
 

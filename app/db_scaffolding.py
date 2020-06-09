@@ -4,7 +4,7 @@
 Some sql.py functions just generate sql.  So, to test, you could simply:
 
 	>>> import sqlite3
-	>>> import sql # our sql.py, that is
+	>>> from app import sql # our sql.py, that is
 	>>> db = sqlite3.connect('test.db')
 	>>> db.row_factory = sqlite3.Row
 	>>> c = db.execute(sql.get_random_science_records(...))

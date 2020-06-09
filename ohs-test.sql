@@ -1,23 +1,135 @@
 --
--- File generated with SQLiteStudio v3.2.1 on Mon Jun 1 09:06:07 2020
+-- File generated with SQLiteStudio v3.2.1 on Tue Jun 9 07:38:32 2020
 --
 -- Text encoding used: UTF-8
 --
 PRAGMA foreign_keys = off;
 BEGIN TRANSACTION;
 
--- Table: context
-DROP TABLE IF EXISTS context;
-CREATE TABLE context (id INTEGER PRIMARY KEY AUTOINCREMENT, name STRING UNIQUE);
-INSERT INTO context (id, name) VALUES (1, 'Grammar');
-INSERT INTO context (id, name) VALUES (2, '4th-6th');
-INSERT INTO context (id, name) VALUES (3, '7th-9th');
-INSERT INTO context (id, name) VALUES (4, '10th-12th');
-INSERT INTO context (id, name) VALUES (5, 'All');
+-- Table: academic_year
+DROP TABLE IF EXISTS academic_year;
+CREATE TABLE academic_year (id INTEGER PRIMARY KEY AUTOINCREMENT, name STRING);
+INSERT INTO academic_year (id, name) VALUES (1, '2020-21');
+
+-- Table: address
+DROP TABLE IF EXISTS address;
+CREATE TABLE address (id INTEGER PRIMARY KEY AUTOINCREMENT, po_box STRING, street_1 STRING, street_2 STRING, city STRING, state STRING, postal_code STRING, country STRING, note STRING, unlisted INTEGER);
+INSERT INTO address (id, po_box, street_1, street_2, city, state, postal_code, country, note, unlisted) VALUES (1, NULL, '505 East Main St.', NULL, 'Enterprise', 'OR', 97828, NULL, NULL, NULL);
+INSERT INTO address (id, po_box, street_1, street_2, city, state, postal_code, country, note, unlisted) VALUES (2, NULL, '306 SE 2nd St.', NULL, 'Enterprise', 'OR', 97828, NULL, NULL, NULL);
+INSERT INTO address (id, po_box, street_1, street_2, city, state, postal_code, country, note, unlisted) VALUES (3, NULL, '301 SE 5th St.', NULL, 'Enterprise', 'OR', 97828, NULL, NULL, NULL);
+INSERT INTO address (id, po_box, street_1, street_2, city, state, postal_code, country, note, unlisted) VALUES (4, NULL, '1202 Sagewood St.', NULL, 'Enterprise', 'OR', 97828, NULL, NULL, NULL);
+INSERT INTO address (id, po_box, street_1, street_2, city, state, postal_code, country, note, unlisted) VALUES (5, NULL, '207 SE 2nd St.', NULL, 'Enterprise', 'OR', 97828, NULL, NULL, NULL);
+INSERT INTO address (id, po_box, street_1, street_2, city, state, postal_code, country, note, unlisted) VALUES (6, NULL, '213 SW Broadmore St.', NULL, 'Enterprise', 'OR', 97828, NULL, NULL, NULL);
+INSERT INTO address (id, po_box, street_1, street_2, city, state, postal_code, country, note, unlisted) VALUES (7, NULL, '79054 Hartshorn Rd.', NULL, 'Imnaha', 'OR', 97842, NULL, NULL, NULL);
+INSERT INTO address (id, po_box, street_1, street_2, city, state, postal_code, country, note, unlisted) VALUES (8, NULL, '81733 Reavis Ln.', NULL, 'Enterprise', 'OR', 97828, NULL, NULL, NULL);
+INSERT INTO address (id, po_box, street_1, street_2, city, state, postal_code, country, note, unlisted) VALUES (9, NULL, '62401 Edgewater Rd.', NULL, 'Joseph', 'OR', 97846, NULL, NULL, NULL);
+INSERT INTO address (id, po_box, street_1, street_2, city, state, postal_code, country, note, unlisted) VALUES (10, NULL, '200 E. Greenwood St.', NULL, 'Enterprise', 'OR', 97828, NULL, NULL, NULL);
+INSERT INTO address (id, po_box, street_1, street_2, city, state, postal_code, country, note, unlisted) VALUES (11, NULL, '1200 Highland Ave.', NULL, 'Enterprise', 'OR', 97828, NULL, NULL, NULL);
+INSERT INTO address (id, po_box, street_1, street_2, city, state, postal_code, country, note, unlisted) VALUES (12, NULL, '205 E. Grant St.', NULL, 'Enterprise', 'OR', 97828, NULL, NULL, NULL);
+INSERT INTO address (id, po_box, street_1, street_2, city, state, postal_code, country, note, unlisted) VALUES (13, NULL, '205 E. Greenwood St.', NULL, 'Enterprise', 'OR', 97828, NULL, NULL, NULL);
+INSERT INTO address (id, po_box, street_1, street_2, city, state, postal_code, country, note, unlisted) VALUES (14, NULL, '66205 Getting Rd.', NULL, 'Enterprise', 'OR', 97828, NULL, NULL, NULL);
+
+-- Table: child_guardian
+DROP TABLE IF EXISTS child_guardian;
+CREATE TABLE child_guardian (id INTEGER PRIMARY KEY AUTOINCREMENT, child INTEGER REFERENCES person (id) ON DELETE CASCADE ON UPDATE CASCADE, guardian INTEGER REFERENCES person (id) ON DELETE CASCADE ON UPDATE CASCADE, note STRING);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (1, 1, 7, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (2, 1, 8, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (3, 2, 7, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (4, 2, 8, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (5, 3, 7, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (6, 3, 8, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (7, 13, 11, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (8, 14, 11, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (9, 15, 11, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (10, 13, 12, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (11, 14, 12, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (12, 15, 12, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (13, 18, 16, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (14, 19, 16, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (15, 18, 17, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (16, 19, 17, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (17, 22, 20, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (18, 23, 20, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (19, 22, 21, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (20, 23, 21, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (21, 26, 24, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (22, 26, 25, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (23, 27, 24, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (24, 27, 25, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (25, 30, 28, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (26, 30, 29, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (27, 31, 28, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (28, 31, 29, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (29, 32, 28, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (30, 32, 29, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (31, 33, 28, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (32, 33, 29, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (33, 36, 34, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (34, 36, 35, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (35, 37, 34, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (36, 37, 35, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (37, 38, 34, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (38, 38, 35, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (39, 41, 39, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (40, 41, 40, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (41, 42, 39, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (42, 42, 40, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (43, 43, 39, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (44, 43, 40, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (45, 44, 39, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (46, 44, 40, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (47, 47, 45, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (48, 47, 46, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (49, 48, 45, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (50, 48, 46, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (51, 49, 45, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (52, 49, 46, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (53, 52, 50, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (54, 52, 51, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (55, 53, 50, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (56, 53, 51, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (57, 60, 54, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (58, 60, 55, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (59, 61, 54, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (60, 61, 55, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (61, 62, 54, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (62, 62, 55, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (63, 63, 54, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (64, 63, 55, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (65, 64, 54, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (66, 64, 55, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (67, 4, 9, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (68, 4, 10, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (69, 5, 9, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (70, 5, 10, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (71, 6, 9, NULL);
+INSERT INTO child_guardian (id, child, guardian, note) VALUES (72, 6, 10, NULL);
+
+-- Table: cost
+DROP TABLE IF EXISTS cost;
+CREATE TABLE cost (id INTEGER PRIMARY KEY AUTOINCREMENT, academic_year INTEGER REFERENCES academic_year (id) ON DELETE CASCADE ON UPDATE CASCADE, name STRING, amount INTEGER, due STRING, program INTEGER REFERENCES program (id) ON DELETE CASCADE ON UPDATE CASCADE, per_student INTEGER);
+INSERT INTO cost (id, academic_year, name, amount, due, program, per_student) VALUES (1, 1, 'registration', 5000, 'June 5', NULL, NULL);
+INSERT INTO cost (id, academic_year, name, amount, due, program, per_student) VALUES (2, 1, 'supply fee', 3500, NULL, 1, 1);
+INSERT INTO cost (id, academic_year, name, amount, due, program, per_student) VALUES (3, 1, 'supply fee', 3500, NULL, 2, 1);
+INSERT INTO cost (id, academic_year, name, amount, due, program, per_student) VALUES (4, 1, 'supply fee', 5000, NULL, 3, 1);
+INSERT INTO cost (id, academic_year, name, amount, due, program, per_student) VALUES (5, 1, 'supply fee', 5000, NULL, 4, 1);
+INSERT INTO cost (id, academic_year, name, amount, due, program, per_student) VALUES (6, 1, 'facility fee', 3500, NULL, NULL, 1);
+INSERT INTO cost (id, academic_year, name, amount, due, program, per_student) VALUES (7, 1, 'tuition', 25000, NULL, 1, 1);
+INSERT INTO cost (id, academic_year, name, amount, due, program, per_student) VALUES (8, 1, 'tuition', 20000, NULL, 2, 1);
+INSERT INTO cost (id, academic_year, name, amount, due, program, per_student) VALUES (9, 1, 'tuition', 75000, NULL, 3, 1);
+INSERT INTO cost (id, academic_year, name, amount, due, program, per_student) VALUES (10, 1, 'training fund', 10000, NULL, 3, 1);
+
+-- Table: cycle
+DROP TABLE IF EXISTS cycle;
+CREATE TABLE cycle (id INTEGER PRIMARY KEY AUTOINCREMENT, name STRING, description STRING);
+INSERT INTO cycle (id, name, description) VALUES (1, 'Cycle 1', 'AAA (Africa, Asia, Australia)');
+INSERT INTO cycle (id, name, description) VALUES (2, 'Cycle 2', 'Europe');
+INSERT INTO cycle (id, name, description) VALUES (3, 'Cycle 3', 'Americas (North & South America), Antarctica');
+INSERT INTO cycle (id, name, description) VALUES (4, 'All', 'World');
 
 -- Table: cycle_week
 DROP TABLE IF EXISTS cycle_week;
-CREATE TABLE cycle_week (id INTEGER PRIMARY KEY AUTOINCREMENT, cycle INTEGER NOT NULL CHECK (cycle >= 0 and cycle < 4), week INTEGER NOT NULL CHECK (week >= 0 and week < 29), level INTEGER NOT NULL DEFAULT (1), UNIQUE (cycle, week, level));
+CREATE TABLE cycle_week (id INTEGER PRIMARY KEY AUTOINCREMENT, cycle INTEGER REFERENCES cycle (id) ON DELETE CASCADE ON UPDATE CASCADE, week INTEGER NOT NULL CHECK (week >= 0 and week < 29), level INTEGER NOT NULL DEFAULT (1), UNIQUE (cycle, week, level));
 INSERT INTO cycle_week (id, cycle, week, level) VALUES (1, 1, 1, 1);
 INSERT INTO cycle_week (id, cycle, week, level) VALUES (2, 1, 2, 1);
 INSERT INTO cycle_week (id, cycle, week, level) VALUES (3, 1, 3, 1);
@@ -186,42 +298,42 @@ INSERT INTO cycle_week (id, cycle, week, level) VALUES (165, 3, 25, 2);
 INSERT INTO cycle_week (id, cycle, week, level) VALUES (166, 3, 26, 2);
 INSERT INTO cycle_week (id, cycle, week, level) VALUES (167, 3, 27, 2);
 INSERT INTO cycle_week (id, cycle, week, level) VALUES (168, 3, 28, 2);
-INSERT INTO cycle_week (id, cycle, week, level) VALUES (169, 0, 1, 1);
-INSERT INTO cycle_week (id, cycle, week, level) VALUES (170, 0, 2, 1);
-INSERT INTO cycle_week (id, cycle, week, level) VALUES (171, 0, 3, 1);
-INSERT INTO cycle_week (id, cycle, week, level) VALUES (172, 0, 4, 1);
-INSERT INTO cycle_week (id, cycle, week, level) VALUES (173, 0, 5, 1);
-INSERT INTO cycle_week (id, cycle, week, level) VALUES (174, 0, 6, 1);
-INSERT INTO cycle_week (id, cycle, week, level) VALUES (175, 0, 7, 1);
-INSERT INTO cycle_week (id, cycle, week, level) VALUES (176, 0, 8, 1);
-INSERT INTO cycle_week (id, cycle, week, level) VALUES (177, 0, 9, 1);
-INSERT INTO cycle_week (id, cycle, week, level) VALUES (178, 0, 10, 1);
-INSERT INTO cycle_week (id, cycle, week, level) VALUES (179, 0, 11, 1);
-INSERT INTO cycle_week (id, cycle, week, level) VALUES (180, 0, 12, 1);
-INSERT INTO cycle_week (id, cycle, week, level) VALUES (181, 0, 13, 1);
-INSERT INTO cycle_week (id, cycle, week, level) VALUES (182, 0, 14, 1);
-INSERT INTO cycle_week (id, cycle, week, level) VALUES (183, 0, 15, 1);
-INSERT INTO cycle_week (id, cycle, week, level) VALUES (184, 0, 16, 1);
-INSERT INTO cycle_week (id, cycle, week, level) VALUES (185, 0, 17, 1);
-INSERT INTO cycle_week (id, cycle, week, level) VALUES (186, 0, 18, 1);
-INSERT INTO cycle_week (id, cycle, week, level) VALUES (187, 0, 19, 1);
-INSERT INTO cycle_week (id, cycle, week, level) VALUES (188, 0, 20, 1);
-INSERT INTO cycle_week (id, cycle, week, level) VALUES (189, 0, 21, 1);
-INSERT INTO cycle_week (id, cycle, week, level) VALUES (190, 0, 22, 1);
-INSERT INTO cycle_week (id, cycle, week, level) VALUES (191, 0, 23, 1);
-INSERT INTO cycle_week (id, cycle, week, level) VALUES (192, 0, 24, 1);
-INSERT INTO cycle_week (id, cycle, week, level) VALUES (193, 0, 25, 1);
-INSERT INTO cycle_week (id, cycle, week, level) VALUES (194, 0, 26, 1);
-INSERT INTO cycle_week (id, cycle, week, level) VALUES (195, 0, 27, 1);
-INSERT INTO cycle_week (id, cycle, week, level) VALUES (196, 0, 28, 1);
+INSERT INTO cycle_week (id, cycle, week, level) VALUES (169, 4, 1, 1);
+INSERT INTO cycle_week (id, cycle, week, level) VALUES (170, 4, 2, 1);
+INSERT INTO cycle_week (id, cycle, week, level) VALUES (171, 4, 3, 1);
+INSERT INTO cycle_week (id, cycle, week, level) VALUES (172, 4, 4, 1);
+INSERT INTO cycle_week (id, cycle, week, level) VALUES (173, 4, 5, 1);
+INSERT INTO cycle_week (id, cycle, week, level) VALUES (174, 4, 6, 1);
+INSERT INTO cycle_week (id, cycle, week, level) VALUES (175, 4, 7, 1);
+INSERT INTO cycle_week (id, cycle, week, level) VALUES (176, 4, 8, 1);
+INSERT INTO cycle_week (id, cycle, week, level) VALUES (177, 4, 9, 1);
+INSERT INTO cycle_week (id, cycle, week, level) VALUES (178, 4, 10, 1);
+INSERT INTO cycle_week (id, cycle, week, level) VALUES (179, 4, 11, 1);
+INSERT INTO cycle_week (id, cycle, week, level) VALUES (180, 4, 12, 1);
+INSERT INTO cycle_week (id, cycle, week, level) VALUES (181, 4, 13, 1);
+INSERT INTO cycle_week (id, cycle, week, level) VALUES (182, 4, 14, 1);
+INSERT INTO cycle_week (id, cycle, week, level) VALUES (183, 4, 15, 1);
+INSERT INTO cycle_week (id, cycle, week, level) VALUES (184, 4, 16, 1);
+INSERT INTO cycle_week (id, cycle, week, level) VALUES (185, 4, 17, 1);
+INSERT INTO cycle_week (id, cycle, week, level) VALUES (186, 4, 18, 1);
+INSERT INTO cycle_week (id, cycle, week, level) VALUES (187, 4, 19, 1);
+INSERT INTO cycle_week (id, cycle, week, level) VALUES (188, 4, 20, 1);
+INSERT INTO cycle_week (id, cycle, week, level) VALUES (189, 4, 21, 1);
+INSERT INTO cycle_week (id, cycle, week, level) VALUES (190, 4, 22, 1);
+INSERT INTO cycle_week (id, cycle, week, level) VALUES (191, 4, 23, 1);
+INSERT INTO cycle_week (id, cycle, week, level) VALUES (192, 4, 24, 1);
+INSERT INTO cycle_week (id, cycle, week, level) VALUES (193, 4, 25, 1);
+INSERT INTO cycle_week (id, cycle, week, level) VALUES (194, 4, 26, 1);
+INSERT INTO cycle_week (id, cycle, week, level) VALUES (195, 4, 27, 1);
+INSERT INTO cycle_week (id, cycle, week, level) VALUES (196, 4, 28, 1);
 INSERT INTO cycle_week (id, cycle, week, level) VALUES (197, 1, 0, 1);
 INSERT INTO cycle_week (id, cycle, week, level) VALUES (198, 1, 0, 2);
 INSERT INTO cycle_week (id, cycle, week, level) VALUES (199, 2, 0, 1);
 INSERT INTO cycle_week (id, cycle, week, level) VALUES (200, 2, 0, 2);
 INSERT INTO cycle_week (id, cycle, week, level) VALUES (201, 3, 0, 1);
 INSERT INTO cycle_week (id, cycle, week, level) VALUES (202, 3, 0, 2);
-INSERT INTO cycle_week (id, cycle, week, level) VALUES (203, 0, 0, 1);
-INSERT INTO cycle_week (id, cycle, week, level) VALUES (204, 0, 0, 2);
+INSERT INTO cycle_week (id, cycle, week, level) VALUES (203, 4, 0, 1);
+INSERT INTO cycle_week (id, cycle, week, level) VALUES (204, 4, 0, 2);
 
 -- Table: direction
 DROP TABLE IF EXISTS direction;
@@ -234,6 +346,27 @@ INSERT INTO direction (id, name) VALUES (5, 'southwest');
 INSERT INTO direction (id, name) VALUES (6, 'west');
 INSERT INTO direction (id, name) VALUES (7, 'northwest');
 INSERT INTO direction (id, name) VALUES (8, 'north');
+
+-- Table: email
+DROP TABLE IF EXISTS email;
+CREATE TABLE email (id INTEGER PRIMARY KEY AUTOINCREMENT, address STRING, note STRING, unlisted INTEGER);
+INSERT INTO email (id, address, note, unlisted) VALUES (1, 'casheah05@outlook.com', NULL, NULL);
+INSERT INTO email (id, address, note, unlisted) VALUES (2, 'h9sheahan@outlook.com', NULL, NULL);
+INSERT INTO email (id, address, note, unlisted) VALUES (4, 'boyd.tribe@gmail.com', NULL, NULL);
+INSERT INTO email (id, address, note, unlisted) VALUES (5, 'branntribe@gmail.com', NULL, NULL);
+INSERT INTO email (id, address, note, unlisted) VALUES (6, 'steinjjo@gmail.com', NULL, NULL);
+INSERT INTO email (id, address, note, unlisted) VALUES (7, 'michael@michaelandkirsten.com', NULL, NULL);
+INSERT INTO email (id, address, note, unlisted) VALUES (8, 'zac.cait@gmail.com', NULL, NULL);
+INSERT INTO email (id, address, note, unlisted) VALUES (9, 'susanna.w.hurley@gmail.com', NULL, NULL);
+INSERT INTO email (id, address, note, unlisted) VALUES (10, 'lena2150@hotmail.com', NULL, NULL);
+INSERT INTO email (id, address, note, unlisted) VALUES (11, 'scottwmcd@hotmail.com', NULL, NULL);
+INSERT INTO email (id, address, note, unlisted) VALUES (12, 'LBMiller2011@gmail.com', NULL, NULL);
+INSERT INTO email (id, address, note, unlisted) VALUES (13, 'horsedr@gmail.com', NULL, NULL);
+INSERT INTO email (id, address, note, unlisted) VALUES (14, 'julieboolie_76@hotmail.com', NULL, NULL);
+INSERT INTO email (id, address, note, unlisted) VALUES (15, 'deyetteperry@hotmail.com', NULL, NULL);
+INSERT INTO email (id, address, note, unlisted) VALUES (16, 'lou@ldperry.com', NULL, NULL);
+INSERT INTO email (id, address, note, unlisted) VALUES (17, 'pesheahan@msn.com', NULL, NULL);
+INSERT INTO email (id, address, note, unlisted) VALUES (18, 'jamie-m@hotmail.com', NULL, NULL);
 
 -- Table: english
 DROP TABLE IF EXISTS english;
@@ -253,6 +386,55 @@ INSERT INTO english (id, cw, prompt, a, "is", are, answer, example, advanced) VA
 INSERT INTO english (id, cw, prompt, a, "is", are, answer, example, advanced) VALUES (13, 19, 'interrogative pronouns', 0, 0, 1, 'who, whom, whose, which, what', 'and: whoever, whomever, whosever, whichever, whatever', NULL);
 INSERT INTO english (id, cw, prompt, a, "is", are, answer, example, advanced) VALUES (14, 19, 'relative pronouns', 0, 0, 1, 'who, whom, whose, which, that', NULL, NULL);
 INSERT INTO english (id, cw, prompt, a, "is", are, answer, example, advanced) VALUES (15, 22, 'indefinite pronouns', 0, 0, 1, 'all, another, any, anybody, anyone, anything, both, each, either, enough, everybody, everyone, everything, few, fewer, less, little, many, more, most, much, neither, nobody, none, nothing, one, other, others, several, some, somebody, someone, something, such', NULL, NULL);
+
+-- Table: enrollment
+DROP TABLE IF EXISTS enrollment;
+CREATE TABLE enrollment (id INTEGER PRIMARY KEY AUTOINCREMENT, student INTEGER REFERENCES person (id) ON DELETE CASCADE ON UPDATE CASCADE, program INTEGER REFERENCES program (id) ON DELETE RESTRICT ON UPDATE CASCADE, subject INTEGER REFERENCES subject (id) ON DELETE CASCADE ON UPDATE CASCADE, academic_year INTEGER REFERENCES academic_year (id) ON DELETE RESTRICT ON UPDATE CASCADE);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (1, 1, 3, 10, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (2, 2, 3, 10, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (3, 3, 2, 10, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (4, 4, 1, 10, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (5, 5, 3, 10, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (6, 6, 3, 10, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (7, 13, 3, 10, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (8, 14, 3, 10, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (9, 15, 2, 10, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (10, 18, 2, 10, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (11, 19, 1, 10, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (12, 22, 3, 10, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (13, 23, 3, 10, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (14, 26, 3, 10, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (15, 27, 3, 10, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (16, 30, 3, 10, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (17, 31, 2, 10, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (18, 32, 1, 10, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (19, 33, 1, 10, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (20, 36, 2, 10, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (21, 37, 1, 10, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (22, 38, 1, 10, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (23, 41, 2, 10, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (24, 42, 1, 10, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (25, 43, 1, 10, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (26, 44, 1, 10, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (27, 47, 2, 10, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (28, 48, 1, 10, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (29, 52, 1, 10, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (30, 60, 3, 10, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (31, 61, 3, 10, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (32, 62, 3, 10, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (33, 63, 2, 10, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (34, 64, 1, 10, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (35, 47, 1, 10, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (36, 3, 1, 10, NULL);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (37, 31, 1, 10, NULL);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (38, 36, 1, 10, NULL);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (39, 18, 1, 10, NULL);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (40, 41, 1, 10, NULL);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (41, 63, 1, 10, NULL);
+
+-- Table: enrollment_cost
+DROP TABLE IF EXISTS enrollment_cost;
+CREATE TABLE enrollment_cost (enrollment INTEGER REFERENCES enrollment (id) ON DELETE CASCADE ON UPDATE CASCADE, cost INTEGER REFERENCES cost (id) ON DELETE CASCADE ON UPDATE CASCADE);
 
 -- Table: event
 DROP TABLE IF EXISTS event;
@@ -687,6 +869,15 @@ INSERT INTO latin_vocabulary (id, cw, word, pos, translation) VALUES (50, 12, 'g
 INSERT INTO latin_vocabulary (id, cw, word, pos, translation) VALUES (51, 9, 'nōmen', 1, 'name');
 INSERT INTO latin_vocabulary (id, cw, word, pos, translation) VALUES (600, 1, 'frāter, frātris', 1, 'brother');
 
+-- Table: leadership_role
+DROP TABLE IF EXISTS leadership_role;
+CREATE TABLE leadership_role (id INTEGER PRIMARY KEY AUTOINCREMENT, name STRING);
+INSERT INTO leadership_role (id, name) VALUES (1, 'Community Coordinator');
+INSERT INTO leadership_role (id, name) VALUES (2, 'Art Coordinator');
+INSERT INTO leadership_role (id, name) VALUES (3, 'Science Coordinator');
+INSERT INTO leadership_role (id, name) VALUES (4, 'Tutor');
+INSERT INTO leadership_role (id, name) VALUES (5, 'Board Member');
+
 -- Table: location
 DROP TABLE IF EXISTS location;
 CREATE TABLE location (id INTEGER PRIMARY KEY AUTOINCREMENT, cw INTEGER NOT NULL, name TEXT NOT NULL, city BOOLEAN NOT NULL DEFAULT 0, feature BOOLEAN NOT NULL DEFAULT 0, FOREIGN KEY (cw) REFERENCES cycle_week (id) ON UPDATE RESTRICT ON DELETE RESTRICT, UNIQUE (cw, name));
@@ -714,6 +905,25 @@ INSERT INTO location (id, cw, name, city, feature) VALUES (21, 29, 'Mediterranea
 INSERT INTO location (id, cw, name, city, feature) VALUES (22, 29, 'Europe', 0, 0);
 INSERT INTO location (id, cw, name, city, feature) VALUES (23, 5, 'India', 0, 0);
 INSERT INTO location (id, cw, name, city, feature) VALUES (24, 169, 'World', 0, 0);
+
+-- Table: new_user_invitation
+DROP TABLE IF EXISTS new_user_invitation;
+CREATE TABLE new_user_invitation (id INTEGER PRIMARY KEY AUTOINCREMENT, person INTEGER REFERENCES person (id) ON DELETE CASCADE ON UPDATE CASCADE, code STRING UNIQUE, issue_date DATE, accepted_date DATE, confirmation_problems STRING);
+INSERT INTO new_user_invitation (id, person, code, issue_date, accepted_date, confirmation_problems) VALUES (1, 12, 'bueihdw584a8', '2020-06-05', NULL, NULL);
+INSERT INTO new_user_invitation (id, person, code, issue_date, accepted_date, confirmation_problems) VALUES (2, 10, '5nxt919rz7hp', '2020-06-05', NULL, NULL);
+INSERT INTO new_user_invitation (id, person, code, issue_date, accepted_date, confirmation_problems) VALUES (3, 46, 'dncgpq2zmvty', '2020-06-05', NULL, NULL);
+INSERT INTO new_user_invitation (id, person, code, issue_date, accepted_date, confirmation_problems) VALUES (4, 7, 'il07ntpcxu06', '2020-06-05', NULL, NULL);
+INSERT INTO new_user_invitation (id, person, code, issue_date, accepted_date, confirmation_problems) VALUES (5, 29, 'xk5j1bvtrubr', '2020-06-05', NULL, NULL);
+INSERT INTO new_user_invitation (id, person, code, issue_date, accepted_date, confirmation_problems) VALUES (6, 25, 'dpine1q1gcu1', '2020-06-05', NULL, NULL);
+INSERT INTO new_user_invitation (id, person, code, issue_date, accepted_date, confirmation_problems) VALUES (7, 35, '32ms1ug4a4q2', '2020-06-05', NULL, NULL);
+INSERT INTO new_user_invitation (id, person, code, issue_date, accepted_date, confirmation_problems) VALUES (8, 55, 'z2sgj9tn0llh', '2020-06-05', NULL, NULL);
+INSERT INTO new_user_invitation (id, person, code, issue_date, accepted_date, confirmation_problems) VALUES (9, 51, '74tqgvndzirm', '2020-06-05', NULL, NULL);
+INSERT INTO new_user_invitation (id, person, code, issue_date, accepted_date, confirmation_problems) VALUES (10, 17, 'w75e9oqo3qfx', '2020-06-05', NULL, NULL);
+INSERT INTO new_user_invitation (id, person, code, issue_date, accepted_date, confirmation_problems) VALUES (11, 57, 'bk9idxjs4qae', '2020-06-05', NULL, NULL);
+INSERT INTO new_user_invitation (id, person, code, issue_date, accepted_date, confirmation_problems) VALUES (12, 58, 'qsuo0y2g5934', '2020-06-05', NULL, NULL);
+INSERT INTO new_user_invitation (id, person, code, issue_date, accepted_date, confirmation_problems) VALUES (13, 59, 'l72ex7vvujtg', '2020-06-05', NULL, NULL);
+INSERT INTO new_user_invitation (id, person, code, issue_date, accepted_date, confirmation_problems) VALUES (14, 20, '4fyg1pgh4cxc', '2020-06-05', NULL, NULL);
+INSERT INTO new_user_invitation (id, person, code, issue_date, accepted_date, confirmation_problems) VALUES (16, 40, 'ojxa1e56gx2n', '2020-06-05', NULL, NULL);
 
 -- Table: orientation
 DROP TABLE IF EXISTS orientation;
@@ -755,6 +965,203 @@ INSERT INTO part_of_speech (id, name) VALUES (5, 'adverb');
 INSERT INTO part_of_speech (id, name) VALUES (6, 'conjunction');
 INSERT INTO part_of_speech (id, name) VALUES (7, 'preposition');
 INSERT INTO part_of_speech (id, name) VALUES (8, 'interjection');
+
+-- Table: payment
+DROP TABLE IF EXISTS payment;
+CREATE TABLE payment (id INTEGER PRIMARY KEY AUTOINCREMENT, academic_year INTEGER REFERENCES academic_year (id) ON DELETE CASCADE ON UPDATE CASCADE, person INTEGER REFERENCES person (id) ON DELETE RESTRICT ON UPDATE CASCADE, amount INTEGER, check_number STRING, date DATE);
+INSERT INTO payment (id, academic_year, person, amount, check_number, date) VALUES (1, 1, 7, 15000, 1741, '2020-05-27');
+INSERT INTO payment (id, academic_year, person, amount, check_number, date) VALUES (2, 1, 9, 5000, 6669, '2020-06-03');
+INSERT INTO payment (id, academic_year, person, amount, check_number, date) VALUES (3, 1, 34, 5000, 137, '2020-06-03');
+INSERT INTO payment (id, academic_year, person, amount, check_number, date) VALUES (4, 1, 39, 5000, 1295, '2020-06-03');
+INSERT INTO payment (id, academic_year, person, amount, check_number, date) VALUES (5, 1, 45, 5000, 1105, '2020-06-04');
+INSERT INTO payment (id, academic_year, person, amount, check_number, date) VALUES (6, 1, 50, 37000, 188, '2020-06-03');
+INSERT INTO payment (id, academic_year, person, amount, check_number, date) VALUES (7, 1, 54, 5000, 153, '2020-06-06');
+INSERT INTO payment (id, academic_year, person, amount, check_number, date) VALUES (8, 1, 24, 5000, 3869, '2020-06-05');
+INSERT INTO payment (id, academic_year, person, amount, check_number, date) VALUES (9, 1, 28, 5000, 1984, '2020-06-05');
+INSERT INTO payment (id, academic_year, person, amount, check_number, date) VALUES (10, 1, 16, 10000, 1754, '2020-06-05');
+INSERT INTO payment (id, academic_year, person, amount, check_number, date) VALUES (11, 1, 11, 5000, 1839, '2020-06-05');
+INSERT INTO payment (id, academic_year, person, amount, check_number, date) VALUES (12, 1, 20, 5000, 1421, '2020-06-05');
+
+-- Table: person
+DROP TABLE IF EXISTS person;
+CREATE TABLE person (id INTEGER PRIMARY KEY AUTOINCREMENT, first_name STRING, last_name STRING, user INTEGER REFERENCES user (id) ON DELETE CASCADE ON UPDATE CASCADE, birthdate DATE, male INTEGER, head_of_household INTEGER);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (1, 'Michaila', 'Caine', NULL, '2006-04-10', 0, NULL);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (2, 'Alana', 'Caine', NULL, '2008-10-08', 0, NULL);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (3, 'Emma', 'Caine', NULL, '2010-06-05', 0, NULL);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (4, 'Parker', 'Brann', NULL, '2013-05-17', 1, NULL);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (5, 'Alden', 'Brann', NULL, '2007-09-13', 1, NULL);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (6, 'Isabella', 'Brann', NULL, '2005-10-05', 0, NULL);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (7, 'Michael', 'Caine', NULL, NULL, 1, 1);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (8, 'Kirsten', 'Caine', NULL, NULL, NULL, NULL);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (9, 'Darrell', 'Brann', NULL, NULL, 1, 1);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (10, 'Christi', 'Brann', NULL, NULL, NULL, NULL);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (11, 'Ben', 'Boyd', NULL, NULL, 1, 1);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (12, 'Sheri', 'Boyd', NULL, NULL, NULL, NULL);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (13, 'Gloriana', 'Boyd', NULL, '2007-01-22', NULL, NULL);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (14, 'Zion', 'Boyd', NULL, '2008-06-11', NULL, NULL);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (15, 'Jamin', 'Boyd', NULL, '2010-07-02', 1, NULL);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (16, 'Charley', 'Neveau', NULL, NULL, 1, 1);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (17, 'Liz', 'Neveau', NULL, NULL, NULL, NULL);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (18, 'Gabriel', 'Neveau', NULL, '2009-10-27', 1, NULL);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (19, 'Ruth', 'Neveau', NULL, '2013-2-24', NULL, NULL);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (20, 'Phil', 'Sheahan', NULL, NULL, 1, 1);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (21, 'Emily', 'Sheahan', NULL, NULL, NULL, NULL);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (22, 'Caleb', 'Sheahan', NULL, '2005-06-06', 1, NULL);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (23, 'Hannah', 'Sheahan', NULL, '2008-07-16', NULL, NULL);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (24, 'David', 'Hurley', NULL, NULL, 1, 1);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (25, 'Susanna', 'Hurley', NULL, NULL, NULL, NULL);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (26, 'Andrew', 'Hurley', NULL, '2006-08-21', 1, NULL);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (27, 'Abigail', 'Hurley', NULL, '2008-06-22', NULL, NULL);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (28, 'Zac', 'Hostetter', NULL, NULL, 1, 1);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (29, 'Caitlin', 'Hostetter', NULL, NULL, NULL, NULL);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (30, 'Freyja', 'Hostetter', NULL, '2008-05-15', NULL, NULL);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (31, 'Jude', 'Hostetter', NULL, '2010-01-31', 1, NULL);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (32, 'Rhys', 'Hostetter', NULL, '2012-02-05', 1, NULL);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (33, 'Llew', 'Hostetter', NULL, '2016-01-13', 1, NULL);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (34, 'Eddie', 'Kilner', NULL, NULL, 1, 1);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (35, 'Carrie', 'Kilner', NULL, NULL, NULL, NULL);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (36, 'William', 'Kilner', NULL, '2009-11-07', 1, NULL);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (37, 'Duncan', 'Kilner', NULL, '2011-12-29', 1, NULL);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (38, 'Fiona', 'Kilner', NULL, '2013-12-03', NULL, NULL);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (39, 'Jon', 'VanderZanden', NULL, NULL, 1, 1);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (40, 'Jamie', 'VanderZanden', NULL, NULL, NULL, NULL);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (41, 'Adelyn', 'VanderZanden', NULL, '2011-01-21', NULL, NULL);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (42, 'Josiah', 'VanderZanden', NULL, '2012-12-12', 1, NULL);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (43, 'Briggs', 'VanderZanden', NULL, '2014-05-14', 1, NULL);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (44, 'Kimber', 'VanderZanden', NULL, '2016-05-23', NULL, NULL);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (45, 'Brian', 'Buck', NULL, NULL, 1, 1);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (46, 'Jessica', 'Buck', NULL, NULL, NULL, NULL);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (47, 'Nolan', 'Buck', NULL, '2011-07-24', 1, NULL);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (48, 'Pierce', 'Buck', NULL, '2015-10-24', 1, NULL);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (49, 'Selah', 'Buck', NULL, '2018-05-16', NULL, NULL);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (50, 'Brandon', 'Miller', NULL, NULL, 1, 1);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (51, 'Laura', 'Miller', NULL, NULL, NULL, NULL);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (52, 'Samantha', 'Miller', NULL, '2015-05-20', NULL, NULL);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (53, 'Eli', 'Miller', NULL, NULL, 1, NULL);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (54, 'Scott', 'McDonald', NULL, NULL, 1, 1);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (55, 'Mick', 'McDonald', NULL, NULL, NULL, NULL);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (56, 'Daniel', 'Paul', NULL, NULL, 1, 1);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (57, 'Julie', 'Paul', NULL, NULL, NULL, NULL);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (58, 'Lou', 'Perry', NULL, NULL, 1, 1);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (59, 'Deyette', 'Perry', NULL, NULL, NULL, NULL);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (60, 'Flora', 'McDonald', NULL, '2005-04-25', NULL, NULL);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (61, 'Iona', 'McDonald', NULL, '2006-08-26', NULL, NULL);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (62, 'Opal', 'McDonald', NULL, '2007-12-22', NULL, NULL);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (63, 'George', 'McDonald', NULL, '2010-08-22', 1, NULL);
+INSERT INTO person (id, first_name, last_name, user, birthdate, male, head_of_household) VALUES (64, 'Helen', 'McDonald', NULL, '2011-08-12', NULL, NULL);
+
+-- Table: person_address
+DROP TABLE IF EXISTS person_address;
+CREATE TABLE person_address (person INTEGER REFERENCES person (id) ON DELETE CASCADE ON UPDATE CASCADE, address INTEGER REFERENCES address (id) ON DELETE CASCADE ON UPDATE CASCADE);
+INSERT INTO person_address (person, address) VALUES (11, 1);
+INSERT INTO person_address (person, address) VALUES (12, 1);
+INSERT INTO person_address (person, address) VALUES (9, 2);
+INSERT INTO person_address (person, address) VALUES (10, 2);
+INSERT INTO person_address (person, address) VALUES (45, 3);
+INSERT INTO person_address (person, address) VALUES (46, 3);
+INSERT INTO person_address (person, address) VALUES (7, 4);
+INSERT INTO person_address (person, address) VALUES (8, 4);
+INSERT INTO person_address (person, address) VALUES (54, 5);
+INSERT INTO person_address (person, address) VALUES (55, 5);
+INSERT INTO person_address (person, address) VALUES (50, 6);
+INSERT INTO person_address (person, address) VALUES (51, 6);
+INSERT INTO person_address (person, address) VALUES (16, 7);
+INSERT INTO person_address (person, address) VALUES (17, 7);
+INSERT INTO person_address (person, address) VALUES (56, 8);
+INSERT INTO person_address (person, address) VALUES (57, 8);
+INSERT INTO person_address (person, address) VALUES (58, 9);
+INSERT INTO person_address (person, address) VALUES (59, 9);
+INSERT INTO person_address (person, address) VALUES (28, 10);
+INSERT INTO person_address (person, address) VALUES (29, 10);
+INSERT INTO person_address (person, address) VALUES (24, 11);
+INSERT INTO person_address (person, address) VALUES (25, 11);
+INSERT INTO person_address (person, address) VALUES (34, 12);
+INSERT INTO person_address (person, address) VALUES (35, 12);
+INSERT INTO person_address (person, address) VALUES (20, 13);
+INSERT INTO person_address (person, address) VALUES (21, 13);
+INSERT INTO person_address (person, address) VALUES (39, 14);
+INSERT INTO person_address (person, address) VALUES (40, 14);
+
+-- Table: person_email
+DROP TABLE IF EXISTS person_email;
+CREATE TABLE person_email (person INTEGER REFERENCES person (id) ON DELETE CASCADE ON UPDATE CASCADE, email INTEGER REFERENCES email (id) ON DELETE CASCADE ON UPDATE CASCADE);
+INSERT INTO person_email (person, email) VALUES (22, 1);
+INSERT INTO person_email (person, email) VALUES (23, 2);
+INSERT INTO person_email (person, email) VALUES (12, 4);
+INSERT INTO person_email (person, email) VALUES (10, 5);
+INSERT INTO person_email (person, email) VALUES (46, 6);
+INSERT INTO person_email (person, email) VALUES (7, 7);
+INSERT INTO person_email (person, email) VALUES (29, 8);
+INSERT INTO person_email (person, email) VALUES (25, 9);
+INSERT INTO person_email (person, email) VALUES (35, 10);
+INSERT INTO person_email (person, email) VALUES (55, 11);
+INSERT INTO person_email (person, email) VALUES (51, 12);
+INSERT INTO person_email (person, email) VALUES (17, 13);
+INSERT INTO person_email (person, email) VALUES (57, 14);
+INSERT INTO person_email (person, email) VALUES (59, 15);
+INSERT INTO person_email (person, email) VALUES (20, 17);
+INSERT INTO person_email (person, email) VALUES (58, 16);
+INSERT INTO person_email (person, email) VALUES (40, 18);
+
+-- Table: person_phone
+DROP TABLE IF EXISTS person_phone;
+CREATE TABLE person_phone (person INTEGER REFERENCES person (id) ON DELETE CASCADE ON UPDATE CASCADE, phone INTEGER REFERENCES phone (id) ON DELETE CASCADE ON UPDATE CASCADE);
+INSERT INTO person_phone (person, phone) VALUES (21, 1);
+INSERT INTO person_phone (person, phone) VALUES (22, 2);
+INSERT INTO person_phone (person, phone) VALUES (34, 3);
+INSERT INTO person_phone (person, phone) VALUES (12, 4);
+INSERT INTO person_phone (person, phone) VALUES (10, 5);
+INSERT INTO person_phone (person, phone) VALUES (46, 6);
+INSERT INTO person_phone (person, phone) VALUES (7, 7);
+INSERT INTO person_phone (person, phone) VALUES (8, 7);
+INSERT INTO person_phone (person, phone) VALUES (55, 9);
+INSERT INTO person_phone (person, phone) VALUES (51, 10);
+INSERT INTO person_phone (person, phone) VALUES (17, 11);
+INSERT INTO person_phone (person, phone) VALUES (57, 12);
+INSERT INTO person_phone (person, phone) VALUES (59, 13);
+INSERT INTO person_phone (person, phone) VALUES (58, 14);
+INSERT INTO person_phone (person, phone) VALUES (59, 15);
+INSERT INTO person_phone (person, phone) VALUES (29, 16);
+INSERT INTO person_phone (person, phone) VALUES (25, 17);
+INSERT INTO person_phone (person, phone) VALUES (35, 18);
+INSERT INTO person_phone (person, phone) VALUES (20, 19);
+INSERT INTO person_phone (person, phone) VALUES (40, 20);
+INSERT INTO person_phone (person, phone) VALUES (40, 21);
+
+-- Table: phone
+DROP TABLE IF EXISTS phone;
+CREATE TABLE phone (id INTEGER PRIMARY KEY AUTOINCREMENT, number STRING, unlisted INTEGER, note STRING);
+INSERT INTO phone (id, number, unlisted, note) VALUES (1, 5412632221, 1, NULL);
+INSERT INTO phone (id, number, unlisted, note) VALUES (2, 5412631071, NULL, NULL);
+INSERT INTO phone (id, number, unlisted, note) VALUES (3, 2088743006, NULL, NULL);
+INSERT INTO phone (id, number, unlisted, note) VALUES (4, 3075752090, NULL, NULL);
+INSERT INTO phone (id, number, unlisted, note) VALUES (5, 5412632321, NULL, NULL);
+INSERT INTO phone (id, number, unlisted, note) VALUES (6, 5418055060, NULL, NULL);
+INSERT INTO phone (id, number, unlisted, note) VALUES (7, 5414263060, NULL, 'home');
+INSERT INTO phone (id, number, unlisted, note) VALUES (8, 5413980397, NULL, 'cell');
+INSERT INTO phone (id, number, unlisted, note) VALUES (9, 5413988208, NULL, NULL);
+INSERT INTO phone (id, number, unlisted, note) VALUES (10, 5413980252, NULL, NULL);
+INSERT INTO phone (id, number, unlisted, note) VALUES (11, 5413988093, NULL, NULL);
+INSERT INTO phone (id, number, unlisted, note) VALUES (12, 2083100587, NULL, NULL);
+INSERT INTO phone (id, number, unlisted, note) VALUES (13, 5414320410, NULL, NULL);
+INSERT INTO phone (id, number, unlisted, note) VALUES (14, 5412632218, NULL, NULL);
+INSERT INTO phone (id, number, unlisted, note) VALUES (15, 5412632219, NULL, NULL);
+INSERT INTO phone (id, number, unlisted, note) VALUES (16, 5412632374, NULL, NULL);
+INSERT INTO phone (id, number, unlisted, note) VALUES (17, 5413981618, NULL, NULL);
+INSERT INTO phone (id, number, unlisted, note) VALUES (18, 2086691599, NULL, NULL);
+INSERT INTO phone (id, number, unlisted, note) VALUES (19, 5412632870, NULL, NULL);
+INSERT INTO phone (id, number, unlisted, note) VALUES (20, 5413982144, NULL, 'cell');
+INSERT INTO phone (id, number, unlisted, note) VALUES (21, 5413981816, NULL, 'home');
+
+-- Table: program
+DROP TABLE IF EXISTS program;
+CREATE TABLE program (id INTEGER PRIMARY KEY AUTOINCREMENT, name STRING UNIQUE, schedule STRING, start_age INTEGER);
+INSERT INTO program (id, name, schedule, start_age) VALUES (1, 'Grammar School', 'Tuesday mornings', 4);
+INSERT INTO program (id, name, schedule, start_age) VALUES (2, '4th-6th Grade', 'Tuesday afternoons', 9);
+INSERT INTO program (id, name, schedule, start_age) VALUES (3, '7th-9th Grade', 'All day Tuesday', 12);
+INSERT INTO program (id, name, schedule, start_age) VALUES (4, '10th-12th Grade', 'All day Tuesday', 15);
+INSERT INTO program (id, name, schedule, start_age) VALUES (6, 'Graduate', NULL, 18);
+INSERT INTO program (id, name, schedule, start_age) VALUES (7, 'Sibling School', 'Tuesday afternoons', 4);
 
 -- Table: region
 DROP TABLE IF EXISTS region;
@@ -974,44 +1381,44 @@ INSERT INTO resource_type (id, name) VALUES (7, 'web page');
 
 -- Table: resource_use
 DROP TABLE IF EXISTS resource_use;
-CREATE TABLE resource_use (id INTEGER PRIMARY KEY AUTOINCREMENT, subject INTEGER REFERENCES subject (id) ON DELETE CASCADE ON UPDATE CASCADE, resource INTEGER REFERENCES resource (id) ON DELETE CASCADE ON UPDATE CASCADE, cw INTEGER REFERENCES cycle_week (id) ON DELETE CASCADE ON UPDATE CASCADE, context INTEGER REFERENCES context (id) ON DELETE CASCADE ON UPDATE CASCADE, pages STRING, chapters STRING, optional BOOLEAN);
-INSERT INTO resource_use (id, subject, resource, cw, context, pages, chapters, optional) VALUES (1, 8, 3, 197, 3, NULL, NULL, NULL);
-INSERT INTO resource_use (id, subject, resource, cw, context, pages, chapters, optional) VALUES (2, 8, 4, 197, 3, NULL, NULL, NULL);
-INSERT INTO resource_use (id, subject, resource, cw, context, pages, chapters, optional) VALUES (3, 8, 5, 197, 3, NULL, NULL, 1);
-INSERT INTO resource_use (id, subject, resource, cw, context, pages, chapters, optional) VALUES (4, 8, 6, 197, 3, NULL, NULL, 1);
-INSERT INTO resource_use (id, subject, resource, cw, context, pages, chapters, optional) VALUES (5, 8, 7, 197, 3, NULL, NULL, NULL);
-INSERT INTO resource_use (id, subject, resource, cw, context, pages, chapters, optional) VALUES (6, 8, 8, 197, 3, NULL, NULL, 1);
-INSERT INTO resource_use (id, subject, resource, cw, context, pages, chapters, optional) VALUES (7, 8, 9, 197, 3, NULL, NULL, NULL);
-INSERT INTO resource_use (id, subject, resource, cw, context, pages, chapters, optional) VALUES (8, 8, 10, 197, 3, NULL, NULL, 1);
-INSERT INTO resource_use (id, subject, resource, cw, context, pages, chapters, optional) VALUES (9, 8, 11, 197, 3, NULL, NULL, NULL);
-INSERT INTO resource_use (id, subject, resource, cw, context, pages, chapters, optional) VALUES (10, 8, 12, 197, 3, NULL, NULL, 1);
-INSERT INTO resource_use (id, subject, resource, cw, context, pages, chapters, optional) VALUES (11, 8, 13, 197, 3, NULL, NULL, NULL);
-INSERT INTO resource_use (id, subject, resource, cw, context, pages, chapters, optional) VALUES (12, 8, 14, 197, 3, NULL, NULL, NULL);
-INSERT INTO resource_use (id, subject, resource, cw, context, pages, chapters, optional) VALUES (13, 8, 15, 197, 3, NULL, NULL, 1);
-INSERT INTO resource_use (id, subject, resource, cw, context, pages, chapters, optional) VALUES (14, 8, 16, 197, 3, NULL, NULL, NULL);
-INSERT INTO resource_use (id, subject, resource, cw, context, pages, chapters, optional) VALUES (15, 8, 17, 197, 3, NULL, NULL, 1);
-INSERT INTO resource_use (id, subject, resource, cw, context, pages, chapters, optional) VALUES (16, 8, 18, 197, 3, NULL, NULL, NULL);
-INSERT INTO resource_use (id, subject, resource, cw, context, pages, chapters, optional) VALUES (20, 2, 1, 203, 3, NULL, NULL, NULL);
-INSERT INTO resource_use (id, subject, resource, cw, context, pages, chapters, optional) VALUES (21, 2, 2, 203, 3, NULL, NULL, NULL);
-INSERT INTO resource_use (id, subject, resource, cw, context, pages, chapters, optional) VALUES (22, 2, 19, 203, 3, NULL, NULL, NULL);
-INSERT INTO resource_use (id, subject, resource, cw, context, pages, chapters, optional) VALUES (23, 2, 20, 203, 3, NULL, NULL, NULL);
-INSERT INTO resource_use (id, subject, resource, cw, context, pages, chapters, optional) VALUES (24, 8, 22, 197, 3, NULL, NULL, 1);
-INSERT INTO resource_use (id, subject, resource, cw, context, pages, chapters, optional) VALUES (25, 8, 23, 197, 3, NULL, NULL, NULL);
-INSERT INTO resource_use (id, subject, resource, cw, context, pages, chapters, optional) VALUES (26, 8, 24, 197, 3, NULL, NULL, NULL);
-INSERT INTO resource_use (id, subject, resource, cw, context, pages, chapters, optional) VALUES (27, 2, 25, 203, 3, NULL, NULL, NULL);
-INSERT INTO resource_use (id, subject, resource, cw, context, pages, chapters, optional) VALUES (28, 2, 26, 203, 3, NULL, NULL, NULL);
-INSERT INTO resource_use (id, subject, resource, cw, context, pages, chapters, optional) VALUES (29, 2, 27, 203, 3, NULL, NULL, NULL);
-INSERT INTO resource_use (id, subject, resource, cw, context, pages, chapters, optional) VALUES (30, 2, 28, 203, 3, NULL, NULL, NULL);
-INSERT INTO resource_use (id, subject, resource, cw, context, pages, chapters, optional) VALUES (31, 5, 29, 197, 3, NULL, NULL, NULL);
-INSERT INTO resource_use (id, subject, resource, cw, context, pages, chapters, optional) VALUES (32, 9, 30, 197, 3, NULL, NULL, NULL);
-INSERT INTO resource_use (id, subject, resource, cw, context, pages, chapters, optional) VALUES (33, 2, 21, 203, 3, NULL, NULL, 1);
-INSERT INTO resource_use (id, subject, resource, cw, context, pages, chapters, optional) VALUES (34, 8, 31, 197, 3, NULL, NULL, 1);
-INSERT INTO resource_use (id, subject, resource, cw, context, pages, chapters, optional) VALUES (35, 8, 32, 197, 3, NULL, NULL, 1);
-INSERT INTO resource_use (id, subject, resource, cw, context, pages, chapters, optional) VALUES (36, 8, 33, 197, 3, NULL, NULL, 1);
-INSERT INTO resource_use (id, subject, resource, cw, context, pages, chapters, optional) VALUES (37, 2, 34, 203, 3, NULL, NULL, 1);
-INSERT INTO resource_use (id, subject, resource, cw, context, pages, chapters, optional) VALUES (38, 2, 35, 203, 3, NULL, NULL, 1);
-INSERT INTO resource_use (id, subject, resource, cw, context, pages, chapters, optional) VALUES (39, 5, 37, 197, 3, NULL, NULL, 1);
-INSERT INTO resource_use (id, subject, resource, cw, context, pages, chapters, optional) VALUES (40, 8, 38, 197, 3, NULL, NULL, NULL);
+CREATE TABLE resource_use (id INTEGER PRIMARY KEY AUTOINCREMENT, subject INTEGER REFERENCES subject (id) ON DELETE CASCADE ON UPDATE CASCADE, resource INTEGER REFERENCES resource (id) ON DELETE CASCADE ON UPDATE CASCADE, cw INTEGER REFERENCES cycle_week (id) ON DELETE CASCADE ON UPDATE CASCADE, program INTEGER REFERENCES program (id) ON DELETE CASCADE ON UPDATE CASCADE, pages STRING, chapters STRING, optional BOOLEAN);
+INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (1, 8, 3, 197, 3, NULL, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (2, 8, 4, 197, 3, NULL, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (3, 8, 5, 197, 3, NULL, NULL, 1);
+INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (4, 8, 6, 197, 3, NULL, NULL, 1);
+INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (5, 8, 7, 197, 3, NULL, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (6, 8, 8, 197, 3, NULL, NULL, 1);
+INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (7, 8, 9, 197, 3, NULL, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (8, 8, 10, 197, 3, NULL, NULL, 1);
+INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (9, 8, 11, 197, 3, NULL, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (10, 8, 12, 197, 3, NULL, NULL, 1);
+INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (11, 8, 13, 197, 3, NULL, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (12, 8, 14, 197, 3, NULL, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (13, 8, 15, 197, 3, NULL, NULL, 1);
+INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (14, 8, 16, 197, 3, NULL, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (15, 8, 17, 197, 3, NULL, NULL, 1);
+INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (16, 8, 18, 197, 3, NULL, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (20, 2, 1, 203, 3, NULL, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (21, 2, 2, 203, 3, NULL, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (22, 2, 19, 203, 3, NULL, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (23, 2, 20, 203, 3, NULL, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (24, 8, 22, 197, 3, NULL, NULL, 1);
+INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (25, 8, 23, 197, 3, NULL, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (26, 8, 24, 197, 3, NULL, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (27, 2, 25, 203, 3, NULL, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (28, 2, 26, 203, 3, NULL, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (29, 2, 27, 203, 3, NULL, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (30, 2, 28, 203, 3, NULL, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (31, 5, 29, 197, 3, NULL, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (32, 9, 30, 197, 3, NULL, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (33, 2, 21, 203, 3, NULL, NULL, 1);
+INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (34, 8, 31, 197, 3, NULL, NULL, 1);
+INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (35, 8, 32, 197, 3, NULL, NULL, 1);
+INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (36, 8, 33, 197, 3, NULL, NULL, 1);
+INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (37, 2, 34, 203, 3, NULL, NULL, 1);
+INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (38, 2, 35, 203, 3, NULL, NULL, 1);
+INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (39, 5, 37, 197, 3, NULL, NULL, 1);
+INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (40, 8, 38, 197, 3, NULL, NULL, NULL);
 
 -- Table: role
 DROP TABLE IF EXISTS role;
@@ -1058,6 +1465,7 @@ INSERT INTO subject (id, name) VALUES (6, 'English');
 INSERT INTO subject (id, name) VALUES (7, 'Latin');
 INSERT INTO subject (id, name) VALUES (8, 'Literature');
 INSERT INTO subject (id, name) VALUES (9, 'Poetry');
+INSERT INTO subject (id, name) VALUES (10, 'All');
 
 -- Table: test_event_sequence_answer
 DROP TABLE IF EXISTS test_event_sequence_answer;
@@ -1081,8 +1489,8 @@ CREATE TABLE test_event_sequence_user_answer (id INTEGER PRIMARY KEY AUTOINCREME
 
 -- Table: user
 DROP TABLE IF EXISTS user;
-CREATE TABLE user (id INTEGER PRIMARY KEY AUTOINCREMENT, username STRING UNIQUE, password STRING, salt STRING, email STRING);
-INSERT INTO user (id, username, password, salt, email) VALUES (1, 'jmcaine', NULL, NULL, NULL);
+CREATE TABLE user (id INTEGER PRIMARY KEY AUTOINCREMENT, username STRING UNIQUE, password STRING, salt STRING, person INTEGER REFERENCES person (id) ON DELETE CASCADE ON UPDATE CASCADE);
+INSERT INTO user (id, username, password, salt, person) VALUES (1, 'jmcaine', NULL, NULL, NULL);
 
 -- Table: user_role
 DROP TABLE IF EXISTS user_role;
