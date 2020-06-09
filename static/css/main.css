@@ -252,6 +252,7 @@ label.answer_option_label {
 	-webkit-writing-mode: vertical-lr;
 	-ms-writing-mode: tb-lr;
 	writing-mode: vertical-lr;
+	height: 100%;
 }
 
 .resource_block .subject_content {
@@ -391,3 +392,68 @@ label.answer_option_label {
 	white-space: nowrap;
 }
 
+
+
+
+
+.flex-wrap {
+	display: -webkit-box;      /* OLD - iOS 6-, Safari 3.1-6 */
+	display: -moz-box;         /* OLD - Firefox 19- (buggy but mostly works) */
+	display: -ms-flexbox;      /* TWEENER - IE 10 */
+	display: -webkit-flex;     /* NEW - Chrome */
+	display: flex;             /* NEW, Spec - Opera 12.1, Firefox 20+ */
+	/* toyed with inline-flex, which only expands outer container width to maximum width of contained elements, but this has drawbacks, e.g, when using multipl flex-wrap containers in down the page - they're not all sized the same in this case */
+
+	align-items: baseline;
+	
+	border: 2px solid black;
+	border-radius: 7px;
+	margin: 0.5rem;
+}
+
+.flex-wrap .main {
+
+	border-left: 2px solid #84a59d;
+	padding: 0.5rem;
+	background-color: #eff7f6;
+	border-radius: 7px;
+
+	-webkit-box-flex: 1;      /* OLD - iOS 6-, Safari 3.1-6 */
+	-moz-box-flex: 1;         /* OLD - Firefox 19- */
+	-webkit-flex: 1;          /* Chrome */
+	-ms-flex: 1;              /* IE 10 */
+	flex: 1;                  /* NEW, Spec - Opera 12.1, Firefox 20+ */
+
+	-webkit-box-ordinal-group: 2;   /* OLD - iOS 6-, Safari 3.1-6 */
+	-moz-box-ordinal-group: 2;      /* OLD - Firefox 19- */
+	-ms-flex-order: 2;              /* TWEENER - IE 10 */
+	-webkit-order: 2;               /* NEW - Chrome */
+	order: 2;                       /* NEW, Spec - Opera 12.1, Firefox 20+ */
+}
+
+.flex-wrap .title {
+
+	font-size: 1.2rem;
+	padding: 0.5rem;
+	font-weight: bold;
+
+	flex: 0 0 1.5rem;
+
+	-webkit-box-ordinal-group: 1;  
+	-moz-box-ordinal-group: 1;     
+	-ms-flex-order: 1;     
+	-webkit-order: 1;  
+	order: 1;
+
+	-webkit-writing-mode: vertical-lr;
+	-ms-writing-mode: tb-lr;
+	writing-mode: vertical-lr;
+
+}
+
+.contact_line {
+}
+
+.contact_line_inset {
+	margin-left: 1rem;
+}

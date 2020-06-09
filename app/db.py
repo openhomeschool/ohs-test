@@ -13,6 +13,7 @@ import logging
 l = logging.getLogger(__name__)
 
 from . import sql
+from . import util
 
 # -----------------------------------------------------------------------------
 # User stuff
@@ -206,4 +207,30 @@ async def get_contexts(dbc):
 
 async def get_new_user_invitation(dbc, code):
 	return await sql.get_new_user_invitation(dbc, code)
+
+async def get_person(dbc, id):
+	return await sql.get_person(dbc, id)
+
+async def get_family(dbc, id):
+	return await sql.get_family(dbc, id)
+
+from dataclasses import dataclass
+async def get_person_contact_info(dbc, person_id):
+	return util.Struct(
+		addresses = await sql.get_person_addresses(dbc, person_id),
+		phones = await sql.get_person_phones(dbc, person_id),
+		emails = await sql.get_person_emails(dbc, person_id),
+	)
+
+async def get_heads_of_households(dbc):
+	return await sql.get_heads_of_households(dbc)
+
+async def get_family_children(dbc, parent_id):
+	return await sql.get_family_children(dbc, parent_id)
+
+async def get_costs(dbc):
+	return await sql.get_costs(dbc)
+
+async def get_payments(dbc, guardian_ids):
+	return await sql.get_payments(dbc, guardian_ids)
 

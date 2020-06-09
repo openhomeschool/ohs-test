@@ -66,11 +66,127 @@ def new_person(form, errors = None):
 	title = 'New Person'
 	#TODO
 
-def invite(form, errors = None):
+def _format_phone(number):
+	sn = str(number)
+	return '(%s) %s-%s' % (sn[0:3], sn[3:6], sn[6:10])
+
+def _format_person(person, bd = True):
+	result = '%s %s' % (person['first_name'], person['last_name'])
+	if bd:
+		result += ' (%s)' % person['birthdate'].strftime('%b %-d, %Y')
+	return result
+
+def _format_money(amount_cents):
+	dollars = amount_cents / 100
+	cents = amount_cents % 100
+	if cents == 0:
+		return t.b('$%d' % dollars) # keep it simple - no need to show ".00"
+	#else:
+	return t.b('$%d.%d' % (dollars, cents))
+
+def _format_cost(cost):
+	return ('%s: ' % cost['name'], _format_money(cost['amount']))
+
+def invitation(form, invitation, person, family, contact, costs, payments, errors = None):
+	#TODO: this is ugly long!  dice it up!!
+	
+	cl = lambda content: t.div(content, cls = 'contact_line')
+	cli = lambda content: t.div(content, cls = 'contact_line_inset')
+	
 	d = _doc('Invitation')
 	with d:
-		t.p('New user (%s) successfully created! ....' % id)
-		return d.render()
+		if not errors: # if there are errors, then we are re-presentingt his page; no need to say hello again
+			t.p('Hello %s %s!  Please confirm that all of the following is correct...' % (person['first_name'], person['last_name']))
+			
+		with t.div(cls = 'flex-wrap'):
+			t.div(t.b('Contact'), cls = 'title')
+			with t.div(cls = 'main'):
+				with t.div(cls = 'resource_record'):
+					for address in contact.addresses:
+						if address['note']:
+							cl(t.b(address['note']))
+						if address['po_box']:
+							cl(address['po_box'])
+						else:
+							cl(address['street_1'])
+							if address['street_2']:
+								cl(address['street_2'])
+						cl('%s, %s  %s' % (address['city'], address['state'], address['postal_code']))
+						if address['unlisted']:
+							cl(t.b('(unlisted)'))
+					t.hr()
+				with t.div(cls = 'resource_record'):
+					for email in contact.emails:
+						result = email['address']
+						if email['unlisted']:
+							result += ' (unlisted)'
+						if email['note']:
+							result += ' %s' % email['note']
+						cl(result)
+				with t.div(cls = 'resource_record'):
+					for phone in contact.phones:
+						result = _format_phone(phone['number'])
+						if phone['unlisted']:
+							result += ' (unlisted)'
+						if phone['note']:
+							result += ' %s' % phone['note']
+						cl(result)
+					
+		with t.div(cls = 'flex-wrap'):
+			t.div(t.b('Family'), cls = 'title')
+			with t.div(cls = 'main'):
+				with t.div(cls = 'resource_record'):
+					fg = family.guardians
+					if len(fg) == 2 and fg[0]['last_name'] == fg[1]['last_name']: # most common "spouse" scenario
+						hoh = 0 if fg[0]['head_of_household'] else 1
+						other = 1 if hoh == 0 else 0
+						cl(fg[hoh]['first_name'] + ' & ' + fg[other]['first_name'] + ' ' + fg[hoh]['last_name'])
+					else:
+						cl(', '.join(['%s %s' % (g['first_name'], g['last_name']) for g in fg]))
+					t.hr()
+				with t.div(cls = 'resource_record'):
+					program = None
+					for child in family.children:
+						if child['program_name'] != program:
+							program = child['program_name']
+							cl(t.b('%s (%s)' % (program, child['program_schedule'])))
+						cli(_format_person(child))
+		
+		with t.div(cls = 'flex-wrap'):
+			t.div(t.b('Costs'), cls = 'title')
+			with t.div(cls = 'main'):
+				total = 0
+				total_payments = 0
+				with t.div(cls = 'resource_record'):
+					for cost in [c for c in costs if not c['per_student']]:
+						cl(t.span(*_format_cost(cost)))
+						total += cost['amount']
+					for child in family.children:
+						cl(t.span(t.b(child['first_name'] + ' ' + child['last_name']), ' (', child['program_name'], ')'))
+						child_total = 0
+						for cost in [c for c in costs if c['per_student'] and not c['program']]:
+							cli(t.span(*_format_cost(cost)))
+							child_total += cost['amount']
+						for cost in [c for c in costs if c['program'] == child['program_id']]:
+							cli(t.span(*_format_cost(cost)))
+							child_total += cost['amount']
+						cli(t.span(*('Total: ', _format_money(child_total))))
+						total += child_total
+					cl(t.span('TOTAL: ', _format_money(total)))
+					t.hr()
+				with t.div(cls = 'resource_record'):
+					cl('Payments:')
+					for payment in payments:
+						cli(t.span('Check #%s (%s): ' % (payment['check_number'], payment['date'].strftime('%x')), _format_money(payment['amount'])))
+						total_payments += payment['amount']
+					t.hr()
+				with t.div(cls = 'resource_record'):
+					cl('Balance Due:')
+					cli(_format_money(total - total_payments))
+
+		t.p('If you see any mistakes, please just contact me directly.  Thanks!')
+		
+	return d.render()
 
 def new_user(form, ws_url, errors = None):
 	title = 'New User'
