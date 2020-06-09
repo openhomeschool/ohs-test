@@ -265,7 +265,7 @@ async def resources(request):
 	dbc = request.app['db']
 	qargs = request.query
 	filters = (
-		('context', 'choose_context', [(context['name'], context['id']) for context in await db.get_contexts(dbc)]),
+		('program', 'choose_program', [(program['name'], program['id']) for program in await db.get_programs(dbc)]),
 		#('cycle', 'choose_cycle', [(cycle['name'], cycle['id']) for cycle in await db.get_cycles(dbc)]),
 		#('start_week', 'choose_start_week', [(cycle['name'], cycle['id']) for week in await db.get_weeks(dbc)]),
 		#('end_week', 'choose_end_week', [(cycle['name'], cycle['id']) for week in await db.get_weeks(dbc)]),
@@ -285,9 +285,9 @@ async def ws_filter_resource_list(request):
 		#user_id = session['user_id']
 		search_string = None
 		deep_search = False
-		cycles = (0, 1) # default: "cycle 1" ("0" refers to grammar that belongs to "all cycles" (like timeline grammar) - always include "0")
+		cycles = (4, 1) # default: "cycle 1" ("4" refers to grammar that belongs to "all cycles" (like timeline grammar) - this is hardcode! TODO:FIX!)
 		week_range = (1, 1) # default: "week 1" (only)
-		context = 0 # "all"
+		program = 1 # "grammar" TODO: this is a hardcode default!!!
 	spec = Spec()
 
 	async def msg_handler(payload, ws):
@@ -315,8 +315,8 @@ async def ws_filter_resource_list(request):
 					if first_week > last_week:
 						first_week = last_week
 				spec.week_range = (first_week, last_week) # db. call below....
-		elif payload['call'] == 'choose_context':
-			spec.context = int(payload['option']) # db. call below...
+		elif payload['call'] == 'choose_program':
+			spec.program = int(payload['option']) # db. call below...
 		else:
 			l.warning('unexpected payload["call"] in ws_filter_resource_list::msg_handler()')
 

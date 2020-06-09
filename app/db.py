@@ -202,8 +202,8 @@ async def get_resources(spec):
 # -----------------------------------------------------------------------------
 # Sundry
 
-async def get_contexts(dbc):
-	return await sql.get_contexts(dbc)
+async def get_programs(dbc):
+	return await sql.get_programs(dbc)
 
 async def get_new_user_invitation(dbc, code):
 	return await sql.get_new_user_invitation(dbc, code)
