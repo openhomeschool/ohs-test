@@ -472,19 +472,21 @@ label.answer_option_label {
 	margin: 5px;
 }
 
-.flex-wrap .main .resource_details {
+.flex-wrap .main .shopping_links {
+	display: none;
 	margin: 5px;
 	margin-left: 20px;
 	vertical-align: middle;
 }
 
-.resource_details .shopping_links {
+.shopping_link {
 	display: inline-block;
 	height: 20px;
 	line-height: 20px;
 	text-align: center;
 }
 
-.resource_details .shopping_links  img {
+.shopping_link img {
 	max-height: 100%;
 }
+

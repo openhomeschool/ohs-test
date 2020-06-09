@@ -309,6 +309,7 @@ def resources(url, filters, qargs): # TODO: this is basically identical to selec
 		t.script(_js_dropdown())
 		t.script(_js_filter_weeks())
 		t.script(_js_calendar_widget())
+		t.script(_js_show_hide_shopping())
 	return d.render()
 
 subject_resources = dict()
@@ -397,7 +398,7 @@ def external_resources(container, records, show_cw):
 			subject_name = None
 			content = None
 			resource_name = None
-			resource_detail = None
+			shopping_links = None
 			for record in records:
 				if record['subject_name'] != subject_name:
 					subject_name = record['subject_name']
@@ -419,9 +420,10 @@ def external_resources(container, records, show_cw):
 						resource_title += t.b(resource_name)
 						if record['note']:
 							resource_title += ' (%s)' % record['note']
-						resource_detail = t.div(cls = 'resource_details')
+						resource_title += t.span(t.button('^', onclick = 'show_hide_shopping("%s");' % resource_name))
+						shopping_links = t.div(cls = 'shopping_links', id = resource_name)
 
-				_add_shopping_links(resource_detail, record)
+				_add_shopping_link(shopping_links, record)
 
 			#TODO: the next 3 lines duplicates 3 lines above; consolidate!
 			if resource_block:
@@ -429,8 +431,8 @@ def external_resources(container, records, show_cw):
 				container += resource_block # add old one before creating new one
 			
 
-def _add_shopping_links(container, record):
-	s = t.div(t.a(t.img(src = _lurl(record['resource_source_logo'])), href = record['url'], target = '_blank'), cls = 'shopping_links')
+def _add_shopping_link(container, record):
+	s = t.div(t.a(t.img(src = _lurl(record['resource_source_logo'])), href = record['url'], target = '_blank'), cls = 'shopping_link')
 	if record['instance_note']:
 		s += '(' + record['instance_note'] + ')'
 		container += t.br()
@@ -810,4 +812,16 @@ def _js_dropdown():
 def _js_calendar_widget():
 	return raw('''
 		/* javascript here... */
+	''')
+
+def _js_show_hide_shopping():
+	return raw('''
+		function show_hide_shopping(div_id) {
+			var div = document.getElementById(div_id);
+			if (div.style.display === "block") {
+				div.style.display = "none";
+			} else {
+				div.style.display = "block";
+			}
+		};
 	''')
