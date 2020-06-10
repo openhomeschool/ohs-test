@@ -1,5 +1,5 @@
 --
--- File generated with SQLiteStudio v3.2.1 on Tue Jun 9 07:38:32 2020
+-- File generated with SQLiteStudio v3.2.1 on Tue Jun 9 19:19:56 2020
 --
 -- Text encoding used: UTF-8
 --
@@ -974,7 +974,7 @@ INSERT INTO payment (id, academic_year, person, amount, check_number, date) VALU
 INSERT INTO payment (id, academic_year, person, amount, check_number, date) VALUES (3, 1, 34, 5000, 137, '2020-06-03');
 INSERT INTO payment (id, academic_year, person, amount, check_number, date) VALUES (4, 1, 39, 5000, 1295, '2020-06-03');
 INSERT INTO payment (id, academic_year, person, amount, check_number, date) VALUES (5, 1, 45, 5000, 1105, '2020-06-04');
-INSERT INTO payment (id, academic_year, person, amount, check_number, date) VALUES (6, 1, 50, 37000, 188, '2020-06-03');
+INSERT INTO payment (id, academic_year, person, amount, check_number, date) VALUES (6, 1, 50, 5000, 189, '2020-06-03');
 INSERT INTO payment (id, academic_year, person, amount, check_number, date) VALUES (7, 1, 54, 5000, 153, '2020-06-06');
 INSERT INTO payment (id, academic_year, person, amount, check_number, date) VALUES (8, 1, 24, 5000, 3869, '2020-06-05');
 INSERT INTO payment (id, academic_year, person, amount, check_number, date) VALUES (9, 1, 28, 5000, 1984, '2020-06-05');
@@ -1249,7 +1249,7 @@ CREATE TABLE resource_details (id INTEGER PRIMARY KEY AUTOINCREMENT, resource IN
 DROP TABLE IF EXISTS resource_instance;
 CREATE TABLE resource_instance (id INTEGER PRIMARY KEY AUTOINCREMENT, resource INTEGER REFERENCES resource (id) ON DELETE CASCADE ON UPDATE CASCADE, type INTEGER REFERENCES resource_type (id) ON DELETE CASCADE ON UPDATE CASCADE, source INTEGER REFERENCES resource_source (id) ON DELETE CASCADE ON UPDATE CASCADE, url STRING, cost_cents INTEGER, pages INTEGER, listening_hours INTEGER, note STRING);
 INSERT INTO resource_instance (id, resource, type, source, url, cost_cents, pages, listening_hours, note) VALUES (1, 3, 4, 2, 'https://www.gutenberg.org/ebooks/32488', NULL, NULL, NULL, NULL);
-INSERT INTO resource_instance (id, resource, type, source, url, cost_cents, pages, listening_hours, note) VALUES (4, 3, 2, 1, 'https://www.amazon.com/Illustrated-Just-So-Stories/dp/149730170X/', NULL, NULL, NULL, 'paperbacks on Amazon seem to be notoriously bad quality / cheap; search for a good amazon option and make sure to publish librivox');
+INSERT INTO resource_instance (id, resource, type, source, url, cost_cents, pages, listening_hours, note) VALUES (4, 3, 2, 1, 'https://www.amazon.com/Illustrated-Just-So-Stories/dp/149730170X/', NULL, NULL, NULL, 'paperbacks on Amazon seem to be notoriously bad quality / cheap');
 INSERT INTO resource_instance (id, resource, type, source, url, cost_cents, pages, listening_hours, note) VALUES (5, 3, 5, 4, 'https://librivox.org/just-so-stories-ver-6-by-rudyard-kipling/', NULL, NULL, 3, 'there are several librivox recordings; this is just one');
 INSERT INTO resource_instance (id, resource, type, source, url, cost_cents, pages, listening_hours, note) VALUES (6, 3, 5, 5, 'https://www.amazon.com/Just-So-Stories/dp/B01E7I34EY/
 ', NULL, NULL, 3, NULL);
