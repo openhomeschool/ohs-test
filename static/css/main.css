@@ -334,7 +334,7 @@ label.answer_option_label {
 
 */
 
-.resource_block .clear {
+.clear {
 	clear: both;
 }
 
@@ -372,11 +372,15 @@ label.answer_option_label {
 
 
 .resource_record .cw {
-	margin: 2px;
 	border: 1px solid black;
 	border-radius: 4px;
 	text-align: center;
 	display: inline-block;
+
+	/* NOTE: the following taken from .dropdown-button, and is intended to match!! But ACK!  doesn't match!  TODO: RESEARCH! */
+	margin: 0px;
+	padding: 2px;
+	font-size: 1.1em;
 }
 
 .resource_record .buttonstrip {
@@ -393,6 +397,15 @@ label.answer_option_label {
 }
 
 
+.ib-left {
+	display: inline-block;
+	float: left;
+}
+
+.ib-right {
+	display: inline-block;
+	float: right;
+}
 
 
 

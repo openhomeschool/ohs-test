@@ -221,7 +221,7 @@ def select_user(url):
 	d = _doc('Select User')
 	with d:
 		_text_input('search', None, ('autofocus',), {'autocomplete': 'off', 'oninput': 'search(this.value)'}, 'Search', type_ = 'search')
-		t.div(id = 'search_result') # filtered results themselves are added here, in this `result` div, via websocket, as search text is typed (see javascript)
+		t.div(id = 'content') # filtered results themselves are added here, in this `content` div, via websocket, as search text is typed (see javascript)
 		# JS (intentionally at bottom of file; see https://faqs.skillcrush.com/article/176-where-should-js-script-tags-be-linked-in-html-documents and many stackexchange answers):
 		t.script(_js_filter_list(url))
 	return d.render()
@@ -247,18 +247,18 @@ def quiz(ws_url, db_handler, html_function):
 			t.button('Go', id = "go", cls = 'quiz_button')
 
 		with t.fieldset(cls = 'small_fieldset'):
-			_dropdown(t.div(cls = 'dropdown'), 'choose_subject', (
+			_url_dropdown(t.div(cls = 'dropdown'), 'subject', (
 				('Timeline (sequence)', _gurl(settings.k_history_sequence)),
 				('Science grammar', _gurl(settings.k_science_grammar)),
 				('English vocabulary', _gurl(settings.k_english_vocabulary)),
 				('English grammar', _gurl(settings.k_english_grammar)),
-				('Latin vocabulary', _gurl(settings.k_latin_vocabulary))), True, 'Subjects...')
-			_dropdown(t.div(cls = 'dropdown'), 'cycle_dropdown', (
+				('Latin vocabulary', _gurl(settings.k_latin_vocabulary))), 'Subjects...')
+			_url_dropdown(t.div(cls = 'dropdown'), 'cycle_dropdown', (
 				('Cycle 1', 'bogus'),
 				('Cycle 2', 'bogus'),
 				('Cycle 3', 'bogus'),
 				('All Cycles', 'bogus'),
-				('My Cycle', 'bogus')), True, 'Cycles...')
+				('My Cycle', 'bogus')), 'Cycles...')
 			_dropdown(t.div(cls = 'dropdown'), 'weeks_dropdown', (
 				('...', 'bogus'),
 				('All Weeks', 'bogus')), True, 'Weeks...')
@@ -272,50 +272,48 @@ def quiz(ws_url, db_handler, html_function):
 		t.script(_js_dropdown())
 	return d.render()
 
-def resources(url, filters, qargs): # TODO: this is basically identical to select_user (and presumably other search-driven pages whose content comes via websocket); consolidate!
+def resources(url, filters, cycles, weeks, qargs): # TODO: this is basically identical to select_user (and presumably other search-driven pages whose content comes via websocket); consolidate!
 	d = _doc('Resources')
 	with d:
 		with t.div(cls = 'flex-wrap'): # TODO: make a 'header_block' or something; different border color, perhaps
 			t.div(t.b('Search'), cls = 'title') # TODO: replace with a magnifying-glass gif!
 			with t.div(cls = 'main'):
-				with t.table():
-					with t.tr():
-						for filt in filters:
-							_dropdown2(t.td(cls = 'dropdown', colspan = 2), filt, qargs, False)
-						#TODO:DEPRECATE: _dropdown(t.td(cls = 'dropdown', colspan = 2), 'choose_program', filters['program'], False, qargs.get('program'))
-						_dropdown(t.td(cls = 'dropdown', colspan = 2), 'choose_subject', (
-							('All Subjects', 'bogus'),
-							('Timeline', 'bogus'),
-							('History', 'bogus'), 
-							('Geography', 'bogus'),
-							('Math', 'bogus'),
-							('Science', 'bogus'),
-							('Latin', 'bogus'),
-							('English', 'bogus'),
-							('All', 'bogus')), False)
-					with t.tr():
-						t.td(_text_input('search', None, ('autofocus',), {'autocomplete': 'off', 'oninput': 'search(this.value)'}, 'Search', type_ = 'search'), style = 'width: 87%', colspan = 6)
-						_dropdown(t.td(style = 'width:10%', cls = 'dropdown'), 'cycle_dropdown', (
-							('Any Cycle', 'bogus'), ('Cycle 1', 'bogus'), ('Cycle 2', 'bogus'), ('Cycle 3', 'bogus')), False)
-						with t.td(style = 'width:20%'):
-							t.input(type = 'number', placeholder = 'first wk', id = 'first_week_selector', min='1', max='28', oninput = 'filter_first_week(this.value)')
-							t.br()
-							t.input(type = 'number', placeholder = 'last wk', id = 'last_week_selector', min='1', max='28', oninput = 'filter_last_week(this.value)')
+				for filt in filters:
+					_dropdown(filt, qargs, 'ib-left')
+				_dropdown(weeks[0], qargs, 'ib-right')
+				t.div(cls = 'clear') # next row...
+				_text_input('search', None, ('autofocus',), {'autocomplete': 'off', 'oninput': 'search(this.value)'}, 'Search', type_ = 'search')
+				_dropdown(weeks[1], qargs, 'ib-right')
+				_dropdown(cycles, qargs, 'ib-right')
 
-		t.div(id = 'search_result') # filtered results themselves are added here, in this `result` div, via websocket, as search text is typed (see javascript)
+
+		t.div(id = 'content') # filtered results themselves are added here, in this `result` div, via websocket, as search text is typed (see javascript)
 
 		# JS (intentionally at bottom of file; see https://faqs.skillcrush.com/article/176-where-should-js-script-tags-be-linked-in-html-documents and many stackexchange answers):
-		t.script(_js_filter_list(url, (('choose_program', qargs.get('program')),) ))
+		t.script(_js_filter_list(url))
+		t.script(_js_filters())
 		t.script(_js_dropdown())
-		t.script(_js_filter_weeks())
 		t.script(_js_calendar_widget())
 		t.script(_js_show_hide_shopping())
 	return d.render()
 
-subject_resources = dict()
+
+def test_twixt(url):
+	d = _doc('Test TWIXT Page')
+	with d:
+		t.p('This is the "TWIXT" Test page... result of main.foobar() coming soon...')
+		t.div(id = 'foobar')
+		
+		t.script(_js_test1(url))
+		
+	return d.render()
+
+
+
+g_subject_resources = dict()
 def subject_resource(subject):
 	def decorator(func):
-		subject_resources[subject] = func
+		g_subject_resources[subject] = func
 		return func
 	return decorator
 
@@ -446,7 +444,7 @@ def resource_list(results, url, show_cw = True):
 	# Cycle, Week, Subject, Content (subject-specific presentation, option of "more details"), "essential" resources (e.g., song audio)
 	container = t.div(cls = 'resource_list')
 	for subject, records in results:
-		subject_resources[subject](container, records, show_cw)
+		g_subject_resources[subject](container, records, show_cw)
 	return container.render()
 
 # -----------------------------------------------------------------------------
@@ -550,7 +548,7 @@ def _text_input(name, value, bool_attrs = None, attrs = None, label = None, inva
 		result += invalid_div
 	return result
 
-def _dropdown(container, id, options, urls, title = None):
+def _url_dropdown(container, id, options, title = None):
 	# TODO: new style has options[0] IS id! (i.e., we can get rid of the extra "id" arg, above
 	if not title:
 		title = options[0][1]
@@ -558,23 +556,28 @@ def _dropdown(container, id, options, urls, title = None):
 		t.button(title, cls = 'dropdown-button', onclick = 'choose_dropdown_item(%s)' % id)
 		with t.div(id = id, cls = 'dropdown-content'):
 			for option_title, option in options:
-				t.div(option_title, onclick = 'choose_dropdown_option("%s", "%s", %s)' % (id, option, 'true' if urls else 'false'))
+				t.div(option_title, onclick = 'load_page("%s")' % option)
 
-def _dropdown2(container, filt, qargs, urls, title = None):
-	key, div_id, options = filt
+def _dropdown(filt, qargs, cls, urls = False, title = None):
+	key, options = filt
 	start_option_id = qargs.get(key)
 
-	drop_contents = t.div(id = div_id, cls = 'dropdown-content')
-	with drop_contents:
+	content_id = key
+	button_id = '%s-button' % key
+	drop_content = t.div(id = content_id, cls = 'dropdown-content')
+	with drop_content:
 		for option_title, option_id in options:
-			t.div(option_title, onclick = 'choose_dropdown_option("%s", "%s", %s)' % (div_id, option_id, 'true' if urls else 'false'))
+			t.div(option_title, onclick = 'choose_dropdown_option("%s", "%s", "%s", "%s")' % (key, option_id, option_title, button_id))
 			if start_option_id and int(start_option_id) == int(option_id):
 				title = option_title # override title with selected option
 	if not title:
 		title = options[0][0]
 
-	container += t.button(title, cls = 'dropdown-button', onclick = 'choose_dropdown_item(%s)' % div_id)
-	container += drop_contents
+	return t.div(
+		t.button(title, cls = 'dropdown-button', id = button_id, onclick = 'choose_dropdown_item(%s)' % content_id),
+		drop_content,
+		cls = cls,
+	)
 
 
 def _add_cw(record, div):
@@ -699,42 +702,53 @@ def _js_socket_quiz_manager(url, db_handler, html_function):
 	''' % {'url': url, 'db_handler': db_handler, 'html_function': html_function})
 
 
-def _js_filter_list(url, selections = None):
-	# This js not served as a static file for two reasons: 1) it's tiny and single-purpose, and 2) its code is tightly connected to this server code; it's not a candidate for another team to maintain, in other words; it also relies on our URL (for the websocket), whereas true static files might be served by a reverse-proxy server from anywhere, and won't tend to contain any references to the wsgi urls
-
-	filter_call = ''
-	if selections and selections[0][1]: # TODO - bogus... clean this up, enable multiple simultaneous filters
-		filter_call = 'ws.send(JSON.stringify({call: "%s", option: "%s"}));' % (selections[0][0], selections[0][1])
-
+def _js_test1(url):
 	r = raw('''
 	var ws = new WebSocket("%(url)s");
 	ws.onmessage = function(event) {
 		var payload = JSON.parse(event.data);
 		switch(payload.call) {
-			case "start":
-				search("");
-				%(filter_call)s
-				break;
 			case "content":
-				document.getElementById("search_result").innerHTML = payload.content;
+				document.getElementById("foobar").innerHTML = payload.data;
 				break;
 		}
 	};
-	function search(str) {
-		ws.send(JSON.stringify({call: "search", string: str}));
+	''' % {'url': url})
+
+	return r
+	
+	
+def _js_filter_list(url):
+	# This js not served as a static file for two reasons: 1) it's tiny and single-purpose, and 2) its code is tightly connected to this server code; it's not a candidate for another team to maintain, in other words; it also relies on our URL (for the websocket), whereas true static files might be served by a reverse-proxy server from anywhere, and won't tend to contain any references to the wsgi urls
+
+	# This is the websocket code for filtering, and a search() (filter) function, which is the "standard"; other functions provided in _js_filters()
+	r = raw('''
+	var ws = new WebSocket("%(url)s");
+	ws.onmessage = function(event) {
+		var payload = JSON.parse(event.data);
+		switch(payload.call) {
+			case "filter":
+				document.getElementById("content").innerHTML = payload.data;
+				break;
+		}
 	};
-	''' % {'url': url, 'filter_call': filter_call})
+
+	// "search" is the standard filter:
+	function search(str) {
+		ws.send(JSON.stringify({call: "search", data: str}));
+	};
+	''' % {'url': url})
 
 	return r
 
 
-def _js_filter_weeks():
+def _js_filters():
 	return raw('''
 	function filter_first_week(week) {
-		ws.send(JSON.stringify({call: "filter_week", string: week, which: 'first'}));
+		ws.send(JSON.stringify({call: "first_week", data: week}));
 	};
 	function filter_last_week(week) {
-		ws.send(JSON.stringify({call: "filter_week", string: week, which: 'last'}));
+		ws.send(JSON.stringify({call: "last_week", data: week}));
 	};
 	''')
 
@@ -786,13 +800,13 @@ def _js_dropdown():
 		element.classList.toggle("show");
 	};
 
-	function choose_dropdown_option(call, option, url) {
-		if (url == true) {
-			this.document.location.href = option;
-		}
-		else {
-			ws.send(JSON.stringify({call: call, option: option}));
-		}
+	function load_page(url) {
+		this.document.location.href = url;
+	};
+
+	function choose_dropdown_option(key, option_id, option_title, button_id) {
+		ws.send(JSON.stringify({call: key, data: option_id}));
+		document.getElementById(button_id).innerHTML = option_title;
 	};
 
 	// Close the dropdown menu if the user clicks outside of it

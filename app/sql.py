@@ -153,11 +153,11 @@ async def _get_grammar_resources(spec, subject_spec):
 	if subject_spec.extra_joins:
 		joins.extend(subject_spec.extra_joins)
 	_cycle_week_range(spec, joins, wheres, args)
-	if spec.search_string and subject_spec.search_fields:
+	if spec.search and subject_spec.search_fields:
 		or_wheres = []
 		for field in subject_spec.search_fields:
 			or_wheres.append(f'{field} like ?')
-			args.append('%' + spec.search_string + '%')
+			args.append('%' + spec.search + '%')
 		wheres.append(_or_wheres(or_wheres))
 
 	return await fetchall(spec.db, (f"select * from {subject_spec.table} " + _join(joins) + _where(wheres) + f" order by {subject_spec.order_by}", args))
@@ -167,6 +167,12 @@ async def _get_external_resources(spec):
 
 async def get_programs(dbc):
 	return await fetchall(dbc, ('select * from program', []))
+
+async def get_subjects(dbc):
+	return await fetchall(dbc, ('select * from subject', []))
+
+async def get_cycles(dbc):
+	return await fetchall(dbc, ('select * from cycle', []))
 
 async def get_new_user_invitation(dbc, code):
 	return await fetchone(dbc, ('select * from new_user_invitation where code = ?', (code,)))
@@ -242,11 +248,19 @@ def _where(wheres): # "AND"-joined wheres (i.e., intersection, not union)
 	return ''
  
 def _cycle_week_range(spec, joins, wheres, args):
-	if spec.week_range or spec.cycles:
+	if spec.first_week or spec.last_week or spec.cycles:
 		joins.append(f"cycle_week as cw on {spec.table}.cw = cw.id")
-		if spec.week_range:
+		if spec.first_week or spec.last_week:
+			# Massage if necessary:
+			if not spec.first_week:
+				spec.first_week = 1
+			if not spec.last_week:
+				spec.last_week = spec.first_week
+			if spec.last_week < spec.first_week:
+				spec.last_week = spec.first_week
+			# Now set it up:
 			wheres.append("? <= cw.week and cw.week <= ?")
-			args.extend(spec.week_range)
+			args.extend((spec.first_week, spec.last_week))
 		if spec.cycles:
 			wheres.append("cw.cycle in (%s)" % ', '.join([str(int(i)) for i in spec.cycles]))
 	#else, no-op

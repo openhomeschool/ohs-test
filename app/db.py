@@ -205,6 +205,12 @@ async def get_resources(spec):
 async def get_programs(dbc):
 	return await sql.get_programs(dbc)
 
+async def get_subjects(dbc):
+	return await sql.get_subjects(dbc)
+
+async def get_cycles(dbc):
+	return await sql.get_cycles(dbc)
+
 async def get_new_user_invitation(dbc, code):
 	return await sql.get_new_user_invitation(dbc, code)
 
