@@ -6,10 +6,10 @@ __license__ = 'MIT'
 import aiosqlite
 import asyncio
 import functools
+import json
 import logging
 import re
 import weakref
-import json
 
 from sqlite3 import PARSE_DECLTYPES
 from dataclasses import dataclass
@@ -18,10 +18,19 @@ from dataclasses import dataclass
 import time
 import base64
 from cryptography import fernet
+from uuid import uuid4
 
 from aiohttp import web, WSMsgType, WSCloseCode
 from aiohttp_session import setup as setup_session, get_session
+
 from aiohttp_session.cookie_storage import EncryptedCookieStorage
+# Tried both of the following; running a redis server or memcached server, they basically work; not sure I want the dependencies right now
+#from aiohttp_session.redis_storage import RedisStorage
+#import aioredis
+#from aiohttp_session import memcached_storage
+#fmport aiomcache
+
+from aiojobs.aiohttp import setup, spawn
 from sqlite3 import IntegrityError
 from yarl import URL
 
@@ -30,6 +39,7 @@ from . import db
 from . import valid
 from . import error
 from . import settings
+from . import util
 
 _debug = True # TODO: parameterize!
 
@@ -259,73 +269,100 @@ async def ws_quiz_handler(request):
 
 	return await _ws_handler(request, msg_handler)
 
+async def foobar():
+    await asyncio.sleep(2)  # 2-second sleep
+    return 'thats great'
+
+# Can't store coroutines in sessions, directly; not even redis or memcached directories, so we store them in global memory, in this dict:
+g_twixt_work = {}
+
+@r.get('/test_twixt')
+async def test_twixt(request):
+	session = await get_session(request)
+	twixt_key = str(uuid4())
+	session['twixt'] = twixt_key
+
+	g_twixt_work[twixt_key] = asyncio.create_task(foobar())
+
+	return hr(html.test_twixt(_ws_url(request, '/ws_test_twixt')))
+
+@r.get('/ws_test_twixt')
+async def ws_test_twixt(request):
+	session = await get_session(request)
+	result = await g_twixt_work[session['twixt']]
+	l.debug('ws_test_twixt result: %s' % result)
+	
+	async def msg_handler(payload, ws):
+		await ws.send_json({'call': 'content', 'data': html.resource_list(records, open_resource)}) # TODO: consolidate repetition!
+
+	return await _ws_handler(request, msg_handler, ('content', result))
+	
 
 @r.get('/resources')
 async def resources(request):
+	session = await get_session(request)
+
+	session['twixt'] = str(uuid4())
 	dbc = request.app['db']
 	qargs = request.query
+	g_twixt_work[session['twixt']] = asyncio.create_task(_first_resources(dbc, qargs))
+
 	filters = (
-		('program', 'choose_program', [(program['name'], program['id']) for program in await db.get_programs(dbc)]),
-		#('cycle', 'choose_cycle', [(cycle['name'], cycle['id']) for cycle in await db.get_cycles(dbc)]),
-		#('start_week', 'choose_start_week', [(cycle['name'], cycle['id']) for week in await db.get_weeks(dbc)]),
-		#('end_week', 'choose_end_week', [(cycle['name'], cycle['id']) for week in await db.get_weeks(dbc)]),
+		('program', [(program['name'], program['id']) for program in await db.get_programs(dbc)]),
+		('subject', [(subject['name'], subject['id']) for subject in await db.get_subjects(dbc)]),
+	)
+	cycles = ('cycle', [(cycle['name'], cycle['id']) for cycle in await db.get_cycles(dbc)])
+	weeks = (
+		('first_week', [('W-%d' % week, week) for week in range(1, 28)]), # TODO: hardcode 28!
+		('last_week', [('W-%d' % week, week) for week in range(1, 28)]), # TODO: hardcode 28!
 	)
 
-	return hr(html.resources(_ws_url(request, '/ws_filter_resource_list'), filters, qargs))
+	return hr(html.resources(_ws_url(request, '/ws_filter_resource_list'), filters, cycles, weeks, qargs))
+
+
+async def _first_resources(dbc, qargs):
+	spec = util.Struct(
+		db = dbc,
+		#user_id = session['user_id'],
+		search = qargs.get('search'),
+		deep_search = False,
+		program = int(qargs.get('program', 1)), # 1 = Grammar TODO: hardcode!
+		subject = int(qargs.get('subject', 10)), # 10 = All TODO: hardcode!
+		cycles = (4, 1), # default: "cycle 1" ("4" refers to grammar that belongs to "all cycles" (like timeline grammar) - this is hardcode! TODO:FIX!)
+		first_week = 1, # TODO: hardcode week 1! replace with lookup for user's "current week"
+		last_week = 1, # TODO - above
+	)
+	return (spec, await db.get_resources(spec))
 
 
 @r.get('/ws_filter_resource_list') #TODO: this has strong similarities to ws_filter_list (which should be named ws_filter_user_list)
 async def ws_filter_resource_list(request):
 	session = await get_session(request)
-	open_resource = _http_url(request, '/open_resource') #TODO?!??
-
-	@dataclass
-	class Spec:
-		db = request.app['db']
-		#user_id = session['user_id']
-		search_string = None
-		deep_search = False
-		cycles = (4, 1) # default: "cycle 1" ("4" refers to grammar that belongs to "all cycles" (like timeline grammar) - this is hardcode! TODO:FIX!)
-		week_range = (1, 1) # default: "week 1" (only)
-		program = 1 # "grammar" TODO: this is a hardcode default!!!
-	spec = Spec()
+	open_resource = _http_url(request, '/open_resource') #TODO?!?? (figure out how we want to advance a user's click on a specific resource); TODO: call this, simply, "more"?
+	spec, data = await g_twixt_work[session['twixt']]
 
 	async def msg_handler(payload, ws):
 		nonlocal spec
-		records = None
-		if payload['call'] == 'search':
-			if payload['string']:
-				search_string = str(payload['string'])
-				if not valid.rec_string32.match(search_string):
-					l.warning('string fragment sent to ws_filter_resource_list was not a valid string 32-characters or less') # but do nothing else; client code already checks for validity; this must/might be an attack attempt; no need to respond
-				else:
-					spec.search_string = search_string # db. call below....
+		call_map = {
+			'search': (str, valid.rec_string32.match),
+			'program': (int, None),
+			'subject': (int, None),
+			'first_week': (int, None), # TODO: add validator to constrain to weeks 1-28?!
+			'last_week': (int, None), # TODO: add validator to constrain to weeks 1-28?!
+		}
+		cast, validator = call_map[payload['call']]
+		try:
+			value = cast(payload['data'])
+			if validator and not validator(value):
+				raise ValueError() # treat like failed cast, above; either way - invalid filter input was tried
+			setattr(spec, payload['call'], value) # note that payload calls must match field names in `spec`; but this is convention only
+		except ValueError as e:
+			l.warning('invalid filter input to ws_filter_resource_list') # but do nothing else; client code already checks for validity; this must/might be an attack attempt; no need to respond
 
-		elif payload['call'] == 'filter_week':
-			# TODO: this is ugly.... let javascript do the work, and just assert(first_week <= last_week here)
-			first_week = last_week = 1
-			if payload['string']:
-				week = int(payload['string']) # TODO: get range rather than just one!
-				if payload['which'] == 'first':
-					first_week = week
-					if last_week < first_week:
-						last_week = first_week
-				else:
-					last_week = week
-					if first_week > last_week:
-						first_week = last_week
-				spec.week_range = (first_week, last_week) # db. call below....
-		elif payload['call'] == 'choose_program':
-			spec.program = int(payload['option']) # db. call below...
-		else:
-			l.warning('unexpected payload["call"] in ws_filter_resource_list::msg_handler()')
+		data = await db.get_resources(spec)
+		await ws.send_json({'call': 'filter', 'data': html.resource_list(data, open_resource)})
 
-		records = await db.get_resources(spec) # A default list of this week's resources
-
-		await ws.send_json({'call': 'content', 'content': html.resource_list(records, open_resource)}) # TODO: consolidate repetition!
-
-
-	return await _ws_handler(request, msg_handler)
+	return await _ws_handler(request, msg_handler, ('filter', html.resource_list(data, open_resource)))
 
 
 # Util ------------------------------------------------------------------------
@@ -352,12 +389,14 @@ def _validate_regex(data, invalids, tuple_list):
 		if (required and not value) or (value and not regex.match(value)):
 			invalids.append(field)
 
-async def _ws_handler(request, msg_handler):
+async def _ws_handler(request, msg_handler, initial_call = ('start', None)):
 	ws = web.WebSocketResponse()
 	await ws.prepare(request)
 	request.app['websockets'].add(ws)
 
-	await ws.send_json({'call': 'start'})
+	initial_call, initial_data = initial_call
+	await ws.send_json({'call': initial_call, 'data': initial_data})
+
 	l.debug('Websocket prepared, listening for messages...')
 	try:
 		async for msg in ws:
@@ -414,7 +453,7 @@ async def _shutdown(app):
 #		python -m aiohttp.web -H localhost -P 8080 main:init
 # Or, using adev (from parent directory!):
 #		adev runserver --app-factory init --livereload --debug-toolbar test1_app
-def init(argv):
+async def init(argv):
 	app = web.Application()
 	app.update(websockets = weakref.WeakSet())
 
@@ -422,6 +461,12 @@ def init(argv):
 	fernet_key = fernet.Fernet.generate_key()
 	secret_key = base64.urlsafe_b64decode(fernet_key)
 	setup_session(app, EncryptedCookieStorage(secret_key))
+	# Tried both of the following; running a redis server or memcached server, they basically work; not sure I want the dependencies right now
+	#redis = await aioredis.create_redis_pool('redis://localhost')
+	#setup_session(app, RedisStorage(redis))
+	#mc = aiomcache.Client('localhost', 11211)
+	#setup_session(app, memcached_storage.MemcachedStorage(mc))
+
 
 	# Add standard routes:
 	app.add_routes(r)
