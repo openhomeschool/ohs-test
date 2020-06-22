@@ -30,7 +30,6 @@ from aiohttp_session.cookie_storage import EncryptedCookieStorage
 #from aiohttp_session import memcached_storage
 #fmport aiomcache
 
-from aiojobs.aiohttp import setup, spawn
 from sqlite3 import IntegrityError
 from yarl import URL
 
@@ -236,7 +235,7 @@ async def ws_filter_list(request):
 				l.warning('string fragment sent to ws_filter_list was not a valid string 32-characters or less') # but do nothing else; client code already checks for validity; this must/might be an attack attempt; no need to respond
 		if not records:
 			records = await db.get_users_limited(dbc, 10) # A default list (of 10) to show when nothing is entered into search bar:
-		await ws.send_json({'call': 'content', 'content': html.filter_user_list(records, edit_url)})
+		await ws.send_json({'call': 'show', 'result': html.filter_user_list(records, edit_url)})
 
 	return await _ws_handler(request, msg_handler)
 
@@ -293,9 +292,9 @@ async def ws_test_twixt(request):
 	l.debug('ws_test_twixt result: %s' % result)
 	
 	async def msg_handler(payload, ws):
-		await ws.send_json({'call': 'content', 'data': html.resource_list(records, open_resource)}) # TODO: consolidate repetition!
+		await ws.send_json({'call': 'content', 'data': await foobar()}) # TODO: consolidate repetition!
 
-	return await _ws_handler(request, msg_handler, ('content', result))
+	return await _ws_handler(request, msg_handler, {'call': 'content', 'data': result})
 	
 
 @r.get('/resources')
@@ -305,7 +304,7 @@ async def resources(request):
 	session['twixt'] = str(uuid4())
 	dbc = request.app['db']
 	qargs = request.query
-	g_twixt_work[session['twixt']] = asyncio.create_task(_first_resources(dbc, qargs))
+	g_twixt_work[session['twixt']] = asyncio.create_task(_first_resources(dbc, qargs)) # start the first lookup now... should be done by the time the page is loaded and websocket handshake occurs, when this result is passed on into the loaded skeletal page
 
 	filters = (
 		('program', [(program['name'], program['id']) for program in await db.get_programs(dbc)]),
@@ -317,7 +316,18 @@ async def resources(request):
 		('last_week', [('W-%d' % week, week) for week in range(1, 28)]), # TODO: hardcode 28!
 	)
 
-	return hr(html.resources(_ws_url(request, '/ws_filter_resource_list'), filters, cycles, weeks, qargs))
+	return hr(html.resources(_ws_url(request, '/ws_resources'), filters, cycles, weeks, qargs))
+
+
+
+k_programs = { # 'id' keys must coincide with DB 'program' table
+	1: db.get_grammar_resources,
+	2: db.get_grammar_resources, # TODO: placeholder
+	3: db.get_high1_resources,
+	4: db.get_high1_resources, # TODO: placeholder
+	5: db.get_grammar_resources, # TODO: placeholder
+	6: db.get_grammar_resources, # TODO: placeholder
+}
 
 
 async def _first_resources(dbc, qargs):
@@ -326,43 +336,46 @@ async def _first_resources(dbc, qargs):
 		#user_id = session['user_id'],
 		search = qargs.get('search'),
 		deep_search = False,
-		program = int(qargs.get('program', 1)), # 1 = Grammar TODO: hardcode!
-		subject = int(qargs.get('subject', 10)), # 10 = All TODO: hardcode!
+		program = int(qargs.get('program', 1)), # hardcode default to "grammar school" program if program choice not made (TODO: set this, instead, to logged-in-user's attached program
+		subject = int(qargs.get('subject', 0)), # 0 = "all" indicator
 		cycles = (4, 1), # default: "cycle 1" ("4" refers to grammar that belongs to "all cycles" (like timeline grammar) - this is hardcode! TODO:FIX!)
 		first_week = 1, # TODO: hardcode week 1! replace with lookup for user's "current week"
 		last_week = 1, # TODO - above
 	)
-	return (spec, await db.get_resources(spec))
+	return (spec, await k_programs[spec.program](spec)) # need to send spec, itself, as there's no other way for retrieving end (ws_resources function) to get spec hereafter!
 
 
-@r.get('/ws_filter_resource_list') #TODO: this has strong similarities to ws_filter_list (which should be named ws_filter_user_list)
-async def ws_filter_resource_list(request):
+k_call_map = {
+	'search': (str, valid.rec_string32.match),
+	'program': (int, None),
+	'subject': (int, None),
+	'first_week': (int, None), # TODO: add validator to constrain to weeks 1-28?!
+	'last_week': (int, None), # TODO: add validator to constrain to weeks 1-28?!
+	'external_resource_detail': (int, None),
+}
+
+@r.get('/ws_resources') #TODO: this has strong similarities to ws_filter_list (which should be named ws_filter_user_list)
+async def ws_resources(request):
 	session = await get_session(request)
 	open_resource = _http_url(request, '/open_resource') #TODO?!?? (figure out how we want to advance a user's click on a specific resource); TODO: call this, simply, "more"?
-	spec, data = await g_twixt_work[session['twixt']]
+	spec, result = await g_twixt_work[session['twixt']]
+	_make_msg = lambda result: {'call': 'show', 'result': html.resource_list(result, open_resource)}
 
 	async def msg_handler(payload, ws):
 		nonlocal spec
-		call_map = {
-			'search': (str, valid.rec_string32.match),
-			'program': (int, None),
-			'subject': (int, None),
-			'first_week': (int, None), # TODO: add validator to constrain to weeks 1-28?!
-			'last_week': (int, None), # TODO: add validator to constrain to weeks 1-28?!
-		}
-		cast, validator = call_map[payload['call']]
+		cast, validator = k_call_map[payload['call']]
 		try:
 			value = cast(payload['data'])
 			if validator and not validator(value):
 				raise ValueError() # treat like failed cast, above; either way - invalid filter input was tried
 			setattr(spec, payload['call'], value) # note that payload calls must match field names in `spec`; but this is convention only
 		except ValueError as e:
-			l.warning('invalid filter input to ws_filter_resource_list') # but do nothing else; client code already checks for validity; this must/might be an attack attempt; no need to respond
+			l.warning('invalid filter input to ws_resources') # but do nothing else; client code already checks for validity; this must/might be an attack attempt; no need to respond
 
-		data = await db.get_resources(spec)
-		await ws.send_json({'call': 'filter', 'data': html.resource_list(data, open_resource)})
+		result = await k_programs[spec.program](spec)
+		await ws.send_json(_make_msg(result))
 
-	return await _ws_handler(request, msg_handler, ('filter', html.resource_list(data, open_resource)))
+	return await _ws_handler(request, msg_handler, _make_msg(result))
 
 
 # Util ------------------------------------------------------------------------
@@ -389,13 +402,12 @@ def _validate_regex(data, invalids, tuple_list):
 		if (required and not value) or (value and not regex.match(value)):
 			invalids.append(field)
 
-async def _ws_handler(request, msg_handler, initial_call = ('start', None)):
+async def _ws_handler(request, msg_handler, initial_send = {'call': 'start', 'data': None}):
 	ws = web.WebSocketResponse()
 	await ws.prepare(request)
 	request.app['websockets'].add(ws)
 
-	initial_call, initial_data = initial_call
-	await ws.send_json({'call': initial_call, 'data': initial_data})
+	await ws.send_json(initial_send)
 
 	l.debug('Websocket prepared, listening for messages...')
 	try:

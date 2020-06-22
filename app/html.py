@@ -280,11 +280,11 @@ def resources(url, filters, cycles, weeks, qargs): # TODO: this is basically ide
 			with t.div(cls = 'main'):
 				for filt in filters:
 					_dropdown(filt, qargs, 'ib-left')
-				_dropdown(weeks[0], qargs, 'ib-right')
+				_dropdown(weeks[0], qargs, 'ib-right', button_class = 'cw-button')
 				t.div(cls = 'clear') # next row...
-				_text_input('search', None, ('autofocus',), {'autocomplete': 'off', 'oninput': 'search(this.value)'}, 'Search', type_ = 'search')
-				_dropdown(weeks[1], qargs, 'ib-right')
-				_dropdown(cycles, qargs, 'ib-right')
+				t.div(_text_input('search', None, ('autofocus',), {'autocomplete': 'off', 'oninput': 'search(this.value)'}, 'Search', type_ = 'search'), cls = 'search')
+				_dropdown(weeks[1], qargs, 'ib-right', button_class = 'cw-button')
+				_dropdown(cycles, qargs, 'ib-right', button_class = 'cw-button')
 
 
 		t.div(id = 'content') # filtered results themselves are added here, in this `result` div, via websocket, as search text is typed (see javascript)
@@ -295,6 +295,7 @@ def resources(url, filters, cycles, weeks, qargs): # TODO: this is basically ide
 		t.script(_js_dropdown())
 		t.script(_js_calendar_widget())
 		t.script(_js_show_hide_shopping())
+		t.script(_js_play_pause())
 	return d.render()
 
 
@@ -317,7 +318,7 @@ def subject_resource(subject):
 		return func
 	return decorator
 
-def _resources(container, records, show_cw, subject_title, subject_directory, add_record, audio_widgets):
+def _grammar_resources(container, records, show_cw, subject_title, subject_directory, render, audio_widgets, record_container_class = None):
 	with container:
 		with t.div(cls = 'flex-wrap'):
 			t.div(subject_title, cls = 'title')
@@ -334,63 +335,22 @@ def _resources(container, records, show_cw, subject_title, subject_directory, ad
 							filename_base = subject_directory + '/c%sw%s' % (record['cycle'], record['week'])
 							with buttonstrip:
 								t.audio(t.source(src = _aurl(filename_base + '.mp3'), type = 'audio/mpeg'), id = filename_base) # invisible
-								t.button('>', onclick = 'getElementById("%s").play();' % filename_base),
-								t.button('$', onclick = 'window.open("%s","_blank");' % _aurl(filename_base + '.pdf')),
-								t.button('@', onclick = '')
+								t.button('>', title = 'Audio song', onclick = 'play_pause("%s", this);' % filename_base, ondblclick = 'restart_play("%s", this);' % filename_base)
+								t.button(t.img(src = _iurl('eighth-note.png')), title = 'Musical score', onclick = 'window.open("%s","_blank");' % _aurl(filename_base + '.pdf'))
+								t.button(t.img(src = _iurl('cursive-c.png')), title = 'Copywork')
+								t.button('Ξ', title = 'Details')
 								
 						_add_cw(record, buttonstrip)
 						resource_div += buttonstrip
+						if record_container_class:
+							record_container = record_container_class()
+							resource_div += record_container
+						else:
+							record_container = resource_div
 
-					add_record(record, resource_div)
-				
+					render(record, record_container)
 
-	
-@subject_resource('science')
-def science_resources(container, records, show_cw):
-	def add_record(record, div): # callback function, see _resources()
-		div += t.div(t.b(record['prompt']))
-		div += t.div(record['answer'])
-
-	_resources(container, records, show_cw, 'Science', 'science', add_record, True)
-
-
-@subject_resource('english_vocabulary')
-def english_vocabulary_resources(container, records, show_cw):
-	def add_record(record, div): # callback function, see _resources()
-		div += t.div(t.b(record['word']), ' = ', cls = 'pair')
-		div += t.div(record['definition'])
-
-	_resources(container, records, show_cw, 'English', 'english', add_record, False)
-
-
-@subject_resource('latin_vocabulary')
-def english_vocabulary_resources(container, records, show_cw):
-	def add_record(record, div): # callback function, see _resources()
-		div += t.div(t.b(record['word']), ' = ', cls = 'pair')
-		div += t.div(record['translation'])
-
-	_resources(container, records, show_cw, 'Latin', 'latin', add_record, False)
-
-@subject_resource('history')
-def history_resources(container, records, show_cw):
-	def add_record(record, div): # callback function, see _resources()
-		with div:
-			t.div(t.b('%s - tell me more' % record['name']))
-			t.div(record['primary_sentence'])
-
-	_resources(container, records, show_cw, 'History', 'history', add_record, True)
-
-
-@subject_resource('timeline')
-def event_resources(container, records, show_cw):
-	def add_record(record, div): # callback function, see _resources()
-		div += t.div(_event_formatted(record))
-
-	_resources(container, records, show_cw, 'Timeline', 'history', add_record, False)
-
-
-@subject_resource('external_resources')
-def external_resources(container, records, show_cw):
+def _external_resources(container, records, show_cw):
 	if records:
 			resource_block = None
 			subject_name = None
@@ -418,8 +378,8 @@ def external_resources(container, records, show_cw):
 						resource_title += t.b(resource_name)
 						if record['note']:
 							resource_title += ' (%s)' % record['note']
-						resource_title += t.span(t.button('^', onclick = 'show_hide_shopping("%s");' % resource_name))
-						shopping_links = t.div(cls = 'shopping_links', id = resource_name)
+						resource_title += t.span(t.button('$', onclick = 'show_hide_shopping("%s");' % resource_name))
+						shopping_links = t.div(t.div('Click to shop...'), cls = 'shopping_links', id = resource_name)
 
 				_add_shopping_link(shopping_links, record)
 
@@ -427,24 +387,73 @@ def external_resources(container, records, show_cw):
 			if resource_block:
 				resource_block += t.div(cls = 'clear') # force resource_block container to be tall enough for all content
 				container += resource_block # add old one before creating new one
-			
+
 
 def _add_shopping_link(container, record):
-	s = t.div(t.a(t.img(src = _lurl(record['resource_source_logo'])), href = record['url'], target = '_blank'), cls = 'shopping_link')
-	if record['instance_note']:
-		s += '(' + record['instance_note'] + ')'
-		container += t.br()
+	s = t.div(t.a(t.img(src = _lurl(record['resource_source_logo'])), href = record['url'], target = '_blank'), cls = 'shopping_link_block' if record['acquisition_note'] else 'shopping_link')
+	if record['acquisition_note']:
+		s += '(' + record['acquisition_note'] + ')'
 		container += s
-		container += t.br()
 	else:
 		container += s
+
+
+	
+@subject_resource('science')
+def science_resources(container, records, show_cw):
+	def render(record, container): # callback function, see _grammar_resources()
+		with container:
+			t.div(t.b(record['prompt']))
+			t.div(record['answer'])
+
+	_grammar_resources(container, result.grammar_resources, show_cw, 'Science', 'science', render, True)
+
+
+@subject_resource('english_vocabulary')
+def english_vocabulary_resources(container, records, show_cw):
+	def render(record, container): # callback function, see _grammar_resources()
+		_add_eqality_record(container, record, 'word', 'definition')
+
+	_grammar_resources(container, result.grammar_resources, show_cw, 'English', 'english', render, False, t.table)
+
+def _add_eqality_record(table, record, left_field_name, right_field_name):
+	table += t.tr(
+		t.td(t.b(record[left_field_name]), cls = 'left-equality-cell'),
+		t.td(' = ', record[right_field_name], cls = 'right-equality-cell')
+	)
+	
+@subject_resource('latin_vocabulary')
+def latin_vocabulary_resources(container, records, show_cw):
+	def render(record, container): # callback function, see _grammar_resources()
+		_add_eqality_record(result.grammar_resources, record, 'word', 'translation')
+
+	_grammar_resources(container, records, show_cw, 'Latin', 'latin', render, False, t.table)
+
+@subject_resource('history')
+def history_resources(container, records, show_cw):
+	def render(record, container): # callback function, see _grammar_resources()
+		with container:
+			t.div(t.b('%s - tell me more' % record['name']))
+			t.div(record['primary_sentence'])
+
+	_grammar_resources(container, result.grammar_resources, show_cw, 'History', 'history', render, True)
+	_external_resources(container, result.external_resources, show_cw)
+
+
+@subject_resource('timeline')
+def event_resources(container, records, show_cw):
+	def render(record, container): # callback function, see _grammar_resources()
+		container += t.div(_event_formatted(record))
+
+	_grammar_resources(container, result.grammar_resources, show_cw, 'Timeline', 'history', render, False)
+
 
 
 def resource_list(results, url, show_cw = True):
 	# Cycle, Week, Subject, Content (subject-specific presentation, option of "more details"), "essential" resources (e.g., song audio)
 	container = t.div(cls = 'resource_list')
-	for subject, records in results:
-		g_subject_resources[subject](container, records, show_cw)
+	for result in results:
+		g_subject_resources[result.subject](container, result, show_cw)
 	return container.render()
 
 # -----------------------------------------------------------------------------
@@ -490,6 +499,7 @@ _dress_bool_attrs = lambda attrs: dict([(f, True) for f in attrs])
 _gurl = lambda url: settings.k_url_prefix + url # 
 _surl = lambda url: settings.k_static_url + url # static
 _aurl = lambda url: settings.k_static_url + 'audio/' + url # audio
+_iurl = lambda url: settings.k_static_url + 'images/' + url # images
 _lurl = lambda url: settings.k_static_url + 'images/logos/' + url # logos
 
 
@@ -558,7 +568,7 @@ def _url_dropdown(container, id, options, title = None):
 			for option_title, option in options:
 				t.div(option_title, onclick = 'load_page("%s")' % option)
 
-def _dropdown(filt, qargs, cls, urls = False, title = None):
+def _dropdown(filt, qargs, cls, urls = False, title = None, button_class = None):
 	key, options = filt
 	start_option_id = qargs.get(key)
 
@@ -573,16 +583,27 @@ def _dropdown(filt, qargs, cls, urls = False, title = None):
 	if not title:
 		title = options[0][0]
 
+	button_classes = 'dropdown-button'
+	if button_class:
+		button_classes += ' ' + button_class
 	return t.div(
-		t.button(title, cls = 'dropdown-button', id = button_id, onclick = 'choose_dropdown_item(%s)' % content_id),
+		t.button(title, cls = button_classes, id = button_id, onclick = 'choose_dropdown_item(%s)' % content_id),
 		drop_content,
 		cls = cls,
 	)
 
 
 def _add_cw(record, div):
+	# For now: not showing the "cycle" - it just takes up screen real estate
+	'''
+	cycle = record['cycle']
+	if cycle == 4: # TODO: hardcode for id 4, "All Cycles"
+		cycle = 'All'
+	else:
+		cycle = 'C-%s' % cycle
+	'''
 	with div:
-		t.div('C-', record['cycle'], cls = 'cw')
+		#temporarily, not showing cycle: t.div(cycle, cls = 'cw')
 		t.div('W-', record['week'], cls = 'cw')
 
 
@@ -727,8 +748,8 @@ def _js_filter_list(url):
 	ws.onmessage = function(event) {
 		var payload = JSON.parse(event.data);
 		switch(payload.call) {
-			case "filter":
-				document.getElementById("content").innerHTML = payload.data;
+			case "show":
+				document.getElementById("content").innerHTML = payload.result;
 				break;
 		}
 	};
@@ -837,5 +858,26 @@ def _js_show_hide_shopping():
 			} else {
 				div.style.display = "block";
 			}
+		};
+	''')
+
+def _js_play_pause():
+	return raw('''
+		function play_pause(audio_id, button) {
+			var audio = document.getElementById(audio_id);
+			if (audio.paused) {
+				button.innerHTML = '||';
+				return audio.play();
+			} else {
+				button.innerHTML = '>';
+				return audio.pause();
+			}
+		};
+
+		function restart_play(audio_id, button) {
+			var audio = document.getElementById(audio_id);
+			button.innerHTML = '||';
+			audio.currentTime = 0;
+			return audio.play();
 		};
 	''')

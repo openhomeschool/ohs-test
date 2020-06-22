@@ -195,8 +195,23 @@ class History_Sequence_QT(Question_Transaction):
 # -----------------------------------------------------------------------------
 # Resource handlers
 
-async def get_resources(spec):
-	return await sql.get_resources(spec)
+async def get_grammar_resources(spec):
+	return await sql.get_grammar_resources(spec)
+
+async def get_high1_resources(spec):
+	return await sql.get_high1_resources(spec)
+
+
+
+#TODO: DEPRECATE: async def get_resources(spec):
+#	return await sql.get_resources(spec)
+
+async def get_external_resource_detail(id):
+	return await sql.get_external_resource_detail(id)
+	
+async def get_external_resources(spec):
+	return await sql.get_external_resources(spec)
+
 
 
 # -----------------------------------------------------------------------------
