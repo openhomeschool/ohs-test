@@ -44,7 +44,7 @@ def get_random_records(spec, count, exclude_ids = None):
 	Any records with ids in `exclude_ids` are excluded.
 	'''
 	joins, wheres, args = [], [], []
-	_cycle_week_range(spec, joins, wheres, args)
+	_filter_cycle_week_range(spec, joins, wheres, args)
 	_exclude_ids(spec, wheres, exclude_ids)
 	return _random_select(spec, joins, wheres, count), args
 
@@ -58,7 +58,7 @@ def get_random_event_records(spec, count, exclude_ids = None):
 	joins, wheres, args = [], [], []
 	if spec.exclude_people_groups:
 		wheres.append(f'{spec.table}.people_group is not true')
-	_cycle_week_range(spec, joins, wheres, args)
+	_filter_cycle_week_range(spec, joins, wheres, args)
 	_date_range(spec, wheres, args)
 	_exclude_ids(spec, wheres, exclude_ids)
 	result = _random_select(spec, joins, wheres, count)
@@ -76,7 +76,7 @@ async def get_surrounding_event_records(spec, count, event):
 	joins, wheres, args = [], [], []
 	if spec.exclude_people_groups:
 		wheres.append(f'{spec.table}.people_group is not true')
-	_cycle_week_range(spec, joins, wheres, args)
+	_filter_cycle_week_range(spec, joins, wheres, args)
 	_date_range(spec, wheres, args)
 
 	# Get keyword-similar events:
@@ -116,43 +116,55 @@ async def get_surrounding_event_records(spec, count, event):
 
 
 
-async def get_resources(spec):
-	# Cycle, Week, Subject, Content (subject-specific presentation, option of "more details"), "essential" resources (e.g., song audio)
+# ---------------------------------------------------
+# Resources
 
-	@dataclass
-	class Subject_Spec:
-		subject: str
-		table: str
-		search_fields: tuple
-		deep_search_fields: tuple = None
-		extra_joins: tuple = None
-		order_by: str = 'cw.cycle, cw.week'
-		
-	subject_specs = ( # A dict would work, but we'd loose the (sequencial) order, which we might like to remain consistent; even if the order itself isn't so important (timeline first?), consistency is, for the user's expectations
-		Subject_Spec('timeline', 'event', ('name', 'keywords'), ('primary_sentence', 'secondary_sentence'), None, 'cw.cycle, cw.week, event.seq'),
-		Subject_Spec('history', 'history', ('name', 'keywords', 'primary_sentence'), ('secondary_sentence',), ('event on history.event = event.id',)),
-		# Geography
-		# Math
-		Subject_Spec('science', 'science', ('prompt', 'answer'), ('note',)),
-		Subject_Spec('english_vocabulary', 'vocabulary', ('word', 'definition'), ('root','')),
-		Subject_Spec('latin_vocabulary', 'latin_vocabulary', ('word', 'translation')),
-	)
+#TODO: considering renaming "resources" to "lode".... (and using other 4-letter terms: quiz, test,  case (study), gist (view), pith (probe)
+async def get_lode(spec): # TODO: deprecate _get_external_resources()!
+	pass
 
-	results = [] # list of 2-tuples: [(subject_spec, recordset), ...]]
-	if spec.program <= 1: # TODO: this is a temporary hardcode to grab 'grammar' resources only if the program 'Grammar' (or 'All' ?!!!) is chosen, since this isn't in the database yet!
-		for subject_spec in subject_specs:
-			spec.table = subject_spec.table # some lower functions want table in spec
-			results.append((subject_spec.subject, await _get_grammar_resources(spec, subject_spec)))
-	else:
-		results.append(('external_resources', await _get_external_resources(spec)))
 
-	return results
+@dataclass
+class Subject_Spec:
+	subject: str
+	subject_id: int # id value of corresponding record in subject table; "hard-code"
+	table: str
+	search_fields: tuple
+	deep_search_fields: tuple = None
+	extra_joins: tuple = None
+	order_by: str = 'cw.cycle, cw.week'
+
+@dataclass
+class Resource_Result:
+	subject: str
+	grammar_resources: list = None
+	external_resources: list = None
+	assignments: list = None
+
+k_timeline_grammar = Subject_Spec('timeline', 1, 'event', ('name', 'keywords'), ('primary_sentence', 'secondary_sentence'), None, 'cw.cycle, cw.week, event.seq')
+k_history_grammar = Subject_Spec('history', 2, 'history', ('name', 'keywords', 'primary_sentence'), ('secondary_sentence',), ('event on history.event = event.id',))
+k_science_grammar = Subject_Spec('science', 5, 'science', ('prompt', 'answer'), ('note',))
+k_english_vocabulary = Subject_Spec('english_vocabulary', 6, 'vocabulary', ('word', 'definition'), ('root',''))
+k_latin_vocabulary = Subject_Spec('latin_vocabulary', 7, 'latin_vocabulary', ('word', 'translation'))
+
+async def get_grammar_resources(spec):
+	# Returns list of Resource_Result objects; one per subject, in this specified subject order (below)
+	return [Resource_Result(subject_spec.subject, await _get_grammar_resources(spec, subject_spec)) for subject_spec in [
+		k_timeline_grammar,
+		k_history_grammar,
+		# TODO: Geography
+		# TODO: Math
+		k_science_grammar,
+		k_english_vocabulary,
+		k_latin_vocabulary,
+	] if spec.subject == 0 or spec.subject == subject_spec.subject_id] # pre-filter for subject -- don't make calls to _get_grammar_resources(), above, except for subjects requested in spec.subject
 
 async def _get_grammar_resources(spec, subject_spec):
+	spec.table = subject_spec.table # some of the following functions want table in spec (only have spec)
 	joins, wheres, args = [], [], []
 	if subject_spec.extra_joins:
 		joins.extend(subject_spec.extra_joins)
-	_cycle_week_range(spec, joins, wheres, args)
+	_filter_cycle_week_range(spec, joins, wheres, args)
 	if spec.search and subject_spec.search_fields:
 		or_wheres = []
 		for field in subject_spec.search_fields:
@@ -162,8 +174,70 @@ async def _get_grammar_resources(spec, subject_spec):
 
 	return await fetchall(spec.db, (f"select * from {subject_spec.table} " + _join(joins) + _where(wheres) + f" order by {subject_spec.order_by}", args))
 
-async def _get_external_resources(spec):
-	return await fetchall(spec.db, ('select subject.name as subject_name, resource.name as resource_name, resource.note, resource_instance.note as instance_note, resource_type.name as resource_type_name, resource_source.name as resource_source_name, resource_source.logo as resource_source_logo, resource_instance.url, resource_use.optional from resource_use join resource on resource_use.resource = resource.id join subject on resource_use.subject = subject.id join resource_instance on resource_instance.resource = resource.id join resource_type on resource_instance.type = resource_type.id join resource_source on resource_instance.source = resource_source.id join program on resource_use.program = program.id where program.id = ? order by subject_name, optional, resource_name, instance_note, resource.note', (spec.program,)))
+
+_external_resource_joins = [
+	'resource on resource_use.resource = resource.id',
+	'subject on resource_use.subject = subject.id',
+]
+
+async def _get_exre_resources(spec, subject_spec):
+	spec.table = subject_spec.table # some of the following functions want table in spec (only have spec)
+	joins = _external_resource_joins
+	if subject_spec.extra_joins:
+		joins.extend(subject_spec.extra_joins)
+	wheres, args = ['subject = ?',], [subject_spec.subject_id]
+	_filter_cycle_week_range(spec, joins, wheres, args, True)
+	_filter_program(spec, joins, wheres, args)
+	return await fetchall(spec.db, (f'select subject.name as subject_name, resource.name as resource_name, resource_use.optional from {spec.table}' \
+		+ _join(joins) + _where(wheres) + ' order by subject_name, optional, resource_name', args))
+	
+	return await fetchall(spec.db, ()
+
+
+k_history_exre = Subject_Spec('history', 2, 'resource_use', ('resource.name',), ('resource.note',))
+
+async def _get_assignments(spec, a_spec):
+	return [] #TODO!
+
+
+async def get_high1_resources(spec):
+	# Returns list of Resource_Result objects; one per subject, in this specified subject order (below)
+	return [Resource_Result(gr_spec.subject,
+					await _get_grammar_resources(spec, gr_spec),
+					await _get_exre_resources(spec, exre_spec),
+					await _get_assignments(spec, a_spec)) for (gr_spec, exre_spec, a_spec)) in [
+		(k_history_grammar, k_history_exre, None),
+	] if spec.subject == 0 or spec.subject == subject_spec.subject_id] # pre-filter for subject -- don't make calls to _get_*_resources(), above, except for subjects requested in spec.subject
+
+
+async def get_external_resources(spec):
+	joins = _external_resource_joins
+	spec.table = 'resource_use' # used in _filter_* calls to join
+	wheres, args = [], []
+	_filter_cycle_week_range(spec, joins, wheres, args, True)
+	_filter_program(spec, joins, wheres, args)
+	return await fetchall(spec.db, (f'select subject.name as subject_name, resource.name as resource_name, resource_use.optional from {spec.table}' \
+		+ _join(joins) + _where(wheres) + ' order by subject_name, optional, resource_name', args))
+
+async def get_external_resource_detail(id):
+	joins = _external_resource_joins + [
+		'resource_acquisition on resource_acquisition.resource = resource.id',
+		'resource_type on resource_acquisition.type = resource_type.id',
+		'resource_source on resource_acquisition.source = resource_source.id',
+	]
+	return await fetchone(spec.db, ('select resource.note, resource_acquisition.note as acquisition_note, resource_type.name as resource_type_name, resource_source.name as resource_source_name, resource_source.logo as resource_source_logo, resource_acquisition.url, from resource_use' \
+		+ _join(joins) + ' where resource_use.id = ? order by subject_name, optional, resource_name, acquisition_note, resource.note', (id,)))
+
+async def get_assignments(spec):
+	joins = [
+		'subject on resource_use.subject = subject.id',
+	]
+	spec.table = 'assignment'
+	wheres, args = [], []
+	_filter_cycle_week_range(spec, joins, wheres, args)
+	_filter_program(spec, joins, wheres, args)
+	return await fetchall(spec.db, (f'select subject.name as subject_name, assignment.* from {spec.table}' \
+		+ _join(joins) + _where(wheres) + ' order by subject_name, cw.week, assignment.order', args))
 
 async def get_programs(dbc):
 	return await fetchall(dbc, ('select * from program', []))
@@ -231,25 +305,29 @@ async def get_payments(dbc, guardian_ids):
 
 def _join(joins):
 	if joins:
-		return ' join ' + ', '.join(joins)
+		return ' join ' + ', '.join(joins) + ' '
 	#else:
 	return ''
 
 def _or_wheres(wheres):
 	if wheres:
-		return '(%s)' % ' or '.join(wheres)
+		return ' (%s) ' % ' or '.join(wheres)
 	#else:
 	return ''
 
 def _where(wheres): # "AND"-joined wheres (i.e., intersection, not union)
 	if wheres:
-		return ' where ' + ' and '.join(wheres)
+		return ' where ' + ' and '.join(wheres) + ' '
 	#else:
 	return ''
  
-def _cycle_week_range(spec, joins, wheres, args):
+def _filter_cycle_week_range(spec, joins, wheres, args, cw_week_range = False):
 	if spec.first_week or spec.last_week or spec.cycles:
-		joins.append(f"cycle_week as cw on {spec.table}.cw = cw.id")
+		if cw_week_range:
+			joins.append(f"cycle_week as cw_first on {spec.table}.cw_first = cw_first.id")
+			joins.append(f"cycle_week as cw_last on {spec.table}.cw_last = cw_last.id")
+		else:
+			joins.append(f"cycle_week as cw on {spec.table}.cw = cw.id")
 		if spec.first_week or spec.last_week:
 			# Massage if necessary:
 			if not spec.first_week:
@@ -259,11 +337,22 @@ def _cycle_week_range(spec, joins, wheres, args):
 			if spec.last_week < spec.first_week:
 				spec.last_week = spec.first_week
 			# Now set it up:
-			wheres.append("? <= cw.week and cw.week <= ?")
+			if cw_week_range:
+				wheres.append("cw_first.week = 0 or (? <= cw_last.week and cw_first.week <= ?)")
+			else:
+				wheres.append("cw.week = 0 or (? <= cw.week and cw.week <= ?)")
 			args.extend((spec.first_week, spec.last_week))
 		if spec.cycles:
-			wheres.append("cw.cycle in (%s)" % ', '.join([str(int(i)) for i in spec.cycles]))
+			if cw_week_range:
+				wheres.append("cw_first.cycle in (%s)" % ', '.join([str(int(i)) for i in spec.cycles]))
+			else:
+				wheres.append("cw.cycle in (%s)" % ', '.join([str(int(i)) for i in spec.cycles]))
 	#else, no-op
+
+def _filter_program(spec, joins, wheres, args):
+	joins.append(f'program on {spec.table}.program = program.id')
+	wheres.append('program.id = ?')
+	args.append(spec.program if spec.program else 1) # default to "grammar" program (TODO: hardish code!)
 
 def _date_range(spec, wheres, args):
 	if spec.date_range:

@@ -1,5 +1,5 @@
 --
--- File generated with SQLiteStudio v3.2.1 on Tue Jun 9 20:59:02 2020
+-- File generated with SQLiteStudio v3.2.1 on Fri Jun 19 20:57:25 2020
 --
 -- Text encoding used: UTF-8
 --
@@ -134,9 +134,9 @@ INSERT INTO cost (id, academic_year, name, amount, due, program, per_student) VA
 -- Table: cycle
 DROP TABLE IF EXISTS cycle;
 CREATE TABLE cycle (id INTEGER PRIMARY KEY AUTOINCREMENT, name STRING, description STRING);
-INSERT INTO cycle (id, name, description) VALUES (1, 'Cycle 1', 'AAA (Africa, Asia, Australia)');
-INSERT INTO cycle (id, name, description) VALUES (2, 'Cycle 2', 'Europe');
-INSERT INTO cycle (id, name, description) VALUES (3, 'Cycle 3', 'Americas (North & South America), Antarctica');
+INSERT INTO cycle (id, name, description) VALUES (1, 'C-1', 'AAA (Africa, Asia, Australia)');
+INSERT INTO cycle (id, name, description) VALUES (2, 'C-2', 'Europe');
+INSERT INTO cycle (id, name, description) VALUES (3, 'C-3', 'Americas (North & South America), Antarctica');
 INSERT INTO cycle (id, name, description) VALUES (4, 'All', 'World');
 
 -- Table: cycle_week
@@ -375,7 +375,7 @@ INSERT INTO email (id, address, note, unlisted) VALUES (11, 'scottwmcd@hotmail.c
 INSERT INTO email (id, address, note, unlisted) VALUES (12, 'LBMiller2011@gmail.com', NULL, NULL);
 INSERT INTO email (id, address, note, unlisted) VALUES (13, 'horsedr@gmail.com', NULL, NULL);
 INSERT INTO email (id, address, note, unlisted) VALUES (14, 'julieboolie_76@hotmail.com', NULL, NULL);
-INSERT INTO email (id, address, note, unlisted) VALUES (15, 'deyetteperry@hotmail.com', NULL, NULL);
+INSERT INTO email (id, address, note, unlisted) VALUES (15, 'deyetteperry@yahoo.com', NULL, NULL);
 INSERT INTO email (id, address, note, unlisted) VALUES (16, 'lou@ldperry.com', NULL, NULL);
 INSERT INTO email (id, address, note, unlisted) VALUES (17, 'pesheahan@msn.com', NULL, NULL);
 INSERT INTO email (id, address, note, unlisted) VALUES (18, 'jamie-m@hotmail.com', NULL, NULL);
@@ -1389,13 +1389,13 @@ INSERT INTO resource_instance (id, resource, type, source, url, cost_cents, page
 -- Table: resource_source
 DROP TABLE IF EXISTS resource_source;
 CREATE TABLE resource_source (id INTEGER PRIMARY KEY AUTOINCREMENT, name STRING, logo STRING);
-INSERT INTO resource_source (id, name, logo) VALUES (1, 'Amazon', 'amazon-small.png');
-INSERT INTO resource_source (id, name, logo) VALUES (2, 'Gutenberg', 'gutenberg-small.png');
-INSERT INTO resource_source (id, name, logo) VALUES (3, 'Christianbook', 'christianbook-small.png');
-INSERT INTO resource_source (id, name, logo) VALUES (4, 'Librivox', 'librivox-small.png');
-INSERT INTO resource_source (id, name, logo) VALUES (5, 'Audible', 'audible-small.png');
+INSERT INTO resource_source (id, name, logo) VALUES (1, 'Amazon', 'amazon-tiny.png');
+INSERT INTO resource_source (id, name, logo) VALUES (2, 'Gutenberg', 'gutenberg-tiny.png');
+INSERT INTO resource_source (id, name, logo) VALUES (3, 'Christianbook', 'christianbook-tiny.png');
+INSERT INTO resource_source (id, name, logo) VALUES (4, 'Librivox', 'librivox-tiny.png');
+INSERT INTO resource_source (id, name, logo) VALUES (5, 'Audible', 'audible-tiny.png');
 INSERT INTO resource_source (id, name, logo) VALUES (6, 'Web', NULL);
-INSERT INTO resource_source (id, name, logo) VALUES (7, 'Ebay', 'ebay-small.png');
+INSERT INTO resource_source (id, name, logo) VALUES (7, 'Ebay', 'ebay-tiny.png');
 
 -- Table: resource_type
 DROP TABLE IF EXISTS resource_type;
@@ -1407,44 +1407,44 @@ INSERT INTO resource_type (id, name) VALUES (7, 'web page');
 
 -- Table: resource_use
 DROP TABLE IF EXISTS resource_use;
-CREATE TABLE resource_use (id INTEGER PRIMARY KEY AUTOINCREMENT, subject INTEGER REFERENCES subject (id) ON DELETE CASCADE ON UPDATE CASCADE, resource INTEGER REFERENCES resource (id) ON DELETE CASCADE ON UPDATE CASCADE, cw INTEGER REFERENCES cycle_week (id) ON DELETE CASCADE ON UPDATE CASCADE, program INTEGER REFERENCES program (id) ON DELETE CASCADE ON UPDATE CASCADE, pages STRING, chapters STRING, optional BOOLEAN);
-INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (1, 8, 3, 197, 3, NULL, NULL, NULL);
-INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (2, 8, 4, 197, 3, NULL, NULL, NULL);
-INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (3, 8, 5, 197, 3, NULL, NULL, 1);
-INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (4, 8, 6, 197, 3, NULL, NULL, 1);
-INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (5, 8, 7, 197, 3, NULL, NULL, NULL);
-INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (6, 8, 8, 197, 3, NULL, NULL, 1);
-INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (7, 8, 9, 197, 3, NULL, NULL, NULL);
-INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (8, 8, 10, 197, 3, NULL, NULL, 1);
-INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (9, 8, 11, 197, 3, NULL, NULL, NULL);
-INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (10, 8, 12, 197, 3, NULL, NULL, 1);
-INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (11, 8, 13, 197, 3, NULL, NULL, NULL);
-INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (12, 8, 14, 197, 3, NULL, NULL, NULL);
-INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (13, 8, 15, 197, 3, NULL, NULL, 1);
-INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (14, 8, 16, 197, 3, NULL, NULL, NULL);
-INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (15, 8, 17, 197, 3, NULL, NULL, 1);
-INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (16, 8, 18, 197, 3, NULL, NULL, NULL);
-INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (20, 2, 1, 203, 3, NULL, NULL, NULL);
-INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (21, 2, 2, 203, 3, NULL, NULL, NULL);
-INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (22, 2, 19, 203, 3, NULL, NULL, NULL);
-INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (23, 2, 20, 203, 3, NULL, NULL, NULL);
-INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (24, 8, 22, 197, 3, NULL, NULL, 1);
-INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (25, 8, 23, 197, 3, NULL, NULL, NULL);
-INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (26, 8, 24, 197, 3, NULL, NULL, NULL);
-INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (27, 2, 25, 203, 3, NULL, NULL, NULL);
-INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (28, 2, 26, 203, 3, NULL, NULL, NULL);
-INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (29, 2, 27, 203, 3, NULL, NULL, NULL);
-INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (30, 2, 28, 203, 3, NULL, NULL, NULL);
-INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (31, 5, 29, 197, 3, NULL, NULL, NULL);
-INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (32, 9, 30, 197, 3, NULL, NULL, NULL);
-INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (33, 2, 21, 203, 3, NULL, NULL, 1);
-INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (34, 8, 31, 197, 3, NULL, NULL, 1);
-INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (35, 8, 32, 197, 3, NULL, NULL, 1);
-INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (36, 8, 33, 197, 3, NULL, NULL, 1);
-INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (37, 2, 34, 203, 3, NULL, NULL, 1);
-INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (38, 2, 35, 203, 3, NULL, NULL, 1);
-INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (39, 5, 37, 197, 3, NULL, NULL, 1);
-INSERT INTO resource_use (id, subject, resource, cw, program, pages, chapters, optional) VALUES (40, 8, 38, 197, 3, NULL, NULL, NULL);
+CREATE TABLE resource_use (id INTEGER PRIMARY KEY AUTOINCREMENT, subject INTEGER REFERENCES subject (id) ON DELETE CASCADE ON UPDATE CASCADE, resource INTEGER REFERENCES resource (id) ON DELETE CASCADE ON UPDATE CASCADE, cw_first INTEGER REFERENCES cycle_week (id) ON DELETE CASCADE ON UPDATE CASCADE, cw_last INTEGER REFERENCES cycle_week (id) ON DELETE CASCADE ON UPDATE CASCADE, program INTEGER REFERENCES program (id) ON DELETE CASCADE ON UPDATE CASCADE, pages STRING, chapters STRING, optional BOOLEAN);
+INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, pages, chapters, optional) VALUES (1, 8, 3, 197, 197, 3, NULL, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, pages, chapters, optional) VALUES (2, 8, 4, 1, 3, 3, NULL, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, pages, chapters, optional) VALUES (3, 8, 5, 1, 3, 3, NULL, NULL, 1);
+INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, pages, chapters, optional) VALUES (4, 8, 6, 197, NULL, 3, NULL, NULL, 1);
+INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, pages, chapters, optional) VALUES (5, 8, 7, 197, NULL, 3, NULL, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, pages, chapters, optional) VALUES (6, 8, 8, 197, NULL, 3, NULL, NULL, 1);
+INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, pages, chapters, optional) VALUES (7, 8, 9, 197, NULL, 3, NULL, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, pages, chapters, optional) VALUES (8, 8, 10, 197, NULL, 3, NULL, NULL, 1);
+INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, pages, chapters, optional) VALUES (9, 8, 11, 197, NULL, 3, NULL, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, pages, chapters, optional) VALUES (10, 8, 12, 197, NULL, 3, NULL, NULL, 1);
+INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, pages, chapters, optional) VALUES (11, 8, 13, 197, NULL, 3, NULL, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, pages, chapters, optional) VALUES (12, 8, 14, 197, NULL, 3, NULL, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, pages, chapters, optional) VALUES (13, 8, 15, 197, NULL, 3, NULL, NULL, 1);
+INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, pages, chapters, optional) VALUES (14, 8, 16, 197, NULL, 3, NULL, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, pages, chapters, optional) VALUES (15, 8, 17, 197, NULL, 3, NULL, NULL, 1);
+INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, pages, chapters, optional) VALUES (16, 8, 18, 197, NULL, 3, NULL, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, pages, chapters, optional) VALUES (20, 2, 1, 203, NULL, 3, NULL, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, pages, chapters, optional) VALUES (21, 2, 2, 203, NULL, 3, NULL, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, pages, chapters, optional) VALUES (22, 2, 19, 203, NULL, 3, NULL, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, pages, chapters, optional) VALUES (23, 2, 20, 203, NULL, 3, NULL, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, pages, chapters, optional) VALUES (24, 8, 22, 197, NULL, 3, NULL, NULL, 1);
+INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, pages, chapters, optional) VALUES (25, 8, 23, 197, NULL, 3, NULL, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, pages, chapters, optional) VALUES (26, 8, 24, 197, NULL, 3, NULL, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, pages, chapters, optional) VALUES (27, 2, 25, 203, NULL, 3, NULL, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, pages, chapters, optional) VALUES (28, 2, 26, 203, NULL, 3, NULL, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, pages, chapters, optional) VALUES (29, 2, 27, 203, NULL, 3, NULL, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, pages, chapters, optional) VALUES (30, 2, 28, 203, NULL, 3, NULL, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, pages, chapters, optional) VALUES (31, 5, 29, 197, NULL, 3, NULL, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, pages, chapters, optional) VALUES (32, 9, 30, 197, NULL, 3, NULL, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, pages, chapters, optional) VALUES (33, 2, 21, 203, NULL, 3, NULL, NULL, 1);
+INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, pages, chapters, optional) VALUES (34, 8, 31, 197, NULL, 3, NULL, NULL, 1);
+INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, pages, chapters, optional) VALUES (35, 8, 32, 197, NULL, 3, NULL, NULL, 1);
+INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, pages, chapters, optional) VALUES (36, 8, 33, 197, NULL, 3, NULL, NULL, 1);
+INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, pages, chapters, optional) VALUES (37, 2, 34, 203, NULL, 3, NULL, NULL, 1);
+INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, pages, chapters, optional) VALUES (38, 2, 35, 203, NULL, 3, NULL, NULL, 1);
+INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, pages, chapters, optional) VALUES (39, 5, 37, 197, NULL, 3, NULL, NULL, 1);
+INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, pages, chapters, optional) VALUES (40, 8, 38, 197, NULL, 3, NULL, NULL, NULL);
 
 -- Table: role
 DROP TABLE IF EXISTS role;
