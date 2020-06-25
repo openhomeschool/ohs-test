@@ -201,6 +201,10 @@ async def get_grammar_resources(spec):
 async def get_high1_resources(spec):
 	return await sql.get_high1_resources(spec)
 
+'''ABANDON, unnecessary
+async def get_high1_shopping(spec):
+	return await sql.get_high1_shopping(spec)
+'''
 
 
 #TODO: DEPRECATE: async def get_resources(spec):

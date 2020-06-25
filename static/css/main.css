@@ -368,11 +368,12 @@ label.answer_option_label {
 }
 
 
-.resource_record .cw {
+.cw {
 	border: 1px solid black;
 	border-radius: 4px;
 	text-align: center;
 	display: inline-block;
+	float: right;
 
 	/* NOTE: the following taken from .dropdown-button, and is intended to match!! But ACK!  doesn't match!  TODO: RESEARCH! */
 	margin: 0px;
@@ -380,7 +381,7 @@ label.answer_option_label {
 	font-size: 1.1em;
 }
 
-.resource_record .buttonstrip {
+.buttonstrip {
 	display: inline-block;
 	float: right;
 }
@@ -543,4 +544,8 @@ td.right-equality-cell {
 .search {
 	float: left;
 	margin: 7px 2px;
+}
+
+hr.bighr {
+  border: 1px solid black;
 }

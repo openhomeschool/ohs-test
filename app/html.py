@@ -311,84 +311,80 @@ def test_twixt(url):
 
 
 
-g_subject_resources = dict()
-def subject_resource(subject):
+g_subject_resource_handlers = dict()
+def subject_resources(handler):
 	def decorator(func):
-		g_subject_resources[subject] = func
+		g_subject_resource_handlers[handler] = func
 		return func
 	return decorator
 
-def _grammar_resources(container, records, show_cw, subject_title, subject_directory, render, audio_widgets, record_container_class = None):
+
+def _grammar_resources(container, spec, records, show_cw, subject_directory, render, audio_widgets, record_container_class = None):
+	cycle_week = None
+	first = True
 	with container:
-		with t.div(cls = 'flex-wrap'):
-			t.div(subject_title, cls = 'title')
-			cycle_week = None
-			with t.div(cls = 'main'):
-				for record in records:
-					if cycle_week != (record['cycle'], record['week']):
-						# For each new week encountered, add the cycle and week numbers on rhs...
-						cycle_week = (record['cycle'], record['week'])
-						resource_div = t.div(cls = 'resource_record')
-						buttonstrip = t.div(cls = 'buttonstrip')
-					
-						if audio_widgets:
-							filename_base = subject_directory + '/c%sw%s' % (record['cycle'], record['week'])
-							with buttonstrip:
-								t.audio(t.source(src = _aurl(filename_base + '.mp3'), type = 'audio/mpeg'), id = filename_base) # invisible
-								t.button('>', title = 'Audio song', onclick = 'play_pause("%s", this);' % filename_base, ondblclick = 'restart_play("%s", this);' % filename_base)
-								t.button(t.img(src = _iurl('eighth-note.png')), title = 'Musical score', onclick = 'window.open("%s","_blank");' % _aurl(filename_base + '.pdf'))
-								t.button(t.img(src = _iurl('cursive-c.png')), title = 'Copywork')
-								t.button('Ξ', title = 'Details')
-								
-						_add_cw(record, buttonstrip)
-						resource_div += buttonstrip
-						if record_container_class:
-							record_container = record_container_class()
-							resource_div += record_container
-						else:
-							record_container = resource_div
+		for record in records:
+			if cycle_week != (record['cycle'], record['week']):
+				if not first:
+					resource_div += t.hr()
+				else:
+					first = False
+				# For each new week encountered, add the cycle and week numbers on rhs... # TODO: use show_cw?!
+				cycle_week = (record['cycle'], record['week'])
+				resource_div = t.div(cls = 'resource_record')
+				buttonstrip = t.div(cls = 'buttonstrip')
+			
+				if audio_widgets:
+					filename_base = subject_directory + '/c%sw%s' % (record['cycle'], record['week'])
+					with buttonstrip:
+						t.audio(t.source(src = _aurl(filename_base + '.mp3'), type = 'audio/mpeg'), id = filename_base) # invisible
+						t.button('>', title = 'Audio song', onclick = 'play_pause("%s", this);' % filename_base, ondblclick = 'restart_play("%s", this);' % filename_base)
+						t.button(t.img(src = _iurl('eighth-note.png')), title = 'Musical score', onclick = 'window.open("%s","_blank");' % _aurl(filename_base + '.pdf'))
+						t.button(t.img(src = _iurl('cursive-c.png')), title = 'Copywork')
+						t.button('Ξ', title = 'Details')
+						
+				_add_cw(record, buttonstrip)
+				resource_div += buttonstrip
+				if record_container_class:
+					record_container = record_container_class()
+					resource_div += record_container
+				else:
+					record_container = resource_div
 
-					render(record, record_container)
-
-def _external_resources(container, records, show_cw):
-	if records:
-			resource_block = None
-			subject_name = None
-			content = None
-			resource_name = None
-			shopping_links = None
-			for record in records:
-				if record['subject_name'] != subject_name:
-					subject_name = record['subject_name']
-					
-					if resource_block:
-						container += resource_block # add old one before creating new one
-					resource_block = t.div(cls = 'flex-wrap')
-					resource_block += t.div(record['subject_name'], cls = 'title')
-
-					content = t.div(cls = 'main')
-					resource_block += content # will be filled in below
-
-				with content:
-					if record['resource_name'] != resource_name:
-						resource_name = record['resource_name']
-						resource_title = t.div(cls = 'resource_name')
-						if record['optional']:
-							resource_title += '[optional] '
-						resource_title += t.b(resource_name)
-						if record['note']:
-							resource_title += ' (%s)' % record['note']
-						resource_title += t.span(t.button('$', onclick = 'show_hide_shopping("%s");' % resource_name))
-						shopping_links = t.div(t.div('Click to shop...'), cls = 'shopping_links', id = resource_name)
-
-				_add_shopping_link(shopping_links, record)
-
-			#TODO: the next 3 lines duplicates 3 lines above; consolidate!
-			if resource_block:
-				resource_block += t.div(cls = 'clear') # force resource_block container to be tall enough for all content
-				container += resource_block # add old one before creating new one
+			render(record, record_container)
 
 
+def _external_resources(container, spec, records, show_cw):
+	cycle_week = None
+	first = True
+	for record in records:
+		resource_name = record['resource_name']
+		if cycle_week != (record['cycle'], record['week']):
+			if not first:
+				container += t.hr()
+			else:
+				first = False
+			bs = t.div(cls = 'buttonstrip')
+			_add_cw(record, bs)
+			if spec.shop:
+				bs += t.button('$', onclick = 'show_hide_shopping("%s");' % resource_name)
+				shopping_links = t.div(t.div('Click to shop...'), cls = 'shopping_links', id = resource_name) # contents filled in via websocket upon '$' click to show_hide_shopping()
+			else:
+				pass # put the $ link under the "more..."
+			container += bs
+
+		resource_title = t.div(cls = 'resource_name')
+		if record['optional']:
+			resource_title += '[optional] '
+		resource_title += t.b(resource_name)
+		container += resource_title
+		
+		#TODO: ADD "more..." button/link to unfold drop-content loaded via ws
+
+		if spec.shop:
+			pass#_add_shopping_link(shopping_links, record) # TODO: move this into handler; see above
+
+#TODO: this will be called by a websocket handler to load the shopping for a resource....
 def _add_shopping_link(container, record):
 	s = t.div(t.a(t.img(src = _lurl(record['resource_source_logo'])), href = record['url'], target = '_blank'), cls = 'shopping_link_block' if record['acquisition_note'] else 'shopping_link')
 	if record['acquisition_note']:
@@ -398,62 +394,173 @@ def _add_shopping_link(container, record):
 		container += s
 
 
-	
-@subject_resource('science')
-def science_resources(container, records, show_cw):
+@subject_resources('science_grammar')
+def science_grammar(container, spec, records, show_cw):
 	def render(record, container): # callback function, see _grammar_resources()
 		with container:
 			t.div(t.b(record['prompt']))
 			t.div(record['answer'])
 
-	_grammar_resources(container, result.grammar_resources, show_cw, 'Science', 'science', render, True)
+	_grammar_resources(container, spec, records, show_cw, 'science', render, True)
 
+@subject_resources('science_resources')
+def science_resources(container, spec, records, show_cw):
+	_external_resources(container, spec, records, show_cw)
 
-@subject_resource('english_vocabulary')
-def english_vocabulary_resources(container, records, show_cw):
+@subject_resources('english_vocabulary')
+def english_vocabulary(container, spec, records, show_cw):
 	def render(record, container): # callback function, see _grammar_resources()
 		_add_eqality_record(container, record, 'word', 'definition')
 
-	_grammar_resources(container, result.grammar_resources, show_cw, 'English', 'english', render, False, t.table)
+	_grammar_resources(container, spec, records, show_cw, 'english', render, False, t.table)
 
 def _add_eqality_record(table, record, left_field_name, right_field_name):
 	table += t.tr(
 		t.td(t.b(record[left_field_name]), cls = 'left-equality-cell'),
 		t.td(' = ', record[right_field_name], cls = 'right-equality-cell')
 	)
-	
-@subject_resource('latin_vocabulary')
-def latin_vocabulary_resources(container, records, show_cw):
+
+@subject_resources('english_grammar')
+def english_grammar(container, spec, records, show_cw):
 	def render(record, container): # callback function, see _grammar_resources()
-		_add_eqality_record(result.grammar_resources, record, 'word', 'translation')
+		with container:
+			t.div(t.b(record['prompt']))
+			answer = record['answer']
+			if record['example']:
+				answer += '(' + record['example'] + ')'
+			t.div(answer)
 
-	_grammar_resources(container, records, show_cw, 'Latin', 'latin', render, False, t.table)
+	_grammar_resources(container, spec, records, show_cw, 'english', render, True)
+	
+@subject_resources('literature_resources')
+def literature_resources(container, spec, records, show_cw):
+	_external_resources(container, spec, records, show_cw)
 
-@subject_resource('history')
-def history_resources(container, records, show_cw):
+
+@subject_resources('poetry_resources')
+def poetry_resources(container, spec, records, show_cw):
+	_external_resources(container, spec, records, show_cw)
+
+
+@subject_resources('latin_vocabulary')
+def latin_vocabulary(container, spec, records, show_cw):
+	def render(record, container): # callback function, see _grammar_resources()
+		_add_eqality_record(container, record, 'word', 'translation')
+
+	_grammar_resources(container, spec, records, show_cw, 'latin', render, False, t.table)
+
+@subject_resources('latin_grammar')
+def latin_grammar(container, spec, records, show_cw):
+	def render(record, container): # callback function, see _grammar_resources()
+		with container:
+			t.div(t.b(record['name']))
+			answer = record['pattern']
+			if record['example']: # TODO: PUT this into "more details" drop?
+				example = 'Example: %s - %s' % (record['example'], record['example_worked'])
+				if record['example_translated']:
+					example += '(' + record['example_translated'] + ')'
+				t.div(example)
+
+	_grammar_resources(container, spec, records, show_cw, 'latin', render, True)
+
+
+@subject_resources('latin_resources')
+def latin_resources(container, spec, records, show_cw):
+	_external_resources(container, spec, records, show_cw)
+
+@subject_resources('history_grammar')
+def history_grammar(container, spec, records, show_cw):
 	def render(record, container): # callback function, see _grammar_resources()
 		with container:
 			t.div(t.b('%s - tell me more' % record['name']))
 			t.div(record['primary_sentence'])
 
-	_grammar_resources(container, result.grammar_resources, show_cw, 'History', 'history', render, True)
-	_external_resources(container, result.external_resources, show_cw)
+	_grammar_resources(container, spec, records, show_cw, 'history', render, True)
 
+@subject_resources('history_resources')
+def history_resources(container, spec, records, show_cw):
+	_external_resources(container, spec, records, show_cw)
 
-@subject_resource('timeline')
-def event_resources(container, records, show_cw):
+@subject_resources('timeline')
+def timeline(container, spec, records, show_cw):
 	def render(record, container): # callback function, see _grammar_resources()
 		container += t.div(_event_formatted(record))
 
-	_grammar_resources(container, result.grammar_resources, show_cw, 'Timeline', 'history', render, False)
+	_grammar_resources(container, spec, records, show_cw, 'timeline', render, False)
+
+
+@subject_resources('literature_assignments')
+def literature_assignments(container, spec, records, show_cw):
+	_assignments(container, spec, records, show_cw)
+
+@subject_resources('science_assignments')
+def science_assignments(container, spec, records, show_cw):
+	_assignments(container, spec, records, show_cw)
+
+def _assignments(container, spec, records, show_cw):
+	teased = {}
+	cws = []
+	grades = []
+	for record in records:
+		cw = record['cycle'], record['week']
+		if not cw in teased:
+			teased[cw] = {}
+			cws.append(cw)
+		if not record['order'] in teased[cw]:
+			teased[cw][record['order']] = {}
+		if not record['grade']:
+			teased[cw][record['order']]['shared'] = record
+		else:
+			teased[cw][record['order']][record['grade']] = record
+			if record['grade'] not in grades:
+				grades.append(record['grade'])
+
+	if not grades:
+		grades = ['7-9', ] # TODO: hardcode; replace this with DB intel
+
+	with container:
+		first = True
+		for cw in cws:
+			add_cw = True
+			for grade in grades:
+				if not first:
+					t.hr()
+				else:
+					first = False
+				grade_line = t.div(t.b('Grade %s:' % grade))
+				with t.ol():
+					for order in sorted(teased[cw]):
+						if grade in teased[cw][order]:
+							record = teased[cw][order][grade]
+						elif 'shared' in teased[cw][order]:
+							record = teased[cw][order]['shared']
+						else:
+							continue
+						if add_cw:
+							_add_cw(record, grade_line)
+							add_cw = False
+						t.li(raw(record['instruction']))
 
 
 
-def resource_list(results, url, show_cw = True):
+def _new_subject_section(container, subject_title):
+	result = t.div(cls = 'main')
+	container += t.div(t.div(subject_title, cls = 'title'), result, cls = 'flex-wrap')
+	return result
+
+
+def resource_list(spec, results, url, show_cw = True):
 	# Cycle, Week, Subject, Content (subject-specific presentation, option of "more details"), "essential" resources (e.g., song audio)
 	container = t.div(cls = 'resource_list')
 	for result in results:
-		g_subject_resources[result.subject](container, result, show_cw)
+		subject_container = _new_subject_section(container, result.subject_title)
+		first = True
+		for subresult in result.subresults:
+			if not first:
+				subject_container += t.hr(cls = 'bighr')
+			else:
+				first = False
+			g_subject_resource_handlers[subresult.handler](subject_container, spec, subresult.records, show_cw)
 	return container.render()
 
 # -----------------------------------------------------------------------------
