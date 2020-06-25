@@ -289,10 +289,9 @@ async def test_twixt(request):
 async def ws_test_twixt(request):
 	session = await get_session(request)
 	result = await g_twixt_work[session['twixt']]
-	l.debug('ws_test_twixt result: %s' % result)
 	
 	async def msg_handler(payload, ws):
-		await ws.send_json({'call': 'content', 'data': await foobar()}) # TODO: consolidate repetition!
+		await ws.send_json({'call': 'content', 'data': await foobar()})
 
 	return await _ws_handler(request, msg_handler, {'call': 'content', 'data': result})
 	
@@ -312,15 +311,15 @@ async def resources(request):
 	)
 	cycles = ('cycle', [(cycle['name'], cycle['id']) for cycle in await db.get_cycles(dbc)])
 	weeks = (
-		('first_week', [('W-%d' % week, week) for week in range(1, 28)]), # TODO: hardcode 28!
-		('last_week', [('W-%d' % week, week) for week in range(1, 28)]), # TODO: hardcode 28!
+		('first_week', [('W-%d' % week, week) for week in range(1, 29)]), # TODO: hardcode 28!
+		('last_week', [('W-%d' % week, week) for week in range(1, 29)]), # TODO: hardcode 28!
 	)
 
 	return hr(html.resources(_ws_url(request, '/ws_resources'), filters, cycles, weeks, qargs))
 
 
 
-k_programs = { # 'id' keys must coincide with DB 'program' table
+k_db_handlers = { # 'id' keys must coincide with DB 'program' table
 	1: db.get_grammar_resources,
 	2: db.get_grammar_resources, # TODO: placeholder
 	3: db.get_high1_resources,
@@ -337,21 +336,24 @@ async def _first_resources(dbc, qargs):
 		search = qargs.get('search'),
 		deep_search = False,
 		program = int(qargs.get('program', 1)), # hardcode default to "grammar school" program if program choice not made (TODO: set this, instead, to logged-in-user's attached program
+		solo = int(qargs.get('solo', 0)), # 0 = show the designed content for the program; 1 = show *only* the content unique to the program
+		shop = int(qargs.get('shop', 0)), # 1 = show shopping links
 		subject = int(qargs.get('subject', 0)), # 0 = "all" indicator
 		cycles = (4, 1), # default: "cycle 1" ("4" refers to grammar that belongs to "all cycles" (like timeline grammar) - this is hardcode! TODO:FIX!)
-		first_week = 1, # TODO: hardcode week 1! replace with lookup for user's "current week"
-		last_week = 1, # TODO - above
+		first_week = int(qargs.get('first_week', 1)), # TODO: hardcode default to week 1! replace with lookup for user's "current week"
+		last_week = int(qargs.get('last_week', 1)), # TODO: see above; lookup user's current-week
 	)
-	return (spec, await k_programs[spec.program](spec)) # need to send spec, itself, as there's no other way for retrieving end (ws_resources function) to get spec hereafter!
+	return (spec, await k_db_handlers[spec.program](spec)) # need to send spec, itself, as there's no other way for retrieving end (ws_resources function) to get spec hereafter!
 
 
 k_call_map = {
 	'search': (str, valid.rec_string32.match),
 	'program': (int, None),
 	'subject': (int, None),
-	'first_week': (int, None), # TODO: add validator to constrain to weeks 1-28?!
-	'last_week': (int, None), # TODO: add validator to constrain to weeks 1-28?!
+	'first_week': (int, None), # TODO: add validator to constrain to weeks 0-28?!
+	'last_week': (int, None), # TODO: add validator to constrain to weeks 0-28?!
 	'external_resource_detail': (int, None),
+	'shop': (int, None),
 }
 
 @r.get('/ws_resources') #TODO: this has strong similarities to ws_filter_list (which should be named ws_filter_user_list)
@@ -359,7 +361,7 @@ async def ws_resources(request):
 	session = await get_session(request)
 	open_resource = _http_url(request, '/open_resource') #TODO?!?? (figure out how we want to advance a user's click on a specific resource); TODO: call this, simply, "more"?
 	spec, result = await g_twixt_work[session['twixt']]
-	_make_msg = lambda result: {'call': 'show', 'result': html.resource_list(result, open_resource)}
+	_make_msg = lambda result: {'call': 'show', 'result': html.resource_list(spec, result, open_resource)}
 
 	async def msg_handler(payload, ws):
 		nonlocal spec
@@ -369,11 +371,12 @@ async def ws_resources(request):
 			if validator and not validator(value):
 				raise ValueError() # treat like failed cast, above; either way - invalid filter input was tried
 			setattr(spec, payload['call'], value) # note that payload calls must match field names in `spec`; but this is convention only
+
+			result = await k_db_handlers[spec.program](spec)
+			await ws.send_json(_make_msg(result))
+
 		except ValueError as e:
 			l.warning('invalid filter input to ws_resources') # but do nothing else; client code already checks for validity; this must/might be an attack attempt; no need to respond
-
-		result = await k_programs[spec.program](spec)
-		await ws.send_json(_make_msg(result))
 
 	return await _ws_handler(request, msg_handler, _make_msg(result))
 
