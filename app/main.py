@@ -298,11 +298,17 @@ async def ws_test_twixt(request):
 
 @r.get('/resources')
 async def resources(request):
+	return await _resources(request, request.query)
+
+@r.get('/shop_year')
+async def shop_year(request):
+	return await _resources(request, {'shop': 1, 'program': 3, 'first_week': 1, 'last_week': 28})
+
+async def _resources(request, qargs):
 	session = await get_session(request)
 
 	session['twixt'] = str(uuid4())
 	dbc = request.app['db']
-	qargs = request.query
 	g_twixt_work[session['twixt']] = asyncio.create_task(_first_resources(dbc, qargs)) # start the first lookup now... should be done by the time the page is loaded and websocket handshake occurs, when this result is passed on into the loaded skeletal page
 
 	filters = (
@@ -331,7 +337,6 @@ k_db_handlers = { # 'id' keys must coincide with DB 'program' table
 
 async def _first_resources(dbc, qargs):
 	spec = util.Struct(
-		db = dbc,
 		#user_id = session['user_id'],
 		search = qargs.get('search'),
 		deep_search = False,
@@ -343,7 +348,7 @@ async def _first_resources(dbc, qargs):
 		first_week = int(qargs.get('first_week', 1)), # TODO: hardcode default to week 1! replace with lookup for user's "current week"
 		last_week = int(qargs.get('last_week', 1)), # TODO: see above; lookup user's current-week
 	)
-	return (spec, await k_db_handlers[spec.program](spec)) # need to send spec, itself, as there's no other way for retrieving end (ws_resources function) to get spec hereafter!
+	return (spec, await k_db_handlers[spec.program](dbc, spec)) # need to send spec, itself, as there's no other way for retrieving end (ws_resources function) to get spec hereafter!
 
 
 k_call_map = {
@@ -362,7 +367,7 @@ async def ws_resources(request):
 	dbc = request.app['db']
 	open_resource = _http_url(request, '/open_resource') #TODO?!?? (figure out how we want to advance a user's click on a specific resource); TODO: call this, simply, "more"?
 	spec, result = await g_twixt_work[session['twixt']]
-	_make_msg = lambda result: {'call': 'show', 'result': html.resource_list(spec, result, open_resource)}
+	_make_msg = lambda result, rspec: {'call': 'show', 'result': html.resource_list(spec, result, open_resource), 'spec': json.dumps(rspec.asdict())}
 
 	async def msg_handler(payload, ws):
 		nonlocal spec
@@ -373,8 +378,8 @@ async def ws_resources(request):
 				if validator and not validator.match(value):
 					raise ValueError() # treat like failed cast, above; either way - invalid filter input was tried
 				setattr(spec, payload['filter'], value) # note that payload calls must match field names in `spec`; but this is convention only
-				result = await k_db_handlers[spec.program](spec)
-				await ws.send_json(_make_msg(result))
+				result = await k_db_handlers[spec.program](dbc, spec)
+				await ws.send_json(_make_msg(result, spec))
 
 			elif payload['call'] == 'show_shopping':
 				match = valid.rec_resource_id_div.match(payload['resource_id'])
@@ -386,7 +391,7 @@ async def ws_resources(request):
 		except ValueError as e:
 			l.warning('invalid filter input to ws_resources') # but do nothing else; client code already checks for validity; this must/might be an attack attempt; no need to respond
 
-	return await _ws_handler(request, msg_handler, _make_msg(result))
+	return await _ws_handler(request, msg_handler, _make_msg(result, spec))
 
 
 # Util ------------------------------------------------------------------------

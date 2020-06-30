@@ -1,5 +1,5 @@
 --
--- File generated with SQLiteStudio v3.2.1 on Thu Jun 25 11:27:28 2020
+-- File generated with SQLiteStudio v3.2.1 on Tue Jun 30 08:13:21 2020
 --
 -- Text encoding used: UTF-8
 --
@@ -1422,8 +1422,8 @@ INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, gra
 INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, grade, pages, chapters, optional) VALUES (9, 8, 11, 11, 16, 3, NULL, NULL, NULL, NULL);
 INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, grade, pages, chapters, optional) VALUES (10, 8, 12, 11, 16, 3, NULL, NULL, NULL, 1);
 INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, grade, pages, chapters, optional) VALUES (11, 8, 13, 14, 19, 3, NULL, NULL, NULL, NULL);
-INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, grade, pages, chapters, optional) VALUES (12, 8, 14, 20, 25, 3, NULL, NULL, NULL, NULL);
-INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, grade, pages, chapters, optional) VALUES (13, 8, 15, 22, 24, 3, NULL, NULL, NULL, 1);
+INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, grade, pages, chapters, optional) VALUES (12, 8, 14, 20, 24, 3, NULL, NULL, NULL, NULL);
+INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, grade, pages, chapters, optional) VALUES (13, 8, 15, 20, 24, 3, NULL, NULL, NULL, 1);
 INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, grade, pages, chapters, optional) VALUES (14, 8, 16, 8, 13, 3, NULL, NULL, NULL, NULL);
 INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, grade, pages, chapters, optional) VALUES (15, 8, 17, 23, 28, 3, NULL, NULL, NULL, 1);
 INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, grade, pages, chapters, optional) VALUES (16, 8, 18, 23, 28, 3, NULL, NULL, NULL, NULL);
@@ -1466,7 +1466,7 @@ INSERT INTO science (id, cw, prompt, answer, note) VALUES (2, 4, 'weight', 'the 
 INSERT INTO science (id, cw, prompt, answer, note) VALUES (3, 1, 'atom', 'the smallest unit of matter of a chemical element', 'The Periodic Table of Elements details chemical elements.');
 INSERT INTO science (id, cw, prompt, answer, note) VALUES (4, 2, 'molecule', 'matter that consists of two or more atoms held together by chemical bonds', NULL);
 INSERT INTO science (id, cw, prompt, answer, note) VALUES (5, 5, 'chemical solution', 'a chemical mixture; a solvent is the substance in which a solute is dissolved', 'Mixtures are commonly (but not necessarily) liquid.');
-INSERT INTO science (id, cw, prompt, answer, note) VALUES (6, 6, 'water cycle', 'the cycle in which water enters the atmosphere thorough evaporation and transpiration, forms clouds through condensation, and falls as rain and snow, called precipitation', 'The water cycle is also known as the hydrologic cycle.');
+INSERT INTO science (id, cw, prompt, answer, note) VALUES (6, 6, 'water cycle', 'the cycle in which water enters the atmosphere through evaporation and transpiration, forms clouds through condensation, and falls as rain and snow, called precipitation', 'The water cycle is also known as the hydrologic cycle.');
 INSERT INTO science (id, cw, prompt, answer, note) VALUES (7, 7, 'atmospheric layers', 'troposphere, stratosphere, mesosphere, thermosphere, and exosphere', 'The troposphere, stratosphere, and mesosphere are grouped into "the homosphere", and the thermosphere and exosphere are grouped into "the heterosphere".');
 INSERT INTO science (id, cw, prompt, answer, note) VALUES (8, 8, 'layers of the earth', 'core, mantle, and crust', 'The core is broken into the "inner core" and "outer core"; the mantle includes the asthenosphere, and the crust includes the lithosphere.');
 INSERT INTO science (id, cw, prompt, answer, note) VALUES (9, 9, 'kinds of rock', 'sedimentary, igneous, and metamorphic', 'Rocks are made up of minerals, and minerals are crystalline structures made of distinctive (atomic) elements.');
@@ -1486,6 +1486,7 @@ INSERT INTO science_grammar_audio (science, audio) VALUES (1, 9);
 -- Table: subject
 DROP TABLE IF EXISTS subject;
 CREATE TABLE subject (id INTEGER PRIMARY KEY AUTOINCREMENT, name strig UNIQUE);
+INSERT INTO subject (id, name) VALUES (0, 'All');
 INSERT INTO subject (id, name) VALUES (1, 'Timeline');
 INSERT INTO subject (id, name) VALUES (2, 'History');
 INSERT INTO subject (id, name) VALUES (3, 'Geography');

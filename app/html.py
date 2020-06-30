@@ -872,6 +872,9 @@ def _js_filter_list(url):
 		switch(payload.call) {
 			case "show":
 				document.getElementById("content").innerHTML = payload.result;
+				spec = JSON.parse(payload.spec);
+				document.getElementById("first_week-button").innerHTML = "W-" + spec.first_week;
+				document.getElementById("last_week-button").innerHTML = "W-" + spec.last_week;
 				break;
 			case "show_shopping":
 				document.getElementById(payload.div_id).innerHTML = payload['result']
