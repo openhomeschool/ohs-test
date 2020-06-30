@@ -201,20 +201,17 @@ async def get_grammar_resources(spec):
 async def get_high1_resources(spec):
 	return await sql.get_high1_resources(spec)
 
-'''ABANDON, unnecessary
-async def get_high1_shopping(spec):
-	return await sql.get_high1_shopping(spec)
-'''
 
-
-#TODO: DEPRECATE: async def get_resources(spec):
-#	return await sql.get_resources(spec)
 
 async def get_external_resource_detail(id):
 	return await sql.get_external_resource_detail(id)
+
+async def get_shopping_links(dbc, resource_id):
+	return await sql.get_shopping_links(dbc, resource_id)
+
 	
-async def get_external_resources(spec):
-	return await sql.get_external_resources(spec)
+#DEPRECATE: async def get_external_resources(spec):
+#DEPRECATE: 	return await sql.get_external_resources(spec)
 
 
 

@@ -272,6 +272,16 @@ def quiz(ws_url, db_handler, html_function):
 		t.script(_js_dropdown())
 	return d.render()
 
+
+
+
+
+
+
+
+
+
+
 def resources(url, filters, cycles, weeks, qargs): # TODO: this is basically identical to select_user (and presumably other search-driven pages whose content comes via websocket); consolidate!
 	d = _doc('Resources')
 	with d:
@@ -355,44 +365,49 @@ def _grammar_resources(container, spec, records, show_cw, subject_directory, ren
 
 
 def _external_resources(container, spec, records, show_cw):
-	cycle_week = None
 	first = True
 	for record in records:
-		resource_name = record['resource_name']
-		if cycle_week != (record['cycle'], record['week']):
-			if not first:
-				container += t.hr()
-			else:
-				first = False
-			bs = t.div(cls = 'buttonstrip')
-			_add_cw(record, bs)
-			if spec.shop:
-				bs += t.button('$', onclick = 'show_hide_shopping("%s");' % resource_name)
-				shopping_links = t.div(t.div('Click to shop...'), cls = 'shopping_links', id = resource_name) # contents filled in via websocket upon '$' click to show_hide_shopping()
-			else:
-				pass # put the $ link under the "more..."
-			container += bs
+		if not first:
+			container += t.hr()
+		else:
+			first = False
+		bs = t.div(cls = 'buttonstrip')
+		_add_cw(record, bs)
+		container += bs
 
 		resource_title = t.div(cls = 'resource_name')
 		if record['optional']:
 			resource_title += '[optional] '
-		resource_title += t.b(resource_name)
+		resource_title += t.b(record['resource_name'])
 		container += resource_title
 		
-		#TODO: ADD "more..." button/link to unfold drop-content loaded via ws
-
 		if spec.shop:
-			pass#_add_shopping_link(shopping_links, record) # TODO: move this into handler; see above
+			div_id = '%s%s' % (valid.k_res_prefix, record['resource_id'])
+			bs += t.button('$', onclick = 'show_hide_shopping("%s");' % div_id)
+			container += t.div(cls = 'shopping_links', id = div_id) # contents filled in via websocket upon '$' click to show_hide_shopping()
+		else:
+			pass # TODO: put the $ link under the "more..."
+		
+		#TODO: ADD "more..." button/link to unfold drop-content loaded via ws  (no, just make the main text itself clickable to drop down more!)
 
-#TODO: this will be called by a websocket handler to load the shopping for a resource....
-def _add_shopping_link(container, record):
-	s = t.div(t.a(t.img(src = _lurl(record['resource_source_logo'])), href = record['url'], target = '_blank'), cls = 'shopping_link_block' if record['acquisition_note'] else 'shopping_link')
-	if record['acquisition_note']:
-		s += '(' + record['acquisition_note'] + ')'
-		container += s
+
+def show_shopping(records):
+	result = t.div()
+	if not records:
+		result += 'Sorry, there are no shopping links for this record at present... try back again soon?'
 	else:
-		container += s
+		with result:
+			resource_note = records[0]['resource_note'] # records[0] because they're all the same; all shopping link records provided reference this same resource
+			if resource_note:
+				t.div('Note: %s' % resource_note)
+			t.div('Click to shop, hover for more more details on each source...')
+			for record in records:
+				title = '%s (%s)' % (record['source_name'], record['type_name'])
+				if record['note']:
+					title += ' -- ' + record['note']
+				t.div(t.a(t.img(src = _lurl(record['source_logo'])), title = title, href = record['url'], target = '_blank'), cls = 'shopping_link')
 
+	return result.render()
 
 @subject_resources('science_grammar')
 def science_grammar(container, spec, records, show_cw):
@@ -858,25 +873,28 @@ def _js_filter_list(url):
 			case "show":
 				document.getElementById("content").innerHTML = payload.result;
 				break;
+			case "show_shopping":
+				document.getElementById(payload.div_id).innerHTML = payload['result']
+				break;
 		}
 	};
 
 	// "search" is the standard filter:
 	function search(str) {
-		ws.send(JSON.stringify({call: "search", data: str}));
+		ws.send(JSON.stringify({call: "filter", filter: "search", data: str}));
 	};
 	''' % {'url': url})
 
 	return r
 
 
-def _js_filters():
+def _js_filters(): # TODO: deprecate?!  Nobody calls these.  Now it's the choose_dropdown_option that handles this (I think)
 	return raw('''
 	function filter_first_week(week) {
-		ws.send(JSON.stringify({call: "first_week", data: week}));
+		ws.send(JSON.stringify({call: "filter", filter: "first_week", data: week}));
 	};
 	function filter_last_week(week) {
-		ws.send(JSON.stringify({call: "last_week", data: week}));
+		ws.send(JSON.stringify({call: "filter", filter: "last_week", data: week}));
 	};
 	''')
 
@@ -933,7 +951,7 @@ def _js_dropdown():
 	};
 
 	function choose_dropdown_option(key, option_id, option_title, button_id) {
-		ws.send(JSON.stringify({call: key, data: option_id}));
+		ws.send(JSON.stringify({call: "filter", filter: key, data: option_id}));
 		document.getElementById(button_id).innerHTML = option_title;
 	};
 
@@ -959,11 +977,15 @@ def _js_calendar_widget():
 def _js_show_hide_shopping():
 	return raw('''
 		function show_hide_shopping(div_id) {
+			// TODO: put a spinner in the button!
 			var div = document.getElementById(div_id);
 			if (div.style.display === "block") {
 				div.style.display = "none";
 			} else {
 				div.style.display = "block";
+				if (div.innerHTML == "") {
+					ws.send(JSON.stringify({call: "show_shopping", resource_id: div_id}));
+				}
 			}
 		};
 	''')

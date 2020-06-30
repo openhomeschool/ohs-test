@@ -20,6 +20,10 @@ rec_slug = re.compile(re_slug)
 re_invitation = r'^.{12,12}$'
 rec_invitation = re.compile(re_invitation)
 
+k_res_prefix = 'res-'
+re_resource_id_div = r'^%s(\d+)$' % k_res_prefix
+rec_resource_id_div = re.compile(re_resource_id_div)
+
 inv_username = "Username must be a single word (no spaces) made of letters and/or numbers, 16 characters or less."
 inv_username_exists = "Sorry, this username is already in use by somebody else.  Please add more characters or try another."
 inv_password = "Password can be made of letters, numbers, and/or symbols, and must be between 4 and 32 characters long."
