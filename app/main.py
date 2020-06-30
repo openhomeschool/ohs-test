@@ -359,21 +359,29 @@ k_call_map = {
 @r.get('/ws_resources') #TODO: this has strong similarities to ws_filter_list (which should be named ws_filter_user_list)
 async def ws_resources(request):
 	session = await get_session(request)
+	dbc = request.app['db']
 	open_resource = _http_url(request, '/open_resource') #TODO?!?? (figure out how we want to advance a user's click on a specific resource); TODO: call this, simply, "more"?
 	spec, result = await g_twixt_work[session['twixt']]
 	_make_msg = lambda result: {'call': 'show', 'result': html.resource_list(spec, result, open_resource)}
 
 	async def msg_handler(payload, ws):
 		nonlocal spec
-		cast, validator = k_call_map[payload['call']]
 		try:
-			value = cast(payload['data'])
-			if validator and not validator(value):
-				raise ValueError() # treat like failed cast, above; either way - invalid filter input was tried
-			setattr(spec, payload['call'], value) # note that payload calls must match field names in `spec`; but this is convention only
+			if payload['call'] == 'filter':
+				cast, validator = k_call_map[payload['filter']]
+				value = cast(payload['data'])
+				if validator and not validator.match(value):
+					raise ValueError() # treat like failed cast, above; either way - invalid filter input was tried
+				setattr(spec, payload['filter'], value) # note that payload calls must match field names in `spec`; but this is convention only
+				result = await k_db_handlers[spec.program](spec)
+				await ws.send_json(_make_msg(result))
 
-			result = await k_db_handlers[spec.program](spec)
-			await ws.send_json(_make_msg(result))
+			elif payload['call'] == 'show_shopping':
+				match = valid.rec_resource_id_div.match(payload['resource_id'])
+				if not match:
+					raise ValueError() # treat like a failed cast
+				result = await db.get_shopping_links(dbc, match.group(1)) # group(1) is the actual id matched, after the prefix
+				await ws.send_json({'call': 'show_shopping', 'div_id': payload['resource_id'], 'result': html.show_shopping(result)})
 
 		except ValueError as e:
 			l.warning('invalid filter input to ws_resources') # but do nothing else; client code already checks for validity; this must/might be an attack attempt; no need to respond

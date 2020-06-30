@@ -120,8 +120,7 @@ async def get_surrounding_event_records(spec, count, event):
 # Resources
 
 #TODO: considering renaming "resources" to "lode".... (and using other 4-letter terms: quiz, test,  case (study), gist (view), pith (probe)
-async def get_lode(spec): # TODO: deprecate _get_external_resources()!
-	pass
+
 
 k_subject_ids = { # IDs from DB table, mapped to handler names TODO: just create from DB table (and cache, so we don't have to constantly look up)!
 	'Timeline': 1,
@@ -192,7 +191,7 @@ async def _get_exre_resources(spec, resource_spec):
 	wheres, args = ['resource_use.subject = ?',], [k_subject_ids[resource_spec.subject_title], ]
 	_filter_cycle_week_range(spec, joins, wheres, args, True)
 	_filter_program(spec, joins, wheres, args)
-	return await fetchall(spec.db, (f'select resource.name as resource_name, resource_use.optional, cw.cycle as cycle, cw.week as week from {spec.table}' \
+	return await fetchall(spec.db, (f'select resource.id as resource_id, resource.name as resource_name, resource_use.optional, cw.cycle as cycle, cw.week as week from {spec.table}' \
 		+ _join(joins) + _where(wheres) + f' order by {resource_spec.order_by}', args))
 
 async def _get_assignments(spec, resource_spec):
@@ -277,19 +276,6 @@ async def get_high1_resources(spec):
 	return await _get_resources(spec, k_high1_resources)
 
 
-'''ABANDON, unnecessary
-k_high1_shopping = [
-	SS('History', (k_history_exre_rs, )), # TODO: add geography?
-	SS('Science', (k_science_exre_rs, )),
-	SS('Literature', (k_literature_exre_rs, )),
-	# TODO: math?
-	SS('Poetry', (k_poetry_exre_rs, )),
-	SS('Latin', (k_latin_exre_rs, )),
-]
-
-async def get_high1_shopping(spec):
-	return await _get_resources(spec, k_high1_shopping)
-'''
 
 
 
@@ -302,7 +288,8 @@ async def get_external_resource_detail(id):
 	return await fetchone(spec.db, ('select resource.note, resource_acquisition.note as acquisition_note, resource_type.name as resource_type_name, resource_source.name as resource_source_name, resource_source.logo as resource_source_logo, resource_acquisition.url, from resource_use' \
 		+ _join(joins) + ' where resource_use.id = ? order by subject_name, optional, resource_name, acquisition_note, resource.note', (id,)))
 
-
+async def get_shopping_links(dbc, resource_id):
+	return await fetchall(dbc, ('select *, resource_type.name as type_name, resource_source.name as source_name, resource_source.logo as source_logo, resource.note as resource_note from resource_acquisition join resource_type on resource_acquisition.type = resource_type.id join resource_source on resource_acquisition.source = resource_source.id join resource on resource_acquisition.resource = resource.id where resource.id = ? order by resource_acquisition.source', (resource_id, )))
 
 
 async def get_programs(dbc):
