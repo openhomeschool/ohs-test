@@ -162,11 +162,11 @@ class RR: # Resource Result
 
 
 
-async def _get_grammar_resources(spec, resource_spec):
+async def _get_grammar_resources(dbc, spec, resource_spec):
 	if spec.shop:
 		return [] # We don't want grammar while shopping
 	#else...
-	spec.table = resource_spec.table # some of the following functions want table in spec (only have spec)
+	spec.table = resource_spec.table # some of the following functions want table in spec (they don't get passed resource_spec)
 	joins, wheres, args = [], [], []
 	if resource_spec.extra_joins:
 		joins.extend(resource_spec.extra_joins)
@@ -178,9 +178,9 @@ async def _get_grammar_resources(spec, resource_spec):
 			args.append('%' + spec.search + '%')
 		wheres.append(_or_wheres(or_wheres))
 
-	return await fetchall(spec.db, (f"select * from {resource_spec.table} " + _join(joins) + _where(wheres) + f" order by {resource_spec.order_by}", args))
+	return await fetchall(dbc, (f"select * from {resource_spec.table} " + _join(joins) + _where(wheres) + f" order by {resource_spec.order_by}", args))
 
-async def _get_exre_resources(spec, resource_spec):
+async def _get_exre_resources(dbc, spec, resource_spec):
 	spec.table = resource_spec.table # i.e., resource_use... not really a "subject"-specific table like in grammar, but, none-the-less, serves as the defined pivot table for the likes of _filter_cycle_week
 	joins = [
 		'resource on resource_use.resource = resource.id',
@@ -191,10 +191,10 @@ async def _get_exre_resources(spec, resource_spec):
 	wheres, args = ['resource_use.subject = ?',], [k_subject_ids[resource_spec.subject_title], ]
 	_filter_cycle_week_range(spec, joins, wheres, args, True)
 	_filter_program(spec, joins, wheres, args)
-	return await fetchall(spec.db, (f'select resource.id as resource_id, resource.name as resource_name, resource_use.optional, cw.cycle as cycle, cw.week as week from {spec.table}' \
+	return await fetchall(dbc, (f'select resource.id as resource_id, resource.name as resource_name, resource_use.optional, cw.cycle as cycle, cw.week as week from {spec.table}' \
 		+ _join(joins) + _where(wheres) + f' order by {resource_spec.order_by}', args))
 
-async def _get_assignments(spec, resource_spec):
+async def _get_assignments(dbc, spec, resource_spec):
 	if spec.shop:
 		return [] # We don't want grammar while shopping
 	#else...
@@ -203,17 +203,17 @@ async def _get_assignments(spec, resource_spec):
 	wheres, args = ['subject = ?', 'program = ?'], [k_subject_ids[resource_spec.subject_title], spec.program]
 	_filter_cycle_week_range(spec, joins, wheres, args, False)
 
-	return await fetchall(spec.db, (f'select * from {spec.table}' + _join(joins) + _where(wheres) + ' order by subject, cw.cycle, cw.week, "order"', args))
+	return await fetchall(dbc, (f'select * from {spec.table}' + _join(joins) + _where(wheres) + ' order by subject, cw.cycle, cw.week, "order"', args))
 
 
-async def _get_resources(spec, resource_specs):
+async def _get_resources(dbc, spec, resource_specs):
 	# Returns list of Resource_Result objects; one per subject, in the order specified in resource_specs
 	result = []
 	for ss in resource_specs:
 		if spec.subject == 0 or spec.subject == k_subject_ids[ss.subject_title]:
 			rrs = []
 			for rs in ss.resource_specs:
-				rr = RR(rs.handler, await rs.getter(spec, rs))
+				rr = RR(rs.handler, await rs.getter(dbc, spec, rs))
 				if rr.records:
 					rrs.append(rr)
 			result.append(SR(ss.subject_title, rrs))
@@ -268,12 +268,12 @@ k_high1_resources = [
 
 
 
-async def get_grammar_resources(spec):
-	return await _get_resources(spec, k_grammar_resources)
+async def get_grammar_resources(dbc, spec):
+	return await _get_resources(dbc, spec, k_grammar_resources)
 
 
-async def get_high1_resources(spec):
-	return await _get_resources(spec, k_high1_resources)
+async def get_high1_resources(dbc, spec):
+	return await _get_resources(dbc, spec, k_high1_resources)
 
 
 

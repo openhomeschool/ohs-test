@@ -195,11 +195,11 @@ class History_Sequence_QT(Question_Transaction):
 # -----------------------------------------------------------------------------
 # Resource handlers
 
-async def get_grammar_resources(spec):
-	return await sql.get_grammar_resources(spec)
+async def get_grammar_resources(dbc, spec):
+	return await sql.get_grammar_resources(dbc, spec)
 
-async def get_high1_resources(spec):
-	return await sql.get_high1_resources(spec)
+async def get_high1_resources(dbc, spec):
+	return await sql.get_high1_resources(dbc, spec)
 
 
 
