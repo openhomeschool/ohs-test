@@ -514,10 +514,10 @@ label.answer_option_label {
 
 
 .shopping_link {
-	display: inline-block;
+	display: block; /* no longer inline-block */
 	height: 20px;
 	line-height: 20px;
-	vertical-align: middle;
+	vertical-align: bottom;
 }
 /* DEPRECATE - now we're always inline, with details in hover-hint only (we used to show an annotated link on a line of its own, with the note, and all others in sequential (inline) spans
 .shopping_link_block {
@@ -527,11 +527,15 @@ label.answer_option_label {
 	vertical-align: middle;
 } */
 
+.shopping_link a {
+  color: black;
+  text-decoration: none;
+}
+
 
 .shopping_links img {
 	max-height: 100%;
 }
-
 
 td.left-equality-cell {
 	text-align: right;

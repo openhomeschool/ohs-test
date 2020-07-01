@@ -400,12 +400,12 @@ def show_shopping(records):
 			resource_note = records[0]['resource_note'] # records[0] because they're all the same; all shopping link records provided reference this same resource
 			if resource_note:
 				t.div('Note: %s' % resource_note)
-			t.div('Click to shop, hover for more more details on each source...')
+			t.div('Click to shop...')
 			for record in records:
 				title = '%s (%s)' % (record['source_name'], record['type_name'])
 				if record['note']:
 					title += ' -- ' + record['note']
-				t.div(t.a(t.img(src = _lurl(record['source_logo'])), title = title, href = record['url'], target = '_blank'), cls = 'shopping_link')
+				t.div(t.a(t.img(src = _lurl(record['source_logo'])), title, href = record['url'], target = '_blank'), cls = 'shopping_link')
 
 	return result.render()
 
