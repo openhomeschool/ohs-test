@@ -1,5 +1,5 @@
 --
--- File generated with SQLiteStudio v3.2.1 on Fri Jul 3 00:23:12 2020
+-- File generated with SQLiteStudio v3.2.1 on Fri Jul 3 00:34:14 2020
 --
 -- Text encoding used: UTF-8
 --
@@ -469,7 +469,6 @@ INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (23
 INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (24, 42, 1, 0, 1);
 INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (25, 43, 1, 0, 1);
 INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (26, 44, 1, 0, 1);
-INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (27, 47, 2, 0, 1);
 INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (28, 48, 1, 0, 1);
 INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (29, 52, 1, 0, 1);
 INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (30, 60, 3, 0, 1);
