@@ -1,5 +1,5 @@
 --
--- File generated with SQLiteStudio v3.2.1 on Tue Jun 30 21:47:02 2020
+-- File generated with SQLiteStudio v3.2.1 on Fri Jul 3 00:23:12 2020
 --
 -- Text encoding used: UTF-8
 --
@@ -443,6 +443,55 @@ INSERT INTO english (id, cw, prompt, a, "is", are, answer, example, advanced) VA
 -- Table: enrollment
 DROP TABLE IF EXISTS enrollment;
 CREATE TABLE enrollment (id INTEGER PRIMARY KEY AUTOINCREMENT, student INTEGER REFERENCES person (id) ON DELETE CASCADE ON UPDATE CASCADE, program INTEGER REFERENCES program (id) ON DELETE RESTRICT ON UPDATE CASCADE, subject INTEGER REFERENCES subject (id) ON DELETE CASCADE ON UPDATE CASCADE, academic_year INTEGER REFERENCES academic_year (id) ON DELETE RESTRICT ON UPDATE CASCADE);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (1, 1, 3, 0, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (2, 2, 3, 0, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (3, 3, 2, 0, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (4, 4, 1, 0, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (5, 5, 3, 0, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (6, 6, 3, 0, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (7, 13, 3, 0, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (8, 14, 3, 0, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (9, 15, 2, 0, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (10, 18, 2, 0, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (11, 19, 1, 0, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (12, 22, 3, 0, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (13, 23, 3, 0, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (14, 26, 3, 0, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (15, 27, 3, 0, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (16, 30, 3, 0, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (17, 31, 2, 0, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (18, 32, 1, 0, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (19, 33, 1, 0, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (20, 36, 2, 0, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (21, 37, 1, 0, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (22, 38, 1, 0, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (23, 41, 2, 0, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (24, 42, 1, 0, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (25, 43, 1, 0, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (26, 44, 1, 0, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (27, 47, 2, 0, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (28, 48, 1, 0, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (29, 52, 1, 0, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (30, 60, 3, 0, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (31, 61, 3, 0, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (32, 62, 3, 0, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (33, 63, 2, 0, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (34, 64, 1, 0, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (35, 47, 1, 0, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (36, 3, 1, 0, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (37, 31, 1, 0, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (38, 36, 1, 0, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (39, 18, 1, 0, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (40, 41, 1, 0, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (41, 63, 1, 0, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (42, 65, 3, 0, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (43, 66, 3, 0, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (44, 67, 2, 0, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (45, 67, 1, 0, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (46, 69, 1, 0, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (47, 69, 2, 0, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (48, 68, 1, 0, 1);
+INSERT INTO enrollment (id, student, program, subject, academic_year) VALUES (49, 70, 1, 0, 1);
 
 -- Table: enrollment_cost
 DROP TABLE IF EXISTS enrollment_cost;
