@@ -375,7 +375,7 @@ async def ws_resources(request):
 			if payload['call'] == 'filter':
 				cast, validator = k_call_map[payload['filter']]
 				value = cast(payload['data'])
-				if validator and not validator.match(value):
+				if validator and not validator(value):
 					raise ValueError() # treat like failed cast, above; either way - invalid filter input was tried
 				setattr(spec, payload['filter'], value) # note that payload calls must match field names in `spec`; but this is convention only
 				result = await k_db_handlers[spec.program](dbc, spec)
