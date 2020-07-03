@@ -808,7 +808,7 @@ def _js_socket_quiz_manager(url, db_handler, html_function):
 		}
 	};
 	function send_answer(answer_id) {
-		ws.send(JSON.stringify({db_handler: "%(db_handler)s", html_function: "%(html_function)s", answer_id: parseInt(answer_id, 10)}));
+		ws_send(JSON.stringify({db_handler: "%(db_handler)s", html_function: "%(html_function)s", answer_id: parseInt(answer_id, 10)}));
 	};
 	
 	go_button.onclick = function() {
@@ -867,9 +867,18 @@ def _js_filter_list(url):
 	r = raw('''
 	var ws = new WebSocket("%(url)s");
 
+	function ws_send(message) {
+		if (!ws || ws.readyState == WebSocket.CLOSING || ws.readyState == WebSocket.CLOSED) {
+			alert("Lost connection... going to reload page....");
+			location.reload();
+		} else {
+			ws.send(message);
+		}
+	};
+	
 	function pingpong() {
 		if (!ws) return;
-		if (ws.readyState !== 1) return;
+		if (ws.readyState !== WebSocket.OPEN) return;
 		ws.send(JSON.stringify({call: "ping"}));
 	};
 	setInterval(pingpong, 30000); // 30-second heartbeat; default timeouts (like nginx) are usually set to 60-seconds
@@ -891,22 +900,12 @@ def _js_filter_list(url):
 
 	// "search" is the standard filter:
 	function search(str) {
-		ws.send(JSON.stringify({call: "filter", filter: "search", data: str}));
+		ws_send(JSON.stringify({call: "filter", filter: "search", data: str}));
 	};
 	''' % {'url': url})
 
 	return r
 
-
-def _js_filters(): # TODO: deprecate?!  Nobody calls these.  Now it's the choose_dropdown_option that handles this (I think)
-	return raw('''
-	function filter_first_week(week) {
-		ws.send(JSON.stringify({call: "filter", filter: "first_week", data: week}));
-	};
-	function filter_last_week(week) {
-		ws.send(JSON.stringify({call: "filter", filter: "last_week", data: week}));
-	};
-	''')
 
 def _js_check_username(url):
 	# This js not served as a static file for two reasons: 1) it's tiny and single-purpose, and 2) its code is tightly connected to this server code; it's not a candidate for another team to maintain, in other words; it also relies on our URL (for the websocket), whereas true static files might be served by a reverse-proxy server from anywhere, and won't tend to contain any references to the wsgi urls
@@ -916,7 +915,7 @@ def _js_check_username(url):
 		document.getElementById("username_exists_message").style.display = ((event.data == 'exists') ? 'block' : 'none');
 	};
 	function check_username(username) {
-		ws.send(JSON.stringify({call: "check", string: username}));
+		ws_send(JSON.stringify({call: "check", string: username}));
 	};
 	''' % {'url': url})
 
@@ -961,7 +960,7 @@ def _js_dropdown():
 	};
 
 	function choose_dropdown_option(key, option_id, option_title, button_id) {
-		ws.send(JSON.stringify({call: "filter", filter: key, data: option_id}));
+		ws_send(JSON.stringify({call: "filter", filter: key, data: option_id}));
 		document.getElementById(button_id).innerHTML = option_title;
 	};
 
@@ -994,7 +993,7 @@ def _js_show_hide_shopping():
 			} else {
 				div.style.display = "block";
 				if (div.innerHTML == "") {
-					ws.send(JSON.stringify({call: "show_shopping", resource_id: div_id}));
+					ws_send(JSON.stringify({call: "show_shopping", resource_id: div_id}));
 				}
 			}
 		};
