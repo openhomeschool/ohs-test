@@ -301,7 +301,6 @@ def resources(url, filters, cycles, weeks, qargs): # TODO: this is basically ide
 
 		# JS (intentionally at bottom of file; see https://faqs.skillcrush.com/article/176-where-should-js-script-tags-be-linked-in-html-documents and many stackexchange answers):
 		t.script(_js_filter_list(url))
-		t.script(_js_filters())
 		t.script(_js_dropdown())
 		t.script(_js_calendar_widget())
 		t.script(_js_show_hide_shopping())
@@ -864,9 +863,17 @@ def _js_test1(url):
 def _js_filter_list(url):
 	# This js not served as a static file for two reasons: 1) it's tiny and single-purpose, and 2) its code is tightly connected to this server code; it's not a candidate for another team to maintain, in other words; it also relies on our URL (for the websocket), whereas true static files might be served by a reverse-proxy server from anywhere, and won't tend to contain any references to the wsgi urls
 
-	# This is the websocket code for filtering, and a search() (filter) function, which is the "standard"; other functions provided in _js_filters()
+	# This is the websocket code for filtering, and a search() (filter) function, which is the "standard"
 	r = raw('''
 	var ws = new WebSocket("%(url)s");
+
+	function pingpong() {
+		if (!ws) return;
+		if (ws.readyState !== 1) return;
+		ws.send(JSON.stringify({call: "ping"}));
+	};
+	setInterval(pingpong, 30000); // 30-second heartbeat; default timeouts (like nginx) are usually set to 60-seconds
+
 	ws.onmessage = function(event) {
 		var payload = JSON.parse(event.data);
 		switch(payload.call) {

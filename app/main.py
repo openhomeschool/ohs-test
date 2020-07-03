@@ -429,11 +429,14 @@ async def _ws_handler(request, msg_handler, initial_send = {'call': 'start', 'da
 	try:
 		async for msg in ws:
 			try:
-				if msg.type == WSMsgType.text:
+				if msg.type == WSMsgType.TEXT:
 					payload = json.loads(msg.data) # Note: payload validated in msg_handler()
-					#l.debug(payload)
-					await msg_handler(payload, ws)
-				elif msg.type == aiohttp.WSMsgType.ERROR:
+					if payload['call'] == 'ping':
+						l.debug('pingpong')
+						await ws.send_json({'call': 'pong'}) # would prefer to use WSMsgType.PING rather than a normal message, but javascript doesn't seem to have specified support for that!
+					else:
+						await msg_handler(payload, ws)
+				elif msg.type == WSMsgType.ERROR:
 					l.warning('websocket connection closed with exception "%s"' % ws.exception())
 				else:
 					l.warning('websocket message of unexpected type "%s" received' % msg.type)
