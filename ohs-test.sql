@@ -1,5 +1,5 @@
 --
--- File generated with SQLiteStudio v3.2.1 on Fri Jul 3 00:34:14 2020
+-- File generated with SQLiteStudio v3.2.1 on Tue Jul 7 08:45:02 2020
 --
 -- Text encoding used: UTF-8
 --
@@ -1492,8 +1492,8 @@ INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, gra
 INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, grade, pages, chapters, optional) VALUES (34, 8, 31, 197, 1, 3, NULL, NULL, NULL, 1);
 INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, grade, pages, chapters, optional) VALUES (35, 8, 32, 197, 1, 3, NULL, NULL, NULL, 1);
 INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, grade, pages, chapters, optional) VALUES (36, 8, 33, 197, 1, 3, NULL, NULL, NULL, 1);
-INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, grade, pages, chapters, optional) VALUES (37, 2, 34, 203, 203, 3, NULL, NULL, NULL, 1);
-INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, grade, pages, chapters, optional) VALUES (38, 2, 35, 203, 203, 3, NULL, NULL, NULL, 1);
+INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, grade, pages, chapters, optional) VALUES (37, 2, 34, 203, 196, 3, NULL, NULL, NULL, 1);
+INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, grade, pages, chapters, optional) VALUES (38, 2, 35, 203, 196, 3, NULL, NULL, NULL, 1);
 INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, grade, pages, chapters, optional) VALUES (39, 5, 37, 169, 196, 3, NULL, NULL, NULL, 1);
 INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, grade, pages, chapters, optional) VALUES (40, 8, 38, 1, 7, 3, NULL, NULL, NULL, NULL);
 INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, grade, pages, chapters, optional) VALUES (41, 8, 39, 169, 196, 3, NULL, NULL, NULL, NULL);
