@@ -307,6 +307,8 @@ async def get_new_user_invitation(dbc, code):
 async def get_person(dbc, id):
 	return await fetchone(dbc, ('select * from person where id = ?', (id,)))
 
+async def get_person_user(dbc, person_id):
+	return await fetchone(dbc, ('select person.*, user.* from person join user where user.person = person.id', (id,)))
 async def get_person_phones(dbc, person_id):
 	return await fetchall(dbc, ('select phone.* from phone join person_phone on phone.id = person_phone.phone join person on person_phone.person = person.id where person.id = ?', (person_id,)))
 

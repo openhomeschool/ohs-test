@@ -196,6 +196,22 @@ class Invitation(web.View):
 		data = await r.post()
 		
 
+r.view('/invitation2/{code}')
+async def invitation2(request):
+	code = request.match_info['code']
+	if valid.rec_invitation.match(code):
+		dbc = r.app['db']
+		invitation = await db.get_new_user_invitation(dbc, code)
+		person_id = invitation['person']
+		person = await db.get_person_user(dbc, person_id)
+
+		return hr(html.invitation2())
+
+	else:
+		return hr(html.invalid_invitation()) # this might be an attack attempt!
+
+
+
 @r.get('/ws_check_username')
 async def ws_check_username(request):
 	dbc = request.app['db']

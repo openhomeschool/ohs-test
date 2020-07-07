@@ -233,6 +233,9 @@ async def get_new_user_invitation(dbc, code):
 async def get_person(dbc, id):
 	return await sql.get_person(dbc, id)
 
+async def get_person_user(dbc, person_id):
+	return await sql.get_person_user(dbc, person_id)
+
 async def get_family(dbc, id):
 	return await sql.get_family(dbc, id)
 
