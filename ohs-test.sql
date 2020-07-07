@@ -1,5 +1,5 @@
 --
--- File generated with SQLiteStudio v3.2.1 on Tue Jul 7 08:45:02 2020
+-- File generated with SQLiteStudio v3.2.1 on Tue Jul 7 09:16:39 2020
 --
 -- Text encoding used: UTF-8
 --
@@ -1432,6 +1432,11 @@ INSERT INTO resource_acquisition (id, resource, type, source, url, cost_cents, p
 INSERT INTO resource_acquisition (id, resource, type, source, url, cost_cents, pages, listening_hours, note) VALUES (119, 38, 4, 1, 'https://www.amazon.com/God-King-Joanne-Williamson-ebook/dp/B002RAQLFO/', NULL, NULL, NULL, NULL);
 INSERT INTO resource_acquisition (id, resource, type, source, url, cost_cents, pages, listening_hours, note) VALUES (120, 38, 2, 7, 'https://www.ebay.com/sch/i.html?_nkw=God+King+days+of+Hezekiah', NULL, NULL, NULL, NULL);
 INSERT INTO resource_acquisition (id, resource, type, source, url, cost_cents, pages, listening_hours, note) VALUES (121, 39, 2, 7, 'https://www.ebay.com/sch/i.html?_nkw=lost+tools+of+writing+level+1', NULL, NULL, NULL, NULL);
+INSERT INTO resource_acquisition (id, resource, type, source, url, cost_cents, pages, listening_hours, note) VALUES (122, 1, 2, 8, 'https://www.rainbowresource.com/product/SOTWSS/Story-of-the-World-Volume-1-4-Set-softcover.html', NULL, NULL, NULL, 'entire set, but paperback');
+INSERT INTO resource_acquisition (id, resource, type, source, url, cost_cents, pages, listening_hours, note) VALUES (123, 2, 2, 8, 'https://www.rainbowresource.com/product/SOTWSS/Story-of-the-World-Volume-1-4-Set-softcover.html', NULL, NULL, NULL, 'entire set, but paperback');
+INSERT INTO resource_acquisition (id, resource, type, source, url, cost_cents, pages, listening_hours, note) VALUES (124, 19, 2, 8, 'https://www.rainbowresource.com/product/SOTWSS/Story-of-the-World-Volume-1-4-Set-softcover.html', NULL, NULL, NULL, 'entire set, but paperback');
+INSERT INTO resource_acquisition (id, resource, type, source, url, cost_cents, pages, listening_hours, note) VALUES (125, 20, 2, 8, 'https://www.rainbowresource.com/product/SOTWSS/Story-of-the-World-Volume-1-4-Set-softcover.html', NULL, NULL, NULL, 'entire set, but paperback');
+INSERT INTO resource_acquisition (id, resource, type, source, url, cost_cents, pages, listening_hours, note) VALUES (126, 28, 2, 1, 'https://www.amazon.com/Story-World-History-Classical-Modern/dp/1933339020/', NULL, NULL, NULL, NULL);
 
 -- Table: resource_details
 DROP TABLE IF EXISTS resource_details;
@@ -1447,6 +1452,7 @@ INSERT INTO resource_source (id, name, logo) VALUES (4, 'Librivox', 'librivox-ti
 INSERT INTO resource_source (id, name, logo) VALUES (5, 'Audible', 'audible-tiny.png');
 INSERT INTO resource_source (id, name, logo) VALUES (6, 'Web', NULL);
 INSERT INTO resource_source (id, name, logo) VALUES (7, 'Ebay', 'ebay-tiny.png');
+INSERT INTO resource_source (id, name, logo) VALUES (8, 'Rainbow', 'rainbow-tiny.png');
 
 -- Table: resource_type
 DROP TABLE IF EXISTS resource_type;
@@ -1492,8 +1498,8 @@ INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, gra
 INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, grade, pages, chapters, optional) VALUES (34, 8, 31, 197, 1, 3, NULL, NULL, NULL, 1);
 INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, grade, pages, chapters, optional) VALUES (35, 8, 32, 197, 1, 3, NULL, NULL, NULL, 1);
 INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, grade, pages, chapters, optional) VALUES (36, 8, 33, 197, 1, 3, NULL, NULL, NULL, 1);
-INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, grade, pages, chapters, optional) VALUES (37, 2, 34, 203, 196, 3, NULL, NULL, NULL, 1);
-INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, grade, pages, chapters, optional) VALUES (38, 2, 35, 203, 196, 3, NULL, NULL, NULL, 1);
+INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, grade, pages, chapters, optional) VALUES (37, 2, 34, 169, 176, 3, NULL, NULL, NULL, 1);
+INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, grade, pages, chapters, optional) VALUES (38, 2, 35, 177, 196, 3, NULL, NULL, NULL, 1);
 INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, grade, pages, chapters, optional) VALUES (39, 5, 37, 169, 196, 3, NULL, NULL, NULL, 1);
 INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, grade, pages, chapters, optional) VALUES (40, 8, 38, 1, 7, 3, NULL, NULL, NULL, NULL);
 INSERT INTO resource_use (id, subject, resource, cw_first, cw_last, program, grade, pages, chapters, optional) VALUES (41, 8, 39, 169, 196, 3, NULL, NULL, NULL, NULL);
