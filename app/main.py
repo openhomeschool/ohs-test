@@ -318,7 +318,8 @@ async def resources(request):
 
 @r.get('/shop_year')
 async def shop_year(request):
-	return await _resources(request, {'shop': 1, 'program': 3, 'first_week': 1, 'last_week': 28})
+	return await _resources(request, {'shop': 1, 'program': 3, 'first_week': 0, 'last_week': 28})
+
 
 async def _resources(request, qargs):
 	session = await get_session(request)
@@ -329,12 +330,13 @@ async def _resources(request, qargs):
 
 	filters = (
 		('program', [(program['name'], program['id']) for program in await db.get_programs(dbc)]),
+		('grade', ()), # will be populated later
 		('subject', [(subject['name'], subject['id']) for subject in await db.get_subjects(dbc)]),
 	)
 	cycles = ('cycle', [(cycle['name'], cycle['id']) for cycle in await db.get_cycles(dbc)])
 	weeks = (
-		('first_week', [('W-%d' % week, week) for week in range(1, 29)]), # TODO: hardcode 28!
-		('last_week', [('W-%d' % week, week) for week in range(1, 29)]), # TODO: hardcode 28!
+		('first_week', [('W-%d' % week, week) for week in range(0, 29)]), # TODO: hardcode 29!
+		('last_week', [('W-%d' % week, week) for week in range(0, 29)]), # TODO: hardcode 29!
 	)
 
 	return hr(html.resources(_ws_url(request, '/ws_resources'), filters, cycles, weeks, qargs))
@@ -357,11 +359,12 @@ async def _first_resources(dbc, qargs):
 		search = qargs.get('search'),
 		deep_search = False,
 		program = int(qargs.get('program', 1)), # hardcode default to "grammar school" program if program choice not made (TODO: set this, instead, to logged-in-user's attached program
+		grade = int(qargs.get('grade', 0)), # 0 = "unspecified" or "all"; common, when a program is treated all the same, and there's no need to differentiate grade
 		solo = int(qargs.get('solo', 0)), # 0 = show the designed content for the program; 1 = show *only* the content unique to the program
 		shop = int(qargs.get('shop', 0)), # 1 = show shopping links
-		subject = int(qargs.get('subject', 0)), # 0 = "all" indicator
+		subject = 2, #int(qargs.get('subject', 0)), # 0 = "all" indicator
 		cycles = (4, 1), # default: "cycle 1" ("4" refers to grammar that belongs to "all cycles" (like timeline grammar) - this is hardcode! TODO:FIX!)
-		first_week = int(qargs.get('first_week', 1)), # TODO: hardcode default to week 1! replace with lookup for user's "current week"
+		first_week = int(qargs.get('first_week', 0)), # TODO: hardcode default to week 0! replace with lookup for user's "current week"
 		last_week = int(qargs.get('last_week', 1)), # TODO: see above; lookup user's current-week
 	)
 	return (spec, await k_db_handlers[spec.program](dbc, spec)) # need to send spec, itself, as there's no other way for retrieving end (ws_resources function) to get spec hereafter!
@@ -370,6 +373,7 @@ async def _first_resources(dbc, qargs):
 k_call_map = {
 	'search': (str, valid.rec_string32.match),
 	'program': (int, None),
+	'grade': (int, None),
 	'subject': (int, None),
 	'first_week': (int, None), # TODO: add validator to constrain to weeks 0-28?!
 	'last_week': (int, None), # TODO: add validator to constrain to weeks 0-28?!
@@ -377,13 +381,23 @@ k_call_map = {
 	'shop': (int, None),
 }
 
+
+
+
 @r.get('/ws_resources') #TODO: this has strong similarities to ws_filter_list (which should be named ws_filter_user_list)
 async def ws_resources(request):
 	session = await get_session(request)
 	dbc = request.app['db']
 	open_resource = _http_url(request, '/open_resource') #TODO?!?? (figure out how we want to advance a user's click on a specific resource); TODO: call this, simply, "more"?
 	spec, result = await g_twixt_work[session['twixt']]
-	_make_msg = lambda result, rspec: {'call': 'show', 'result': html.resource_list(spec, result, open_resource), 'spec': json.dumps(rspec.asdict())}
+	_make_msg = lambda result, rspec, grades = None: {'call': 'show', 'result': html.resource_list(spec, result, open_resource), 'spec': json.dumps(rspec.asdict()), 'grades': grades}
+	async def _grades(program_id):
+		program = await db.get_program(dbc, program_id)
+		grades = [] # cue to show no "grade" button at all.
+		if program['differentiate']:
+			grades = [('All', 0), ] # select to show all grades together (within program)
+			grades.extend([('%sth' % grade, grade) for grade in range(program['grade_first'], program['grade_last'] + 1)])
+		return html.grades_filter_button('grade', grades)
 
 	async def msg_handler(payload, ws):
 		nonlocal spec
@@ -395,9 +409,11 @@ async def ws_resources(request):
 					raise ValueError() # treat like failed cast, above; either way - invalid filter input was tried
 				setattr(spec, payload['filter'], value) # note that payload calls must match field names in `spec`; but this is convention only
 				result = await k_db_handlers[spec.program](dbc, spec)
-				await ws.send_json(_make_msg(result, spec))
+				# Program changes require special treatment of the "grade" filter/button -- grab the grades that are appropriate for this (new) program selected:
+				grades = None if payload['filter'] != 'program' else await _grades(value) # value is program_id in this case
+				await ws.send_json(_make_msg(result, spec, grades))
 
-			elif payload['call'] == 'show_shopping':
+			elif payload['call'] == 'show_shopping': # handles individual resource clicked to show the shopping options for that resource
 				match = valid.rec_resource_id_div.match(payload['resource_id'])
 				if not match:
 					raise ValueError() # treat like a failed cast
@@ -407,7 +423,7 @@ async def ws_resources(request):
 		except ValueError as e:
 			l.warning('invalid filter input to ws_resources') # but do nothing else; client code already checks for validity; this must/might be an attack attempt; no need to respond
 
-	return await _ws_handler(request, msg_handler, _make_msg(result, spec))
+	return await _ws_handler(request, msg_handler, _make_msg(result, spec, await _grades(spec.program)))
 
 
 # Util ------------------------------------------------------------------------

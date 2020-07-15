@@ -52,6 +52,7 @@ def login(action, error = None):
 				t.div(_text_input('username', None, ('required', 'autofocus'), {'pattern': valid.re_username}, invalid_div = _invalid(valid.inv_username, False)), cls = 'field')
 				t.div(_text_input('password', None, ('required',), type_ = 'password'), cls = 'field')
 				t.div(t.input_(type = "submit", value = "Log in!"), cls = 'field')
+		t.script(_js_util())
 		t.script(_js_validate_login_fields())
 	return d.render()
 
@@ -213,6 +214,7 @@ def new_user(form, ws_url, errors = None):
 						_text_input(*form.nv('email'), None, {'pattern': valid.re_email}, 'Type email address here', 
 							_invalid(valid.inv_email, form.invalid('email')))
 				t.input_(type = "submit", value = "Done!")
+		t.script(_js_util())
 		t.script(_js_validate_new_user_fields())
 		t.script(_js_check_username(ws_url))
 	return d.render()
@@ -223,6 +225,7 @@ def select_user(url):
 		_text_input('search', None, ('autofocus',), {'autocomplete': 'off', 'oninput': 'search(this.value)'}, 'Search', type_ = 'search')
 		t.div(id = 'content') # filtered results themselves are added here, in this `content` div, via websocket, as search text is typed (see javascript)
 		# JS (intentionally at bottom of file; see https://faqs.skillcrush.com/article/176-where-should-js-script-tags-be-linked-in-html-documents and many stackexchange answers):
+		t.script(_js_util())
 		t.script(_js_filter_list(url))
 	return d.render()
 
@@ -268,6 +271,7 @@ def quiz(ws_url, db_handler, html_function):
 				('Difficult', 'bogus')), True, 'Difficulty...')
 
 		# JS (intentionally at bottom of file; see https://faqs.skillcrush.com/article/176-where-should-js-script-tags-be-linked-in-html-documents and many stackexchange answers):
+		t.script(_js_util())
 		t.script(_js_socket_quiz_manager(ws_url, db_handler, html_function))
 		t.script(_js_dropdown())
 	return d.render()
@@ -279,7 +283,8 @@ def quiz(ws_url, db_handler, html_function):
 
 
 
-
+def grades_filter_button(key, options):
+	return _dropdown((key, options), {}, 'ib-left').render()
 
 
 def resources(url, filters, cycles, weeks, qargs): # TODO: this is basically identical to select_user (and presumably other search-driven pages whose content comes via websocket); consolidate!
@@ -288,8 +293,9 @@ def resources(url, filters, cycles, weeks, qargs): # TODO: this is basically ide
 		with t.div(cls = 'flex-wrap'): # TODO: make a 'header_block' or something; different border color, perhaps
 			t.div(t.b('Search'), cls = 'title') # TODO: replace with a magnifying-glass gif!
 			with t.div(cls = 'main'):
-				for filt in filters:
-					_dropdown(filt, qargs, 'ib-left')
+				for key, options in filters:
+					with t.div(id = '%s-container' % key):
+						_dropdown((key, options), qargs, 'ib-left')
 				_dropdown(weeks[0], qargs, 'ib-right', button_class = 'cw-button')
 				t.div(cls = 'clear') # next row...
 				t.div(_text_input('search', None, ('autofocus',), {'autocomplete': 'off', 'oninput': 'search(this.value)'}, 'Search', type_ = 'search'), cls = 'search')
@@ -300,6 +306,7 @@ def resources(url, filters, cycles, weeks, qargs): # TODO: this is basically ide
 		t.div(id = 'content') # filtered results themselves are added here, in this `result` div, via websocket, as search text is typed (see javascript)
 
 		# JS (intentionally at bottom of file; see https://faqs.skillcrush.com/article/176-where-should-js-script-tags-be-linked-in-html-documents and many stackexchange answers):
+		t.script(_js_util())
 		t.script(_js_filter_list(url))
 		t.script(_js_dropdown())
 		t.script(_js_calendar_widget())
@@ -314,6 +321,7 @@ def test_twixt(url):
 		t.p('This is the "TWIXT" Test page... result of main.foobar() coming soon...')
 		t.div(id = 'foobar')
 		
+		t.script(_js_util())
 		t.script(_js_test1(url))
 		
 	return d.render()
@@ -365,27 +373,41 @@ def _grammar_resources(container, spec, records, show_cw, subject_directory, ren
 
 def _external_resources(container, spec, records, show_cw):
 	first = True
+	week = None
 	for record in records:
-		if not first:
-			container += t.hr()
-		else:
+		if first:
 			first = False
-		bs = t.div(cls = 'buttonstrip')
-		_add_cw(record, bs)
-		container += bs
+			_add_cw(record, container)
+		elif record['week'] != week:
+			container += t.hr(cls = 'clear')
+			_add_cw(record, container)
+		week = record['week']
 
 		resource_title = t.div(cls = 'resource_name')
-		if record['optional']:
+		if not record['required'] > 0:
 			resource_title += '[optional] '
 		resource_title += t.b(record['resource_name'])
 		container += resource_title
 		
 		if spec.shop:
 			div_id = '%s%s' % (valid.k_res_prefix, record['resource_id'])
-			bs += t.button('$', onclick = 'show_hide_shopping("%s");' % div_id)
+			resource_title += t.button('$', onclick = 'show_hide_shopping("%s");' % div_id)
 			container += t.div(cls = 'shopping_links', id = div_id) # contents filled in via websocket upon '$' click to show_hide_shopping()
 		else:
-			pass # TODO: put the $ link under the "more..."
+			details = ''
+			if record['instructions']:
+				details = record['instructions']
+			if record['chapters']:
+				if details:
+					details += ' - '
+				ch = record['chapters']
+				details += 'Chapter%s: %s' % ('s' if ('-' in ch or ',' in ch) else '', ch)
+			if record['pages']:
+				if details:
+					details += ' - '
+				details += 'Pages: %s' % record['pages']
+			if details:
+				resource_title += ' - ' + details
 		
 		#TODO: ADD "more..." button/link to unfold drop-content loaded via ws  (no, just make the main text itself clickable to drop down more!)
 
@@ -503,6 +525,14 @@ def timeline(container, spec, records, show_cw):
 	_grammar_resources(container, spec, records, show_cw, 'timeline', render, False)
 
 
+@subject_resources('history_assignments')
+def history_assignments(container, spec, records, show_cw):
+	_assignments(container, spec, records, show_cw)
+
+@subject_resources('poetry_assignments')
+def history_assignments(container, spec, records, show_cw):
+	_assignments(container, spec, records, show_cw)
+
 @subject_resources('literature_assignments')
 def literature_assignments(container, spec, records, show_cw):
 	_assignments(container, spec, records, show_cw)
@@ -512,48 +542,46 @@ def science_assignments(container, spec, records, show_cw):
 	_assignments(container, spec, records, show_cw)
 
 def _assignments(container, spec, records, show_cw):
-	teased = {}
-	cws = []
-	grades = []
-	for record in records:
-		cw = record['cycle'], record['week']
-		if not cw in teased:
-			teased[cw] = {}
-			cws.append(cw)
-		if not record['order'] in teased[cw]:
-			teased[cw][record['order']] = {}
-		if not record['grade']:
-			teased[cw][record['order']]['shared'] = record
+	cw = None
+	resource_name = None
+	first = True
+	new_list = True
+	ul = None
+
+	def _grades(grade_first, grade_last):
+		if grade_first != grade_last:
+			return f'[Grades {grade_first}-{grade_last}] '
 		else:
-			teased[cw][record['order']][record['grade']] = record
-			if record['grade'] not in grades:
-				grades.append(record['grade'])
+			return f'[Grade {grade_first}] '
 
-	if not grades:
-		grades = ['7-9', ] # TODO: hardcode; replace this with DB intel
+	for record in records:
+		new_cw = record['cycle'], record['week']
+		new_resource_name = record['resource_name']
+		if new_cw != cw:
+			cw = new_cw
+			if first: first = False
+			else: container += t.hr(cls = 'clear')
+			_add_cw(record, container)
+			new_list = True
+		if resource_name != new_resource_name:
+			resource_name = new_resource_name
+			container += t.div(resource_name, cls = 'resource_name')
+			new_list = True
+		if new_list:
+			new_list = False
+			ul = t.ul(cls = 'bulletless')
+			container += ul
+		
+		instruction = record['instruction']
+		instruction = instruction.replace('{chapters}', str(record['chapters']))
+		instruction = instruction.replace('{pages}', str(record['pages']))
+		instruction = instruction.replace('{exercises}', str(record['exercises']))
+		if record['optional']:
+			instruction = '[optional] ' + instruction
+		if not ((not record['grade_first'] and not record['grade_last']) or (record['program_grade_first'] == record['grade_first'] and record['program_grade_last'] == record['grade_last'])):
+			instruction = _grades(record['grade_first'], record['grade_last']) + instruction
 
-	with container:
-		first = True
-		for cw in cws:
-			add_cw = True
-			for grade in grades:
-				if not first:
-					t.hr()
-				else:
-					first = False
-				grade_line = t.div(t.b('Grade %s:' % grade))
-				with t.ol():
-					for order in sorted(teased[cw]):
-						if grade in teased[cw][order]:
-							record = teased[cw][order][grade]
-						elif 'shared' in teased[cw][order]:
-							record = teased[cw][order]['shared']
-						else:
-							continue
-						if add_cw:
-							_add_cw(record, grade_line)
-							add_cw = False
-						t.li(raw(record['instruction']))
+		ul += t.li(t.input_(type = 'checkbox', cls = 'bulletless'), raw(instruction), cls = 'bulletless')
 
 
 
@@ -628,7 +656,7 @@ def _doc(title, css = None, scripts = None):
 	d = document(title = title)
 	with d.head:
 		t.meta(name = 'viewport', content = 'width=device-width, initial-scale=1')
-		t.link(href = settings.k_static_url + 'css/main.css?v=2', rel = 'stylesheet')
+		t.link(href = settings.k_static_url + 'css/main.css?v=3', rel = 'stylesheet')
 	return d
 
 def _error(error):
@@ -691,6 +719,9 @@ def _url_dropdown(container, id, options, title = None):
 
 def _dropdown(filt, qargs, cls, urls = False, title = None, button_class = None):
 	key, options = filt
+	if not options:
+		return t.div() # empty div means there's nothing there - no options from which user might choose
+	
 	start_option_id = qargs.get(key)
 
 	content_id = key
@@ -727,6 +758,9 @@ def _add_cw(record, div):
 		#temporarily, not showing cycle: t.div(cycle, cls = 'cw')
 		t.div('W-', record['week'], cls = 'cw')
 
+def _add_cw_spacer(div):
+	with div:
+		t.div('. ', cls = 'cw-spacer')
 
 def _event_formatted(record):
 	result = record['name']
@@ -786,13 +820,18 @@ def _multi_choice_question(question, options, prompt_prefix, prompt_text, option
 # -----------------------------------------------------------------------------
 # Javascript:
 
+def _js_util():
+	return raw('''
+		function $(id) { return document.getElementById(id); };
+	''')
+
 def _js_socket_quiz_manager(url, db_handler, html_function):
 	# This js not served as a static file for two reasons: 1) it's tiny and single-purpose, and 2) its code is tightly connected to this server code; it's not a candidate for another team to maintain, in other words; it also relies on our URL (for the websocket), whereas true static files might be served by a reverse-proxy server from anywhere, and won't tend to contain any references to the wsgi urls
 	return raw('''
 		
 	var ws = new WebSocket("%(url)s");
 	var check = 0;
-	var go_button = document.getElementById("go");
+	var go_button = $("go");
 
 	ws.onmessage = function(event) {
 		var payload = JSON.parse(event.data);
@@ -801,7 +840,7 @@ def _js_socket_quiz_manager(url, db_handler, html_function):
 				send_answer(-1); // kick-start
 				break;
 			case "content":
-				document.getElementById("content").innerHTML = payload.content;
+				$("content").innerHTML = payload.content;
 				check = payload.check;
 				go_button.disabled = false;
 				break;
@@ -835,7 +874,7 @@ def _js_socket_quiz_manager(url, db_handler, html_function):
 		}
 		else { } // TODO: handle no selection! Allow user to skip?!
 
-		check_element = document.getElementById(check)
+		check_element = $(check)
 		check_element.parentElement.classList.remove("quiz_answer_option");
 		check_element.parentElement.classList.add("quiz_right_answer_option");
 		setTimeout(function() { send_answer(selected.value); }, show_answer_delay);
@@ -851,7 +890,7 @@ def _js_test1(url):
 		var payload = JSON.parse(event.data);
 		switch(payload.call) {
 			case "content":
-				document.getElementById("foobar").innerHTML = payload.data;
+				$("foobar").innerHTML = payload.data;
 				break;
 		}
 	};
@@ -887,13 +926,15 @@ def _js_filter_list(url):
 		var payload = JSON.parse(event.data);
 		switch(payload.call) {
 			case "show":
-				document.getElementById("content").innerHTML = payload.result;
+				$("content").innerHTML = payload.result;
 				spec = JSON.parse(payload.spec);
-				document.getElementById("first_week-button").innerHTML = "W-" + spec.first_week;
-				document.getElementById("last_week-button").innerHTML = "W-" + spec.last_week;
+				$("first_week-button").innerHTML = "W-" + spec.first_week;
+				$("last_week-button").innerHTML = "W-" + spec.last_week;
+				if (payload.grades != null)
+					$("grade-container").innerHTML = payload.grades
 				break;
 			case "show_shopping":
-				document.getElementById(payload.div_id).innerHTML = payload['result']
+				$(payload.div_id).innerHTML = payload.result
 				break;
 		}
 	};
@@ -912,7 +953,7 @@ def _js_check_username(url):
 	return raw('''
 	var ws = new WebSocket("%(url)s");
 	ws.onmessage = function(event) {
-		document.getElementById("username_exists_message").style.display = ((event.data == 'exists') ? 'block' : 'none');
+		$("username_exists_message").style.display = ((event.data == 'exists') ? 'block' : 'none');
 	};
 	function check_username(username) {
 		ws_send(JSON.stringify({call: "check", string: username}));
@@ -920,22 +961,20 @@ def _js_check_username(url):
 	''' % {'url': url})
 
 def _js_check_validity():
-	return '''
+	return raw('''
 	function validate(evt) {
 		var e = evt.currentTarget;
 		e.nextElementSibling.style.display = e.checkValidity() ? "none" : "block";
 	};
-	'''
+	''')
 
 def _js_validate_login_fields():
 	return raw('''
-	function $(id) { return document.getElementById(id); };
 	$('username').addEventListener('input', validate);
 	''' + _js_check_validity())
 
 def _js_validate_new_user_fields():
 	return raw('''
-	function $(id) { return document.getElementById(id); };
 	$('new_username').addEventListener('input', validate);
 	$('email').addEventListener('blur', validate);
 	$('password').addEventListener('blur', validate);
@@ -961,7 +1000,7 @@ def _js_dropdown():
 
 	function choose_dropdown_option(key, option_id, option_title, button_id) {
 		ws_send(JSON.stringify({call: "filter", filter: key, data: option_id}));
-		document.getElementById(button_id).innerHTML = option_title;
+		$(button_id).innerHTML = option_title;
 	};
 
 	// Close the dropdown menu if the user clicks outside of it
@@ -987,7 +1026,7 @@ def _js_show_hide_shopping():
 	return raw('''
 		function show_hide_shopping(div_id) {
 			// TODO: put a spinner in the button!
-			var div = document.getElementById(div_id);
+			var div = $(div_id);
 			if (div.style.display === "block") {
 				div.style.display = "none";
 			} else {
@@ -1002,7 +1041,7 @@ def _js_show_hide_shopping():
 def _js_play_pause():
 	return raw('''
 		function play_pause(audio_id, button) {
-			var audio = document.getElementById(audio_id);
+			var audio = $(audio_id);
 			if (audio.paused) {
 				button.innerHTML = '||';
 				return audio.play();
@@ -1013,7 +1052,7 @@ def _js_play_pause():
 		};
 
 		function restart_play(audio_id, button) {
-			var audio = document.getElementById(audio_id);
+			var audio = $(audio_id);
 			button.innerHTML = '||';
 			audio.currentTime = 0;
 			return audio.play();

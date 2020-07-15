@@ -183,20 +183,47 @@ async def _get_grammar_resources(dbc, spec, resource_spec):
 async def _get_exre_resources(dbc, spec, resource_spec):
 	spec.table = resource_spec.table # i.e., resource_use... not really a "subject"-specific table like in grammar, but, none-the-less, serves as the defined pivot table for the likes of _filter_cycle_week
 	joins = [
-		'resource on resource_use.resource = resource.id',
-		#'subject on resource_use.subject = subject.id', # really needed?!!!
+		f'resource on {spec.table}.resource = resource.id',
+		#'subject on {spec.table}.subject = subject.id', # really needed?!!!
+		f'grade_resource_use on grade_resource_use.resource_use = {spec.table}.id',
 	]
 	if resource_spec.extra_joins:
 		joins.extend(resource_spec.extra_joins)
-	wheres, args = ['resource_use.subject = ?',], [k_subject_ids[resource_spec.subject_title], ]
+	wheres, args = [f'{spec.table}.subject = ?',], [k_subject_ids[resource_spec.subject_title], ]
 	_filter_cycle_week_range(spec, joins, wheres, args, True)
-	_filter_program(spec, joins, wheres, args)
-	return await fetchall(dbc, (f'select resource.id as resource_id, resource.name as resource_name, resource_use.optional, cw.cycle as cycle, cw.week as week from {spec.table}' \
-		+ _join(joins) + _where(wheres) + f' order by {resource_spec.order_by}', args))
+	_filter_program(spec, joins, wheres, args) # TODO: change to specific grade-filtering (or variably...?  NO: **add** grade filtering; then, one can see the whole program, which is united, but drill in (e.g., by virtue of being logged in as a student) to the specific grade treatment; also note that resource_use.program is NOT redundant, here, with grade_resource_use.grade_first (or grade_last) via grade_program table beause that table may have two programs associated with a grade level, and we need to specify the program to which the resource_use really belongs
+	if spec.grade != 0:
+		wheres.append('grade_resource_use.grade_first <= ? and grade_resource_use.grade_last >= ?')
+		args.extend((spec.grade, spec.grade))
+	if spec.shop:
+		group_by = f' group by {spec.table}.resource' # separate records spanning several weeks are not useful for shopping - just want the fact that there is a resource_use record, indicating that a resource is needed, so that a shopper can shop for the resource
+		detail_fields = f'sum(case when grade_resource_use.optional = 1 then 1 else 0 end) as optional, sum(case when grade_resource_use.optional = 0 then 1 else 0 end) as required'
+	else:
+		group_by = ''
+		detail_fields = 'pages, chapters, instructions, grade_resource_use.optional, (case when grade_resource_use.optional = 0 then 1 else 0 end) as required'
+	return await fetchall(dbc, (f'select resource.id as resource_id, resource.name as resource_name, cw.cycle as cycle, cw.week as week, grade_resource_use.grade_first, grade_resource_use.grade_last, {detail_fields} from {spec.table}' \
+		+ _join(joins) + _where(wheres) + group_by + f' order by {resource_spec.order_by}', args))
 
 async def _get_assignments(dbc, spec, resource_spec):
+	spec.table = resource_spec.table # i.e., assignment... not really a "subject"-specific table like in grammar, but, none-the-less, serves as the defined pivot table for the likes of _filter_cycle_week
+	joins = [
+		f'resource on {spec.table}.resource = resource.id',
+		f'instructions on {spec.table}.instruction = instructions.id',
+	]
+	if resource_spec.extra_joins:
+		joins.extend(resource_spec.extra_joins)
+	wheres, args = [f'{spec.table}.subject = ?',], [k_subject_ids[resource_spec.subject_title], ]
+	_filter_cycle_week_range(spec, joins, wheres, args, True)
+	_filter_program(spec, joins, wheres, args) # TODO: change to specific grade-filtering (or variably...?  NO: **add** grade filtering; then, one can see the whole program, which is united, but drill in (e.g., by virtue of being logged in as a student) to the specific grade treatment; also note that resource_use.program is NOT redundant, here, with grade_resource_use.grade_first (or grade_last) via grade_program table beause that table may have two programs associated with a grade level, and we need to specify the program to which the resource_use really belongs
+	if spec.grade != 0:
+		wheres.append('assignment.grade_first <= ? and assignment.grade_last >= ?')
+		args.extend((spec.grade, spec.grade))
+	return await fetchall(dbc, (f'select resource.id as resource_id, resource.name as resource_name, cw.cycle as cycle, cw.week as week, instructions.text as instruction, program.grade_first as program_grade_first, program.grade_last as program_grade_last, assignment.grade_first, assignment.grade_last, pages, chapters, exercises, optional, "order" from {spec.table}' \
+		+ _join(joins) + _where(wheres) + f' order by {resource_spec.order_by}', args))
+	
+async def _get_assignments_DEPRECATE(dbc, spec, resource_spec):
 	if spec.shop:
-		return [] # We don't want grammar while shopping
+		return [] # We don't want assignments while shopping
 	#else...
 	spec.table = resource_spec.table # i.e., assignment... not really a "subject"-specific table like in grammar, but, none-the-less, serves as the defined pivot table for the likes of _filter_cycle_week
 	joins = resource_spec.extra_joins if resource_spec.extra_joins else []
@@ -239,7 +266,7 @@ k_grammar_resources = [
 ]
 
 
-_make_exre_resource_spec = lambda subject_title, handler: RS(_get_exre_resources, subject_title, handler, 'resource_use', ('resource.name',), ('resource.note',), order_by = 'resource_use.optional, cw.cycle, cw.week, resource_name')
+_make_exre_resource_spec = lambda subject_title, handler: RS(_get_exre_resources, subject_title, handler, 'resource_use', ('resource.name',), ('resource.note',), order_by = 'cw.cycle, cw.week, resource_use.optional, resource_name')
 
 k_history_exre_rs = _make_exre_resource_spec('History', 'history_resources')
 # Geog?
@@ -251,19 +278,22 @@ k_latin_exre_rs = _make_exre_resource_spec('Latin', 'latin_resources')
 
 
 
-_make_assignment_spec = lambda subject_title, handler: RS(_get_assignments, subject_title, handler, 'assignment', ('instruction', ), order_by = 'cw.cycle, cw.week, "order"')
+_make_assignment_spec = lambda subject_title, handler: RS(_get_assignments, subject_title, handler, 'assignment', ('instruction', ), order_by = 'cw.cycle, cw.week, "order", resource, assignment.grade_first')
 
+k_history_assignment_rs = _make_assignment_spec('History', 'history_assignments')
 k_literature_assignment_rs = _make_assignment_spec('Literature', 'literature_assignments')
 k_science_assignment_rs = _make_assignment_spec('Science', 'science_assignments')
+k_poetry_assignment_rs = _make_assignment_spec('Poetry', 'poetry_assignments')
 #TODO: more...
 
 k_high1_resources = [
-	SS('History', (k_history_exre_rs, k_history_grammar_rs, k_timeline_grammar_rs, )), # TODO: add geography?
-	SS('Science', (k_science_assignment_rs, k_science_exre_rs, k_science_grammar_rs, )),
-	SS('Literature', (k_literature_assignment_rs, k_literature_exre_rs, k_english_vocabulary_rs, )),
+	SS('History', (k_history_assignment_rs, k_history_grammar_rs, k_timeline_grammar_rs, )), # TODO: add geography?
+	#SS('Science', (k_science_exre_rs, k_science_assignment_rs, k_science_grammar_rs, )),
+	#SS('Literature', (k_literature_exre_rs, k_literature_assignment_rs, k_english_vocabulary_rs, )),
 	# TODO: math?
-	SS('Poetry', (k_poetry_exre_rs, )),
-	SS('Latin', (k_latin_exre_rs, k_latin_vocabulary_rs, k_latin_grammar_rs, )),
+	SS('Poetry', (k_poetry_assignment_rs, )),
+	#SS('Poetry', (k_poetry_exre_rs, )),
+	#SS('Latin', (k_latin_exre_rs, k_latin_vocabulary_rs, k_latin_grammar_rs, )),
 ]
 
 
@@ -293,7 +323,10 @@ async def get_shopping_links(dbc, resource_id):
 
 
 async def get_programs(dbc):
-	return await fetchall(dbc, ('select * from program', []))
+	return await fetchall(dbc, ('select * from program', ()))
+
+async def get_program(dbc, id):
+	return await fetchone(dbc, ('select * from program where id = ? order by grade_first', (id,)))
 
 async def get_subjects(dbc):
 	return await fetchall(dbc, ('select * from subject', []))
@@ -318,6 +351,7 @@ async def get_person_emails(dbc, person_id):
 async def get_person_addresses(dbc, person_id):
 	return await fetchall(dbc, ('select address.* from address join person_address on address.id = person_address.address join person on person_address.person = person.id where person.id = ?', (person_id,)))
 
+# NOTE: that enrollment.grade and enrollment.program are not redundant!  Even though you could get to program via grade, through the grade_program join table, a student may or MAY NOT actually be enrolled in multiple programs associated with a given grade!
 _children_programs = '''select c.*, program.name as program_name, program.schedule as program_schedule, program.id as program_id from child_guardian 
 	join person as c on child_guardian.child = c.id
 	join person as g on child_guardian.guardian = g.id
@@ -384,12 +418,12 @@ def _filter_cycle_week_range(spec, joins, wheres, args, cw_week_range = False):
 			joins.append(f"cycle_week as cw_last on {spec.table}.cw_last = cw_last.id")
 		else:
 			joins.append(f"cycle_week as cw on {spec.table}.cw = cw.id")
-		if spec.first_week or spec.last_week:
+		if spec.first_week != None or spec.last_week != None:
 			# Wheres:
 			# Massage if necessary:
-			if not spec.first_week:
-				spec.first_week = 1
-			if not spec.last_week:
+			if spec.first_week == None:
+				spec.first_week = 0
+			if spec.last_week == None:
 				spec.last_week = spec.first_week
 			if spec.last_week < spec.first_week:
 				spec.last_week = spec.first_week
@@ -401,10 +435,7 @@ def _filter_cycle_week_range(spec, joins, wheres, args, cw_week_range = False):
 				wheres.append("(? <= cw.week and cw.week <= ?)")
 			args.extend((spec.first_week, spec.last_week))
 		if spec.cycles:
-			if cw_week_range:
-				wheres.append("cw.cycle in (%s)" % ', '.join([str(int(i)) for i in spec.cycles]))
-			else:
-				wheres.append("cw.cycle in (%s)" % ', '.join([str(int(i)) for i in spec.cycles]))
+			wheres.append("cw.cycle in (%s)" % ', '.join([str(int(i)) for i in spec.cycles]))
 	#else, no-op
 
 def _filter_program(spec, joins, wheres, args):

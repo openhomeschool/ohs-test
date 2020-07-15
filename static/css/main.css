@@ -256,7 +256,7 @@ label.answer_option_label {
 	width: 90%;
 }
 
-.subject_content .resource_name {
+.subject_content .resource_name { /* TODO: DEPRECATE? now use .flex-wrap .main .resource_name (in /resources) - check 'shopping', but perhaps this .subject_content .resource_name is unused, or should be */
 	margin: 5px;
 }
 
@@ -268,8 +268,8 @@ label.answer_option_label {
 
 .subject_content .shopping_links {
 	display: inline-block;
-	height: 20px;
-	line-height: 20px;
+	height: 16px;
+	line-height: 16px;
 	text-align: center;
 }
 
@@ -374,16 +374,31 @@ label.answer_option_label {
 	text-align: center;
 	display: inline-block;
 	float: right;
+	clear: right;
 
 	/* NOTE: the following taken from .dropdown-button, and is intended to match!! But ACK!  doesn't match!  TODO: RESEARCH! */
-	margin: 0px;
+	margin: 1px;
 	padding: 2px;
-	font-size: 1.1em;
+	font-size: 1.0em;
+	
+	width: 50px;
 }
+
+.cw-spacer {
+	display: inline-block;
+	float: right;
+	width: 56px; /* This is intended to correspond to .cw (width+stuff)! TODO: Use scss or constants somehow?! */
+}
+
+.cw-button {
+	width: 56px; /* This is tuned to work together with .cw width, with buttons at the top; wish I could do this in a cleaner way */
+}
+
 
 .buttonstrip {
 	display: inline-block;
 	float: right;
+	clear: right;
 }
 
 .resource_record .pair {
@@ -404,6 +419,16 @@ label.answer_option_label {
 	display: inline-block;
 	float: right;
 }
+
+
+/*
+.resource_list button {
+	margin: 2px;
+	font-size: 1em;
+	border: 1px;
+	border-radius: 4px;
+}
+*/
 
 
 
@@ -445,11 +470,12 @@ label.answer_option_label {
 }
 
 .flex-wrap .main button {
-	margin: 2px;
+	margin: 1px;
 	font-size: 1em;
 	border-radius: 4px;
 	height: 25px;
 	color: white;
+	/* background-color: #bfc0dd; */
 	background-color: #7475b8;
 	border: 1px;
 	cursor: pointer;
@@ -466,13 +492,6 @@ label.answer_option_label {
 	vertical-align: bottom;
 }
 
-/* These two are tuned to work together, with buttons at the top; wish I could do this in a cleaner way */
-.cw {
-	width: 50px;
-}
-.cw-button {
-	width: 54px;
-}
 
 .flex-wrap .title {
 
@@ -503,6 +522,7 @@ label.answer_option_label {
 
 .flex-wrap .main .resource_name {
 	margin: 5px;
+	font-weight: bold;
 }
 
 .flex-wrap .main .shopping_links {
@@ -512,11 +532,15 @@ label.answer_option_label {
 	vertical-align: middle;
 }
 
+.flex-wrap .main .resource_details {
+	margin: 5px;
+	margin-left: 40px; /* Note: duplicates setting in .shopping_links' consider consolidation (inheritance scss/etc.) */
+}
 
 .shopping_link {
 	display: block; /* no longer inline-block */
-	height: 20px;
-	line-height: 20px;
+	height: 16px;
+	line-height: 16px;
 	vertical-align: bottom;
 }
 /* DEPRECATE - now we're always inline, with details in hover-hint only (we used to show an annotated link on a line of its own, with the note, and all others in sequential (inline) spans
@@ -553,4 +577,22 @@ td.right-equality-cell {
 
 hr.bighr {
   border: 1px solid black;
+}
+
+
+
+
+
+ul.bulletless {
+	list-style-type: none;
+	margin: 2px;
+	padding-left: 10px;
+}
+li.bulletless {
+	vertical-align: middle;
+	padding-left: 25px;
+	text-indent: -24px;
+}
+input.bulletless {
+	vertical-align: bottom;
 }
