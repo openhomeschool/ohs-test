@@ -221,6 +221,9 @@ async def get_shopping_links(dbc, resource_id):
 async def get_programs(dbc):
 	return await sql.get_programs(dbc)
 
+async def get_program(dbc, id):
+	return await sql.get_program(dbc, id)
+
 async def get_subjects(dbc):
 	return await sql.get_subjects(dbc)
 
