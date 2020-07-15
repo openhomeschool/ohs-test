@@ -289,7 +289,7 @@ k_poetry_assignment_rs = _make_assignment_spec('Poetry', 'poetry_assignments')
 k_high1_resources = [
 	SS('History', (k_history_assignment_rs, k_history_grammar_rs, k_timeline_grammar_rs, )), # TODO: add geography?
 	#SS('Science', (k_science_exre_rs, k_science_assignment_rs, k_science_grammar_rs, )),
-	#SS('Literature', (k_literature_exre_rs, k_literature_assignment_rs, k_english_vocabulary_rs, )),
+	SS('Literature', (k_literature_assignment_rs, k_english_vocabulary_rs, )),
 	# TODO: math?
 	SS('Poetry', (k_poetry_assignment_rs, )),
 	#SS('Poetry', (k_poetry_exre_rs, )),
