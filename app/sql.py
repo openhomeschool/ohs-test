@@ -218,7 +218,7 @@ async def _get_assignments(dbc, spec, resource_spec):
 	if spec.grade != 0:
 		wheres.append('assignment.grade_first <= ? and assignment.grade_last >= ?')
 		args.extend((spec.grade, spec.grade))
-	return await fetchall(dbc, (f'select resource.id as resource_id, resource.name as resource_name, cw.cycle as cycle, cw.week as week, instructions.text as instruction, program.grade_first as program_grade_first, program.grade_last as program_grade_last, assignment.grade_first, assignment.grade_last, pages, chapters, exercises, optional, "order" from {spec.table}' \
+	return await fetchall(dbc, (f'select resource.id as resource_id, resource.name as resource_name, cw.cycle as cycle, cw.week as week, instructions.text as instruction, program.grade_first as program_grade_first, program.grade_last as program_grade_last, assignment.grade_first, assignment.grade_last, pages, chapters, items, optional, "order" from {spec.table}' \
 		+ _join(joins) + _where(wheres) + f' order by {resource_spec.order_by}', args))
 	
 async def _get_assignments_DEPRECATE(dbc, spec, resource_spec):

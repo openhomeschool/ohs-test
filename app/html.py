@@ -548,12 +548,6 @@ def _assignments(container, spec, records, show_cw):
 	new_list = True
 	ul = None
 
-	def _grades(grade_first, grade_last):
-		if grade_first != grade_last:
-			return f'[Grades {grade_first}-{grade_last}] '
-		else:
-			return f'[Grade {grade_first}] '
-
 	for record in records:
 		new_cw = record['cycle'], record['week']
 		new_resource_name = record['resource_name']
@@ -575,11 +569,16 @@ def _assignments(container, spec, records, show_cw):
 		instruction = record['instruction']
 		instruction = instruction.replace('{chapters}', str(record['chapters']))
 		instruction = instruction.replace('{pages}', str(record['pages']))
-		instruction = instruction.replace('{exercises}', str(record['exercises']))
+		instruction = instruction.replace('{items}', str(record['items']))
 		if record['optional']:
 			instruction = '[optional] ' + instruction
-		if not ((not record['grade_first'] and not record['grade_last']) or (record['program_grade_first'] == record['grade_first'] and record['program_grade_last'] == record['grade_last'])):
-			instruction = _grades(record['grade_first'], record['grade_last']) + instruction
+		grade_first = record['grade_first']
+		grade_last = record['grade_last']
+		if not ((not grade_first and not grade_last) or (record['program_grade_first'] == grade_first and record['program_grade_last'] == grade_last)) and spec.grade == 0: # i.e., if this record does **not** apply to everybody AND the spec isn't set to show only one grade anyway, then...
+			if grade_first != grade_last:
+				instruction = f'[Grades {grade_first}-{grade_last}] ' + instruction
+			else:
+				instruction = f'[Grade {grade_first}] ' + instruction
 
 		ul += t.li(t.input_(type = 'checkbox', cls = 'bulletless'), raw(instruction), cls = 'bulletless')
 
