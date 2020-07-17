@@ -544,7 +544,7 @@ def science_assignments(container, spec, records, show_cw):
 def _assignments(container, spec, records, show_cw):
 	cw = None
 	resource_name = None
-	first = True
+	hr = False
 	new_list = True
 	ul = None
 
@@ -553,8 +553,9 @@ def _assignments(container, spec, records, show_cw):
 		new_resource_name = record['resource_name']
 		if new_cw != cw:
 			cw = new_cw
-			if first: first = False
-			else: container += t.hr(cls = 'clear')
+			if hr:
+				container += t.hr(cls = 'clear')
+			hr = cw[1] >= spec.first_week # don't draw a line next time 'round if our current record's week number preceeds what we're spec'd to look at (this can happen for records that whose first_week is earlier than spec.first_week because the record's last_week may be well within spec's range).  For instance, in Literature, a prefix assignment item might apply to two weeks; if the user is looking at the latter, they want to see the prefix, but don't want a line separating it from the rest of the assignment, which would seem like a meaningless line
 			_add_cw(record, container)
 			new_list = True
 		if resource_name != new_resource_name:

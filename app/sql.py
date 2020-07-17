@@ -149,6 +149,10 @@ class RS: # Resource Specification
 	deep_search_fields: tuple = None
 	extra_joins: tuple = None
 	order_by: str = 'cw.cycle, cw.week'
+	triple: bool = False
+	def triplify(self):
+		self.triple = True
+		return self
 
 @dataclass
 class SR: # Subject Result
@@ -170,7 +174,7 @@ async def _get_grammar_resources(dbc, spec, resource_spec):
 	joins, wheres, args = [], [], []
 	if resource_spec.extra_joins:
 		joins.extend(resource_spec.extra_joins)
-	_filter_cycle_week_range(spec, joins, wheres, args)
+	_filter_cycle_week_range(spec, joins, wheres, args, broaden = _triplify if resource_spec.triple else _no_broaden)
 	if spec.search and resource_spec.search_fields:
 		or_wheres = []
 		for field in resource_spec.search_fields:
@@ -216,7 +220,7 @@ async def _get_assignments(dbc, spec, resource_spec):
 	_filter_cycle_week_range(spec, joins, wheres, args, True)
 	_filter_program(spec, joins, wheres, args) # TODO: change to specific grade-filtering (or variably...?  NO: **add** grade filtering; then, one can see the whole program, which is united, but drill in (e.g., by virtue of being logged in as a student) to the specific grade treatment; also note that resource_use.program is NOT redundant, here, with grade_resource_use.grade_first (or grade_last) via grade_program table beause that table may have two programs associated with a grade level, and we need to specify the program to which the resource_use really belongs
 	if spec.grade != 0:
-		wheres.append('assignment.grade_first <= ? and assignment.grade_last >= ?')
+		wheres.append('(assignment.grade_first is NULL or assignment.grade_first <= ?) and (assignment.grade_last is NULL or assignment.grade_last >= ?)')
 		args.extend((spec.grade, spec.grade))
 	return await fetchall(dbc, (f'select resource.id as resource_id, resource.name as resource_name, cw.cycle as cycle, cw.week as week, instructions.text as instruction, program.grade_first as program_grade_first, program.grade_last as program_grade_last, assignment.grade_first, assignment.grade_last, pages, chapters, items, optional, "order" from {spec.table}' \
 		+ _join(joins) + _where(wheres) + f' order by {resource_spec.order_by}', args))
@@ -287,8 +291,8 @@ k_poetry_assignment_rs = _make_assignment_spec('Poetry', 'poetry_assignments')
 #TODO: more...
 
 k_high1_resources = [
-	SS('History', (k_history_assignment_rs, k_history_grammar_rs, k_timeline_grammar_rs, )), # TODO: add geography?
-	#SS('Science', (k_science_exre_rs, k_science_assignment_rs, k_science_grammar_rs, )),
+	SS('History', (k_history_assignment_rs, k_history_grammar_rs.triplify(), k_timeline_grammar_rs.triplify(), )), # TODO: add geography?
+	SS('Science', (k_science_assignment_rs, k_science_grammar_rs, )),
 	SS('Literature', (k_literature_assignment_rs, k_english_vocabulary_rs, )),
 	# TODO: math?
 	SS('Poetry', (k_poetry_assignment_rs, )),
@@ -409,8 +413,27 @@ def _where(wheres): # "AND"-joined wheres (i.e., intersection, not union)
 		return ' where ' + ' and '.join(wheres) + ' '
 	#else:
 	return ''
+
  
-def _filter_cycle_week_range(spec, joins, wheres, args, cw_week_range = False):
+def _no_broaden(first_week, last_week):
+	return first_week, last_week
+
+def _unitify(weeks, first_week, last_week = None, offset = 0):
+	# TODO: implement 'offset'
+	if first_week < 1: first_week = 1
+	if last_week < 1: last_week = 1
+	base = int((first_week - 1) / weeks) * weeks
+	first, last = base + 1, base + weeks
+	if last_week and last_week != first_week:
+		last_base = int(last_week / weeks) * weeks
+		first = min(first, last_base + 1)
+		last = max(last, last_base + weeks)
+	return first, last
+
+def _triplify(first_week, last_week = None):
+	return _unitify(3, first_week, last_week)
+
+def _filter_cycle_week_range(spec, joins, wheres, args, cw_week_range = False, broaden = _no_broaden):
 	if spec.first_week or spec.last_week or spec.cycles:
 		# Joins:
 		if cw_week_range:
@@ -420,20 +443,20 @@ def _filter_cycle_week_range(spec, joins, wheres, args, cw_week_range = False):
 			joins.append(f"cycle_week as cw on {spec.table}.cw = cw.id")
 		if spec.first_week != None or spec.last_week != None:
 			# Wheres:
-			# Massage if necessary:
+			# Massage if necessary (NOTE: this modification to the spec is actually used by upper layers of code - this alters an invalid week range to make it valid):
 			if spec.first_week == None:
 				spec.first_week = 0
 			if spec.last_week == None:
 				spec.last_week = spec.first_week
 			if spec.last_week < spec.first_week:
 				spec.last_week = spec.first_week
-			# Now set it up:
+			# Now set up the WHEREs:
 			if cw_week_range:
 				#wheres.append("(cw.week = 0 or (? <= cw_last.week and cw.week <= ?))") # we're no longer calling week 0 "all weeks" -- now it means: summer / prior to week-1
 				wheres.append("(? <= cw_last.week and cw.week <= ?)")
 			else:
 				wheres.append("(? <= cw.week and cw.week <= ?)")
-			args.extend((spec.first_week, spec.last_week))
+			args.extend(broaden(spec.first_week, spec.last_week))
 		if spec.cycles:
 			wheres.append("cw.cycle in (%s)" % ', '.join([str(int(i)) for i in spec.cycles]))
 	#else, no-op
