@@ -129,7 +129,7 @@ async def login_(request):
 
 		
 
-@r.get('/', name = 'home')
+@r.get('/stub-home', name = 'home')
 async def home(request):
 	return hr(html.home())
 
@@ -311,6 +311,12 @@ async def ws_test_twixt(request):
 
 	return await _ws_handler(request, msg_handler, {'call': 'content', 'data': result})
 	
+
+
+
+@r.get('/')
+async def default(request):
+	return await _resources(request, {})
 
 @r.get('/resources')
 async def resources(request):
