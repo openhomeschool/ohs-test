@@ -262,13 +262,13 @@ def quiz(ws_url, db_handler, html_function):
 				('Cycle 3', 'bogus'),
 				('All Cycles', 'bogus'),
 				('My Cycle', 'bogus')), 'Cycles...')
-			_dropdown(t.div(cls = 'dropdown'), 'weeks_dropdown', (
+			_url_dropdown(t.div(cls = 'dropdown'), 'weeks_dropdown', (
 				('...', 'bogus'),
-				('All Weeks', 'bogus')), True, 'Weeks...')
-			_dropdown(t.div(cls = 'dropdown'), 'difficulty_dropdown', (
+				('All Weeks', 'bogus')), 'Weeks...')
+			_url_dropdown(t.div(cls = 'dropdown'), 'difficulty_dropdown', (
 				('Easy', 'bogus'),
 				('Medium', 'bogus'),
-				('Difficult', 'bogus')), True, 'Difficulty...')
+				('Difficult', 'bogus')), 'Difficulty...')
 
 		# JS (intentionally at bottom of file; see https://faqs.skillcrush.com/article/176-where-should-js-script-tags-be-linked-in-html-documents and many stackexchange answers):
 		t.script(_js_util())
@@ -287,9 +287,16 @@ def grades_filter_button(key, options):
 	return _dropdown((key, options), {}, 'ib-left').render()
 
 
-def resources(url, filters, cycles, weeks, qargs): # TODO: this is basically identical to select_user (and presumably other search-driven pages whose content comes via websocket); consolidate!
+def resources(ws_url, filters, cycles, weeks, qargs, links): # TODO: this is basically identical to select_user (and presumably other search-driven pages whose content comes via websocket); consolidate!
 	d = _doc('Resources')
 	with d:
+		with t.div(cls = 'flex-wrap'): # TODO: make a 'header_block' or something; different border color, perhaps
+			t.div(t.b('Go'), cls = 'title') # TODO: replace with a magnifying-glass gif!
+			with t.div(cls = 'main'):
+				for name, url in links:
+					t.button(name, title = name, onclick = f'window.open("{url}", "_self");')
+				
+
 		with t.div(cls = 'flex-wrap'): # TODO: make a 'header_block' or something; different border color, perhaps
 			t.div(t.b('Search'), cls = 'title') # TODO: replace with a magnifying-glass gif!
 			with t.div(cls = 'main'):
@@ -307,7 +314,7 @@ def resources(url, filters, cycles, weeks, qargs): # TODO: this is basically ide
 
 		# JS (intentionally at bottom of file; see https://faqs.skillcrush.com/article/176-where-should-js-script-tags-be-linked-in-html-documents and many stackexchange answers):
 		t.script(_js_util())
-		t.script(_js_filter_list(url))
+		t.script(_js_filter_list(ws_url))
 		t.script(_js_dropdown())
 		t.script(_js_calendar_widget())
 		t.script(_js_show_hide_shopping())
@@ -371,6 +378,7 @@ def _grammar_resources(container, spec, records, show_cw, subject_directory, ren
 			render(record, record_container)
 
 
+# TODO: DEPRECATE - we no longer use this... only _assignments is used now, even for shopping
 def _external_resources(container, spec, records, show_cw):
 	first = True
 	week = None
@@ -415,7 +423,7 @@ def _external_resources(container, spec, records, show_cw):
 def show_shopping(records):
 	result = t.div()
 	if not records:
-		result += 'Sorry, there are no shopping links for this record at present... try back again soon?'
+		result += 'Sorry, there are no shopping links for this resource at present... try back again soon?'
 	else:
 		with result:
 			resource_note = records[0]['resource_note'] # records[0] because they're all the same; all shopping link records provided reference this same resource
@@ -544,6 +552,7 @@ def science_assignments(container, spec, records, show_cw):
 def _assignments(container, spec, records, show_cw):
 	cw = None
 	resource_name = None
+	name_container = None
 	hr = False
 	new_list = True
 	ul = None
@@ -560,28 +569,41 @@ def _assignments(container, spec, records, show_cw):
 			new_list = True
 		if resource_name != new_resource_name:
 			resource_name = new_resource_name
-			container += t.div(resource_name, cls = 'resource_name')
+			div_id = '%s%s' % (valid.k_res_prefix, record['resource_id'])
+			title = t.div(cls = 'resource_name')
+			if spec.shop:
+				title += t.input_(type = 'checkbox')
+				if not record['required'] > 0:
+					title += '[optional] '
+			title += resource_name
+			title += t.button('...', onclick = 'show_hide_details("%s");' % div_id, cls = 'chaser'),
+			title += t.button('$', onclick = 'show_hide_shopping("%s");' % div_id, cls = 'chaser'),
+			container += title
+			container += t.div(cls = 'shopping_links', id = div_id) # contents filled in via websocket upon '$' click to show_hide_shopping()
 			new_list = True
-		if new_list:
+
+		if new_list and not spec.shop:
 			new_list = False
 			ul = t.ul(cls = 'bulletless')
 			container += ul
-		
-		instruction = record['instruction']
-		instruction = instruction.replace('{chapters}', str(record['chapters']))
-		instruction = instruction.replace('{pages}', str(record['pages']))
-		instruction = instruction.replace('{items}', str(record['items']))
-		if record['optional']:
-			instruction = '[optional] ' + instruction
-		grade_first = record['grade_first']
-		grade_last = record['grade_last']
-		if not ((not grade_first and not grade_last) or (record['program_grade_first'] == grade_first and record['program_grade_last'] == grade_last)) and spec.grade == 0: # i.e., if this record does **not** apply to everybody AND the spec isn't set to show only one grade anyway, then...
-			if grade_first != grade_last:
-				instruction = f'[Grades {grade_first}-{grade_last}] ' + instruction
-			else:
-				instruction = f'[Grade {grade_first}] ' + instruction
 
-		ul += t.li(t.input_(type = 'checkbox', cls = 'bulletless'), raw(instruction), cls = 'bulletless')
+		if not spec.shop:
+			# Assignments:
+			instruction = record['instruction']
+			instruction = instruction.replace('{chapters}', str(record['chapters']))
+			instruction = instruction.replace('{pages}', str(record['pages']))
+			instruction = instruction.replace('{items}', str(record['items']))
+			if record['optional']:
+				instruction = '[optional] ' + instruction
+			grade_first = record['grade_first']
+			grade_last = record['grade_last']
+			if not ((not grade_first and not grade_last) or (record['program_grade_first'] == grade_first and record['program_grade_last'] == grade_last)) and spec.grade == 0: # i.e., if this record does **not** apply to everybody AND the spec isn't set to show only one grade anyway, then...
+				if grade_first != grade_last:
+					instruction = f'[Grades {grade_first}-{grade_last}] ' + instruction
+				else:
+					instruction = f'[Grade {grade_first}] ' + instruction
+
+			ul += t.li(t.input_(type = 'checkbox'), raw(instruction))
 
 
 
@@ -822,7 +844,25 @@ def _multi_choice_question(question, options, prompt_prefix, prompt_text, option
 
 def _js_util():
 	return raw('''
-		function $(id) { return document.getElementById(id); };
+
+	function $(id) { return document.getElementById(id); };
+		
+	function ws_send(message) {
+		if (!ws || ws.readyState == WebSocket.CLOSING || ws.readyState == WebSocket.CLOSED) {
+			alert("Lost connection... going to reload page....");
+			location.reload();
+		} else {
+			ws.send(message);
+		}
+	};
+	
+	function pingpong() {
+		if (!ws) return;
+		if (ws.readyState !== WebSocket.OPEN) return;
+		ws.send(JSON.stringify({call: "ping"}));
+	};
+	setInterval(pingpong, 30000); // 30-second heartbeat; default timeouts (like nginx) are usually set to 60-seconds
+
 	''')
 
 def _js_socket_quiz_manager(url, db_handler, html_function):
@@ -847,7 +887,7 @@ def _js_socket_quiz_manager(url, db_handler, html_function):
 		}
 	};
 	function send_answer(answer_id) {
-		ws_send(JSON.stringify({db_handler: "%(db_handler)s", html_function: "%(html_function)s", answer_id: parseInt(answer_id, 10)}));
+		ws_send(JSON.stringify({call: "answer", db_handler: "%(db_handler)s", html_function: "%(html_function)s", answer_id: parseInt(answer_id, 10)}));
 	};
 	
 	go_button.onclick = function() {
@@ -905,22 +945,6 @@ def _js_filter_list(url):
 	# This is the websocket code for filtering, and a search() (filter) function, which is the "standard"
 	r = raw('''
 	var ws = new WebSocket("%(url)s");
-
-	function ws_send(message) {
-		if (!ws || ws.readyState == WebSocket.CLOSING || ws.readyState == WebSocket.CLOSED) {
-			alert("Lost connection... going to reload page....");
-			location.reload();
-		} else {
-			ws.send(message);
-		}
-	};
-	
-	function pingpong() {
-		if (!ws) return;
-		if (ws.readyState !== WebSocket.OPEN) return;
-		ws.send(JSON.stringify({call: "ping"}));
-	};
-	setInterval(pingpong, 30000); // 30-second heartbeat; default timeouts (like nginx) are usually set to 60-seconds
 
 	ws.onmessage = function(event) {
 		var payload = JSON.parse(event.data);

@@ -270,11 +270,11 @@ async def ws_quiz_handler(request):
 
 	async def msg_handler(payload, ws):
 		nonlocal db_handler
-		if db_handler and 'answer_id' in payload:
+		if db_handler and payload['call'] == 'answer':
 			if payload['answer_id'] >= 0: # -1 indicates "skip"... for now we just allow this and log nothing... TODO: evaluate!
 				db_handler.log_user_answer(payload['answer_id'])
 		if 'db_handler' in payload: # assume that 'html_function' is there, too
-			db_handler = await db.get_handler(payload['db_handler'], dbc, session['user_id']) # TODO: add args; e.g., history might utilize date_range....
+			db_handler = await db.get_handler(payload['db_handler'], dbc, session.get('user_id', None)) # TODO: add args; e.g., history might utilize date_range....
 			await ws.send_json({
 				'call': 'content',
 				'content': html.exposed[payload['html_function']](db_handler.question, db_handler.options),
@@ -316,10 +316,18 @@ async def ws_test_twixt(request):
 async def resources(request):
 	return await _resources(request, request.query)
 
-@r.get('/shop_year')
+@r.get('/shop')
 async def shop_year(request):
 	return await _resources(request, {'shop': 1, 'program': 3, 'first_week': 0, 'last_week': 28})
 
+
+_links = lambda request: (
+	('Shop', _http_url(request, '/shop')),
+	('Grammar', _http_url(request, '/resources', {'program': 1})),
+	('7-9 Assignments', _http_url(request, '/resources', {'program': 3})),
+	('Quiz', _http_url(request, '/quiz/history/sequence')), # TODO!
+	#('4-6 assignments': _http_url(request, '/resources?program=2'),
+)
 
 async def _resources(request, qargs):
 	session = await get_session(request)
@@ -339,7 +347,8 @@ async def _resources(request, qargs):
 		('last_week', [('W-%d' % week, week) for week in range(0, 29)]), # TODO: hardcode 29!
 	)
 
-	return hr(html.resources(_ws_url(request, '/ws_resources'), filters, cycles, weeks, qargs))
+	links = _links(request)
+	return hr(html.resources(_ws_url(request, '/ws_resources'), filters, cycles, weeks, qargs, links))
 
 
 
@@ -439,10 +448,10 @@ def _ws_url(request, name):
 	rurl = request.url
 	return URL.build(scheme = settings.k_ws, host = request.host, path = settings.k_ws_url_prefix + name)
 
-def _http_url(request, name):
+def _http_url(request, name, query = None):
 	# Transform a ws URL like ws://domain.tld/... into a normal URL: http://domain.tld/<name>  - note: what about HTTPs!?TODO
 	rurl = request.url
-	return URL.build(scheme = settings.k_http, host = request.host, path = settings.k_url_prefix + name)
+	return URL.build(scheme = settings.k_http, host = request.host, path = settings.k_url_prefix + name, query = query)
 
 def _validate_regex(data, invalids, tuple_list):
 	for field, regex, required in tuple_list:
@@ -534,7 +543,7 @@ async def init(argv):
 	app.add_routes(r)
 	# And quiz routes:
 	def q(db_handler, html_function):
-		@auth('student') # TODO: comment this back in when it's time to auth students who are looking to quiz
+		#@auth('student') # TODO: comment this back in when it's time to auth students who are looking to quiz
 		async def quiz(request):
 			return hr(html.quiz(_ws_url(request, '/ws_quiz_handler'), db_handler, html_function))
 		return quiz

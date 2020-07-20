@@ -3,6 +3,7 @@ __copyright__ = '2020'
 __version__ = '0.1'
 __license__ = 'MIT'
 
+import copy
 import re
 
 from datetime import date, timedelta
@@ -151,8 +152,9 @@ class RS: # Resource Specification
 	order_by: str = 'cw.cycle, cw.week'
 	triple: bool = False
 	def triplify(self):
-		self.triple = True
-		return self
+		tripled = copy.copy(self)
+		tripled.triple = True
+		return tripled
 
 @dataclass
 class SR: # Subject Result
@@ -210,10 +212,7 @@ async def _get_exre_resources(dbc, spec, resource_spec):
 
 async def _get_assignments(dbc, spec, resource_spec):
 	spec.table = resource_spec.table # i.e., assignment... not really a "subject"-specific table like in grammar, but, none-the-less, serves as the defined pivot table for the likes of _filter_cycle_week
-	joins = [
-		f'resource on {spec.table}.resource = resource.id',
-		f'instructions on {spec.table}.instruction = instructions.id',
-	]
+	joins = [f'resource on {spec.table}.resource = resource.id', ]
 	if resource_spec.extra_joins:
 		joins.extend(resource_spec.extra_joins)
 	wheres, args = [f'{spec.table}.subject = ?',], [k_subject_ids[resource_spec.subject_title], ]
@@ -222,8 +221,19 @@ async def _get_assignments(dbc, spec, resource_spec):
 	if spec.grade != 0:
 		wheres.append('(assignment.grade_first is NULL or assignment.grade_first <= ?) and (assignment.grade_last is NULL or assignment.grade_last >= ?)')
 		args.extend((spec.grade, spec.grade))
-	return await fetchall(dbc, (f'select resource.id as resource_id, resource.name as resource_name, cw.cycle as cycle, cw.week as week, instructions.text as instruction, program.grade_first as program_grade_first, program.grade_last as program_grade_last, assignment.grade_first, assignment.grade_last, pages, chapters, items, optional, "order" from {spec.table}' \
-		+ _join(joins) + _where(wheres) + f' order by {resource_spec.order_by}', args))
+
+	if spec.shop:
+		# If shopping, we don't actually want all the assignment records, we only want the collection of resources to which those assignments collectively refer.  We still need to query the assignment records, to get this information, as there's no better way to know that a resource needs to be bought than to know that an assignment has referenced it.
+		group_by = f' group by {spec.table}.resource' # separate records spanning several weeks are not useful for shopping - just want the fact that there is a resource_use record, indicating that a resource is needed, so that a shopper can shop for the resource
+		detail_fields = f' sum(case when {spec.table}.optional = 0 then 1 else 0 end) as required, sum({spec.table}.grade_first) as grade_first, sum({spec.table}.grade_last) as grade_last'
+	else:
+		# Get the motherload...
+		group_by = ''
+		joins.append(f'instructions on {spec.table}.instruction = instructions.id')
+		detail_fields = 'instructions.text as instruction, program.grade_first as program_grade_first, program.grade_last as program_grade_last, assignment.grade_first, assignment.grade_last, pages, chapters, items, optional, "order"'
+
+	return await fetchall(dbc, (f'select resource.id as resource_id, resource.name as resource_name, cw.cycle as cycle, cw.week as week, {detail_fields} from {spec.table}' \
+		+ _join(joins) + _where(wheres) + group_by + f' order by {resource_spec.order_by}', args))
 	
 async def _get_assignments_DEPRECATE(dbc, spec, resource_spec):
 	if spec.shop:
