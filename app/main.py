@@ -322,9 +322,9 @@ async def shop_year(request):
 
 
 _links = lambda request: (
-	('Shop', _http_url(request, '/shop')),
 	('Grammar', _http_url(request, '/resources', {'program': 1})),
 	('7-9 Assignments', _http_url(request, '/resources', {'program': 3})),
+	('Shop', _http_url(request, '/shop')),
 	('Quiz', _http_url(request, '/quiz/history/sequence')), # TODO!
 	#('4-6 assignments': _http_url(request, '/resources?program=2'),
 )
