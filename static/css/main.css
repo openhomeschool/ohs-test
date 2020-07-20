@@ -174,10 +174,20 @@ label.answer_option_label {
 	border-radius: 4px;
 	border: 1px;
 	cursor: pointer;
+	background-color: #7475b8;
+	color: white;
 }
 
 /* currently, the only use for the following is javascript identification... */
+/* TODO: not quite; actually resource_block .button is where styling should be, but I'm DUPLICATING it here (KLUDGE!) because  I don't have time to sort out style things; /quiz needs this style.... */
 .dropdown-button {
+	margin: 2px;
+	font-size: 1em;
+	border-radius: 4px;
+	color: white;
+	background-color: #7475b8;
+	border: 1px;
+	cursor: pointer;
 }
 .dropdown-button:hover, .dropdown-button:focus {
 }
@@ -481,7 +491,19 @@ label.answer_option_label {
 	cursor: pointer;
 }
 
-.flex-wrap .main button:hover, .flex-wrap .main button:focus {
+.flex-wrap .main .chaser {
+	margin: 1px;
+	font-size: 0.8em;
+	border-radius: 4px;
+	height: 18px;
+	color: white;
+	background-color: #bdbdcb;
+	border: 1px;
+	cursor: pointer;
+	vertical-align: bottom;
+}
+
+.flex-wrap .main button:hover {
 	background-color: #6061ae;
 }
 
@@ -521,7 +543,7 @@ label.answer_option_label {
 }
 
 .flex-wrap .main .resource_name {
-	margin: 5px;
+	margin: 8px 5px 2px;
 	font-weight: bold;
 }
 
@@ -588,11 +610,11 @@ ul.bulletless {
 	margin: 2px;
 	padding-left: 10px;
 }
-li.bulletless {
+ul.bulletless li {
 	vertical-align: middle;
 	padding-left: 25px;
 	text-indent: -24px;
 }
-input.bulletless {
+ul.bulletless input {
 	vertical-align: bottom;
 }

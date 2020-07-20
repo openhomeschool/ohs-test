@@ -112,6 +112,18 @@ class Question_Transaction: # Abstract base class; see actual functional impleme
 		return self._week_range
 
 	@property
+	def first_week(self): # TODO: kludgy - conform to new 'spec' design!
+		if not self._week_range:
+			return None
+		return self._week_range[0]
+
+	@property
+	def last_week(self): # TODO: kludgy - conform to new 'spec' design!
+		if not self._week_range:
+			return None
+		return self._week_range[1]
+
+	@property
 	def cycles(self):
 		return self._cycles
 
