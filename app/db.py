@@ -274,3 +274,5 @@ async def get_costs(dbc):
 async def get_payments(dbc, guardian_ids):
 	return await sql.get_payments(dbc, guardian_ids)
 
+async def get_leader(dbc, person_id):
+	return await sql.get_leader(dbc, person_id)

@@ -185,8 +185,9 @@ class Invitation(web.View):
 			family = await db.get_family(dbc, person_id)
 			contact = await db.get_person_contact_info(dbc, person_id)
 			costs = await db.get_costs(dbc)
+			leader = await db.get_leader(dbc, person_id)
 			payments = await db.get_payments(dbc, [g['id'] for g in family.guardians])
-			return hr(html.invitation(html.Form(settings.k_url_prefix + r.path), invitation, person, family, contact, costs, payments))
+			return hr(html.invitation(html.Form(settings.k_url_prefix + r.path), invitation, person, family, contact, costs, leader, payments))
 		else:
 			return hr(html.invalid_invitation()) # this might be an attack attempt!
 		
