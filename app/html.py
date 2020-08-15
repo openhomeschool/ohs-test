@@ -88,7 +88,7 @@ def _format_money(amount_cents):
 def _format_cost(cost):
 	return ('%s: ' % cost['name'], _format_money(cost['amount']))
 
-def invitation(form, invitation, person, family, contact, costs, payments, errors = None):
+def invitation(form, invitation, person, family, contact, costs, leader, payments, errors = None):
 	#TODO: this is ugly long!  dice it up!!
 	
 	cl = lambda content: t.div(content, cls = 'contact_line')
@@ -153,6 +153,21 @@ def invitation(form, invitation, person, family, contact, costs, payments, error
 							cl(t.b('%s (%s)' % (program, child['program_schedule'])))
 						cli(_format_person(child))
 		
+		leadership_offset = 0
+		if leader:
+			with t.div(cls = 'flex-wrap'):
+				t.div('Leadership', cls = 'title')
+				with t.div(cls = 'main'):
+					for role in leader:
+						with t.div(cls = 'resource_record'):
+							cl(t.span('Role: ', role['role']))
+							cl(t.span('Program: ', role['program_name']))
+							offset = role['annual_offset']
+							if offset:
+								cl(t.span('Annual offset: ', _format_money(offset)))
+								leadership_offset += offset
+			
+			
 		with t.div(cls = 'flex-wrap'):
 			t.div('Costs', cls = 'title')
 			with t.div(cls = 'main'):
@@ -181,9 +196,14 @@ def invitation(form, invitation, person, family, contact, costs, payments, error
 						cli(t.span('Check #%s (%s): ' % (payment['check_number'], payment['date'].strftime('%x')), _format_money(payment['amount'])))
 						total_payments += payment['amount']
 					t.hr()
+				if leadership_offset:
+					with t.div(cls = 'resource_record'):
+						cl('Offsets:')
+						cli(_format_money(leadership_offset))
+						t.hr()
 				with t.div(cls = 'resource_record'):
 					cl('Balance Due:')
-					cli(_format_money(total - total_payments))
+					cli(_format_money(total - total_payments - leadership_offset))
 
 		t.p('If you see any mistakes, please just contact me directly.  Thanks!')
 		
