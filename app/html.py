@@ -160,7 +160,7 @@ def invitation(form, invitation, person, family, contact, costs, leader, payment
 				with t.div(cls = 'main'):
 					for role in leader:
 						with t.div(cls = 'resource_record'):
-							cl(t.span('Role: ', role['role']))
+							cl(t.span('Role: ', role['role'], ' (Classes: %s)' % role['multiplier']))
 							cl(t.span('Program: ', role['program_name']))
 							offset = role['annual_offset']
 							if offset:
