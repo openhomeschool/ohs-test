@@ -16,13 +16,13 @@ def go(program, reducer = None):
 	c = db.execute(f'select count(*) from enrollment where program={program}')
 	enrollment = c.fetchone()['count(*)']
 	# And tutors:
-	c = db.execute(f'select sum(multiplier) as sum from leader where program={program} and leadership_role={k_tutor_role}')
-	tutor_count = c.fetchone()['sum']
+	c = db.execute(f'select sum(sections*weeks) as tutor_weeks from leader where program={program} and leadership_role={k_tutor_role}')
+	tutor_weeks = c.fetchone()['tutor_weeks']
 	reductions = 0
 	if reducer:
 		reductions = reducer(tuition, enrollment)
-	tutor_offset = int((tuition * enrollment - reductions) / tutor_count)
-	c = db.execute(f'update leader set annual_offset = multiplier * {tutor_offset} where program={program} and leadership_role={k_tutor_role}')
+	tutor_offset = (tuition * enrollment - reductions) / tutor_weeks
+	c = db.execute(f'update leader set annual_offset = round(sections * weeks * {tutor_offset}) where program={program} and leadership_role={k_tutor_role}')
 	db.commit()
 
 def science_art_coordinators_reducer(tuition, enrollment):

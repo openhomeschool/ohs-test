@@ -379,7 +379,7 @@ async def get_family(dbc, person_id):
 	if guardians:
 		# person_id is a child, and we just got the guardians; now get the other children:
 		ids = [g['id'] for g in guardians]
-		children = fetchall(dbc, (_children_programs + ' where g.id in ({seq})'.format(seq = ','.join(['?']*len(ids))) + _order_group_children, ids))
+		children = await fetchall(dbc, (_children_programs + ' where g.id in ({seq})'.format(seq = ','.join(['?']*len(ids))) + _order_group_children, ids))
 	else:
 		# person_id is a guardian, get children, and other guardians:
 		children = await fetchall(dbc, (_children_programs + ' where g.id = ? ' + _order_group_children, (person_id,)))
@@ -406,9 +406,10 @@ async def get_payments(dbc, guardian_ids):
 async def get_leader(dbc, person_id):
 	#TODO: Add logic for filtering records for the CURRENT/coming academic year only
 	return await fetchall(dbc, ('''
-			select leader.*, leadership_role.name as role, program.name as program_name from leader
+			select leader.*, leadership_role.name as role, program.name as program_name, subject.name as subject_name from leader
 			join leadership_role on leader.leadership_role = leadership_role.id
 			join program on leader.program = program.id
+			left join subject on leader.subject = subject.id
 			where person = ?
 		''', (person_id,)))
 	
