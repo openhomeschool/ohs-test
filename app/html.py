@@ -160,8 +160,12 @@ def invitation(form, invitation, person, family, contact, costs, leader, payment
 				with t.div(cls = 'main'):
 					for role in leader:
 						with t.div(cls = 'resource_record'):
-							cl(t.span('Role: ', role['role'], ' (Classes: %s)' % role['multiplier']))
-							cl(t.span('Program: ', role['program_name']))
+							role_line = 'Role: ' + role['program_name'] + ' ' + role['role']
+							if role['subject_name']:
+								role_line += ' - ' + role['subject_name'] + ' (%d weeks)' % role['weeks']
+							if role['sections'] > 1:
+								role_line += ' (%s sections)' % role['sections']
+							cl(t.span(role_line))
 							offset = role['annual_offset']
 							if offset:
 								cl(t.span('Annual offset: ', _format_money(offset)))
@@ -177,12 +181,18 @@ def invitation(form, invitation, person, family, contact, costs, leader, payment
 					for cost in [c for c in costs if not c['per_student']]:
 						cl(t.span(*_format_cost(cost)))
 						total += cost['amount']
+					covered = set() # duplicate-coverage tracker -- eek, this is a bit too much "logic" for the interface ("view") layer!
 					for child in family.children:
-						cl(t.span(t.b(child['first_name'] + ' ' + child['last_name']), ' (', child['program_name'], ')'))
+						fn = child['first_name']
+						ln = child['last_name']
+						cl(t.span(t.b(fn + ' ' + ln), ' (', child['program_name'], ')'))
 						child_total = 0
 						for cost in [c for c in costs if c['per_student'] and not c['program']]:
-							cli(t.span(*_format_cost(cost)))
-							child_total += cost['amount']
+							tag = '%s %s %s' % (fn, ln, cost['name']) # Eek, this is a bit too much "logic" for the interface ("view") layer!
+							if tag not in covered: # don't duplicate "non-program-centric costs" (e.g., facility-cost, which is per-student; but a student may be in multiple programs, and thus may have multiple "child" records here, the only difference being the cost (name))
+								covered.add(tag)
+								cli(t.span(*_format_cost(cost)))
+								child_total += cost['amount']
 						for cost in [c for c in costs if c['program'] == child['program_id']]:
 							cli(t.span(*_format_cost(cost)))
 							child_total += cost['amount']
