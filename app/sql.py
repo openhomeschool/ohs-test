@@ -438,11 +438,11 @@ def _where(wheres): # "AND"-joined wheres (i.e., intersection, not union)
 def _no_broaden(first_week, last_week):
 	return first_week, last_week
 
-def _unitify(weeks, first_week, last_week = None, offset = 0):
-	# TODO: implement 'offset'
+def _unitify(weeks, first_week, last_week = None, offset = 1):
+	# TODO: make 'offset' an arg to _filter_cycle_week_range, so that various users of this service can specify the offset; for now, History/Timeline is our only triplicate, and that needs offset=1 (so that, on week 3, grammar for weeks 4-6 should be shown; i.e., high-schoolers are always 1 week ahead of the next three week block -- they read from SotW chapters for the coming triplicate 1 week in advance of that three-week period)
 	if first_week < 1: first_week = 1
 	if last_week < 1: last_week = 1
-	base = int((first_week - 1) / weeks) * weeks
+	base = int((first_week - 1 + offset) / weeks) * weeks
 	first, last = base + 1, base + weeks
 	if last_week and last_week != first_week:
 		last_base = int(last_week / weeks) * weeks
