@@ -319,26 +319,27 @@ def grades_filter_button(key, options):
 
 def resources(ws_url, filters, cycles, weeks, qargs, links): # TODO: this is basically identical to select_user (and presumably other search-driven pages whose content comes via websocket); consolidate!
 	d = _doc('Resources')
+	for_print = int(qargs.get('for_print', 0)) # 1 = no buttons, no header
 	with d:
-		with t.div(cls = 'flex-wrap'): # TODO: make a 'header_block' or something; different border color, perhaps
-			t.div(t.b('Go'), cls = 'title') # TODO: replace with a magnifying-glass gif!
-			with t.div(cls = 'main'):
-				for name, url in links:
-					t.button(name, title = name, onclick = f'window.open("{url}", "_self");')
-				
+		if not for_print:
+			with t.div(cls = 'flex-wrap'): # TODO: make a 'header_block' or something; different border color, perhaps
+				t.div(t.b('Go'), cls = 'title') # TODO: replace with a magnifying-glass gif!
+				with t.div(cls = 'main'):
+					for name, url in links:
+						t.button(name, title = name, onclick = f'window.open("{url}", "_self");')
+					
 
-		with t.div(cls = 'flex-wrap'): # TODO: make a 'header_block' or something; different border color, perhaps
-			t.div(t.b('Search'), cls = 'title') # TODO: replace with a magnifying-glass gif!
-			with t.div(cls = 'main'):
-				for key, options in filters:
-					with t.div(id = '%s-container' % key):
-						_dropdown((key, options), qargs, 'ib-left')
-				_dropdown(weeks[0], qargs, 'ib-right', button_class = 'cw-button')
-				t.div(cls = 'clear') # next row...
-				t.div(_text_input('search', None, ('autofocus',), {'autocomplete': 'off', 'oninput': 'search(this.value)'}, 'Search', type_ = 'search'), cls = 'search')
-				_dropdown(weeks[1], qargs, 'ib-right', button_class = 'cw-button')
-				_dropdown(cycles, qargs, 'ib-right', button_class = 'cw-button')
-
+			with t.div(cls = 'flex-wrap'): # TODO: make a 'header_block' or something; different border color, perhaps
+				t.div(t.b('Search'), cls = 'title') # TODO: replace with a magnifying-glass gif!
+				with t.div(cls = 'main'):
+					for key, options in filters:
+						with t.div(id = '%s-container' % key):
+							_dropdown((key, options), qargs, 'ib-left')
+					_dropdown(weeks[0], qargs, 'ib-right', button_class = 'cw-button')
+					t.div(cls = 'clear') # next row...
+					t.div(_text_input('search', None, ('autofocus',), {'autocomplete': 'off', 'oninput': 'search(this.value)'}, 'Search', type_ = 'search'), cls = 'search')
+					_dropdown(weeks[1], qargs, 'ib-right', button_class = 'cw-button')
+					_dropdown(cycles, qargs, 'ib-right', button_class = 'cw-button')
 
 		t.div(id = 'content') # filtered results themselves are added here, in this `result` div, via websocket, as search text is typed (see javascript)
 
@@ -397,7 +398,7 @@ def _grammar_resources(container, spec, records, show_cw, subject_directory, ren
 						t.button(t.img(src = _iurl('cursive-c.png')), title = 'Copywork')
 						t.button('Ξ', title = 'Details')
 						
-				_add_cw(record, buttonstrip)
+				_add_cw(record, buttonstrip, spec)
 				resource_div += buttonstrip
 				if record_container_class:
 					record_container = record_container_class()
@@ -415,10 +416,10 @@ def _external_resources(container, spec, records, show_cw):
 	for record in records:
 		if first:
 			first = False
-			_add_cw(record, container)
+			_add_cw(record, container, spec)
 		elif record['week'] != week:
 			container += t.hr(cls = 'clear')
-			_add_cw(record, container)
+			_add_cw(record, container, spec)
 		week = record['week']
 
 		resource_title = t.div(cls = 'resource_name')
@@ -515,6 +516,10 @@ def literature_resources(container, spec, records, show_cw):
 def poetry_resources(container, spec, records, show_cw):
 	_external_resources(container, spec, records, show_cw)
 
+@subject_resources('math_resources')
+def math_resources(container, spec, records, show_cw):
+	_external_resources(container, spec, records, show_cw)
+
 
 @subject_resources('latin_vocabulary')
 def latin_vocabulary(container, spec, records, show_cw):
@@ -568,7 +573,15 @@ def history_assignments(container, spec, records, show_cw):
 	_assignments(container, spec, records, show_cw)
 
 @subject_resources('poetry_assignments')
-def history_assignments(container, spec, records, show_cw):
+def poetry_assignments(container, spec, records, show_cw):
+	_assignments(container, spec, records, show_cw)
+
+@subject_resources('latin_assignments')
+def latin_assignments(container, spec, records, show_cw):
+	_assignments(container, spec, records, show_cw)
+
+@subject_resources('math_assignments')
+def math_assignments(container, spec, records, show_cw):
 	_assignments(container, spec, records, show_cw)
 
 @subject_resources('literature_assignments')
@@ -588,14 +601,14 @@ def _assignments(container, spec, records, show_cw):
 	ul = None
 
 	for record in records:
-		new_cw = record['cycle'], record['week']
+		new_cw = record['cycle'], record['week'] if record['week'] > spec.first_week else spec.first_week # that is, if the actual first week on record predates the first week that we're looking at, just show the first week we're looking at
 		new_resource_name = record['resource_name']
 		if new_cw != cw:
 			cw = new_cw
 			if hr:
 				container += t.hr(cls = 'clear')
 			hr = cw[1] >= spec.first_week # don't draw a line next time 'round if our current record's week number preceeds what we're spec'd to look at (this can happen for records that whose first_week is earlier than spec.first_week because the record's last_week may be well within spec's range).  For instance, in Literature, a prefix assignment item might apply to two weeks; if the user is looking at the latter, they want to see the prefix, but don't want a line separating it from the rest of the assignment, which would seem like a meaningless line
-			_add_cw(record, container)
+			_add_cw(record, container, spec)
 			new_list = True
 		if resource_name != new_resource_name:
 			resource_name = new_resource_name
@@ -606,10 +619,12 @@ def _assignments(container, spec, records, show_cw):
 				if not record['required'] > 0:
 					title += '[optional] '
 			title += resource_name
-			title += t.button('...', onclick = 'show_hide_details("%s");' % div_id, cls = 'chaser'),
-			title += t.button('$', onclick = 'show_hide_shopping("%s");' % div_id, cls = 'chaser'),
+			if not spec.for_print:
+				title += t.button('...', onclick = 'show_hide_details("%s");' % div_id, cls = 'chaser'),
+				title += t.button('$', onclick = 'show_hide_shopping("%s");' % div_id, cls = 'chaser'),
 			container += title
-			container += t.div(cls = 'shopping_links', id = div_id) # contents filled in via websocket upon '$' click to show_hide_shopping()
+			if not spec.for_print:
+				container += t.div(cls = 'shopping_links', id = div_id) # contents filled in via websocket upon '$' click to show_hide_shopping()
 			new_list = True
 
 		if new_list and not spec.shop:
@@ -708,7 +723,7 @@ def _doc(title, css = None, scripts = None):
 	d = document(title = title)
 	with d.head:
 		t.meta(name = 'viewport', content = 'width=device-width, initial-scale=1')
-		t.link(href = settings.k_static_url + 'css/main.css?v=4', rel = 'stylesheet')
+		t.link(href = settings.k_static_url + 'css/main.css?v=12', rel = 'stylesheet')
 	return d
 
 def _error(error):
@@ -797,7 +812,7 @@ def _dropdown(filt, qargs, cls, urls = False, title = None, button_class = None)
 	)
 
 
-def _add_cw(record, div):
+def _add_cw(record, div, spec):
 	# For now: not showing the "cycle" - it just takes up screen real estate
 	'''
 	cycle = record['cycle']
@@ -808,7 +823,8 @@ def _add_cw(record, div):
 	'''
 	with div:
 		#temporarily, not showing cycle: t.div(cycle, cls = 'cw')
-		t.div('W-', record['week'], cls = 'cw')
+		week = record['week'] if record['week'] > spec.first_week else spec.first_week # that is, if the actual first week on record predates the first week that we're looking at, just show the first week we're looking at
+		t.div('W-', week, cls = 'cw')
 
 def _add_cw_spacer(div):
 	with div:
@@ -982,10 +998,13 @@ def _js_filter_list(url):
 			case "show":
 				$("content").innerHTML = payload.result;
 				spec = JSON.parse(payload.spec);
-				$("first_week-button").innerHTML = "W-" + spec.first_week;
-				$("last_week-button").innerHTML = "W-" + spec.last_week;
-				if (payload.grades != null)
-					$("grade-container").innerHTML = payload.grades
+				fw_button = $("first_week-button")
+				if (fw_button) { // this basically means that we're printing only
+					fw_button.innerHTML = "W-" + spec.first_week;
+					$("last_week-button").innerHTML = "W-" + spec.last_week;
+					if (payload.grades != null)
+						$("grade-container").innerHTML = payload.grades
+				}
 				break;
 			case "show_shopping":
 				$(payload.div_id).innerHTML = payload.result

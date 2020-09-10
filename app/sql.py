@@ -284,10 +284,10 @@ _make_exre_resource_spec = lambda subject_title, handler: RS(_get_exre_resources
 
 k_history_exre_rs = _make_exre_resource_spec('History', 'history_resources')
 # Geog?
-# Math?
 k_science_exre_rs = _make_exre_resource_spec('Science', 'science_resources')
 k_literature_exre_rs = _make_exre_resource_spec('Literature', 'literature_resources')
 k_poetry_exre_rs = _make_exre_resource_spec('Poetry', 'poetry_resources')
+k_math_exre_rs = _make_exre_resource_spec('Math', 'math_resources')
 k_latin_exre_rs = _make_exre_resource_spec('Latin', 'latin_resources')
 
 
@@ -298,16 +298,25 @@ k_history_assignment_rs = _make_assignment_spec('History', 'history_assignments'
 k_literature_assignment_rs = _make_assignment_spec('Literature', 'literature_assignments')
 k_science_assignment_rs = _make_assignment_spec('Science', 'science_assignments')
 k_poetry_assignment_rs = _make_assignment_spec('Poetry', 'poetry_assignments')
-#TODO: more...
+k_math_assignment_rs = _make_assignment_spec('Math', 'math_assignments')
+k_latin_assignment_rs = _make_assignment_spec('Latin', 'latin_assignments')
 
 k_high1_resources = [
 	SS('History', (k_history_assignment_rs, k_history_grammar_rs.triplify(), k_timeline_grammar_rs.triplify(), )), # TODO: add geography?
 	SS('Science', (k_science_assignment_rs, k_science_grammar_rs, )),
 	SS('Literature', (k_literature_assignment_rs, k_english_vocabulary_rs, )),
-	# TODO: math?
+	SS('Math', (k_math_assignment_rs, )),
 	SS('Poetry', (k_poetry_assignment_rs, )),
-	#SS('Poetry', (k_poetry_exre_rs, )),
-	#SS('Latin', (k_latin_exre_rs, k_latin_vocabulary_rs, k_latin_grammar_rs, )),
+	SS('Latin', (k_latin_assignment_rs, k_latin_vocabulary_rs, k_latin_grammar_rs, )),
+]
+
+k_high1_assignments = [
+	SS('History', (k_history_assignment_rs, )),
+	SS('Science', (k_science_assignment_rs, )),
+	SS('Literature', (k_literature_assignment_rs, )),
+	SS('Math', (k_math_assignment_rs, )),
+	SS('Poetry', (k_poetry_assignment_rs, )),
+	SS('Latin', (k_latin_assignment_rs, )),
 ]
 
 
@@ -317,7 +326,8 @@ async def get_grammar_resources(dbc, spec):
 
 
 async def get_high1_resources(dbc, spec):
-	return await _get_resources(dbc, spec, k_high1_resources)
+	resources = k_high1_resources if spec.grammar_supplement else k_high1_assignments
+	return await _get_resources(dbc, spec, resources)
 
 
 

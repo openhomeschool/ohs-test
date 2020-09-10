@@ -477,6 +477,16 @@ label.answer_option_label {
 	order: 2;                       /* NEW, Spec - Opera 12.1, Firefox 20+ */
 
 	align-self: stretch;
+
+	/* all of the following are for nice pdf-export page-breaking, but none of it does the trick in Chrome, which otherwise renders the nicest; it may have something to do with using flex-boxes.  Decided on a different approach, anyway
+	position: relative;
+	-webkit-region-break-inside: avoid;
+	-webkit-region-break-after: always;
+	page-break-inside: avoid;
+	page-break-after: always;
+	break-inside: avoid;
+	break-after: always;
+	*/
 }
 
 .flex-wrap .main button {

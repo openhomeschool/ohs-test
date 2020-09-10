@@ -330,7 +330,7 @@ async def shop_year(request):
 
 _links = lambda request: (
 	('Grammar', _http_url(request, '/resources', {'program': 1})),
-	('7-9 Assignments', _http_url(request, '/resources', {'program': 3})),
+	('7th-9th Assignments', _http_url(request, '/resources', {'program': 3})),
 	('Shop', _http_url(request, '/shop')),
 	('Quiz', _http_url(request, '/quiz/history/sequence')), # TODO!
 	#('4-6 assignments': _http_url(request, '/resources?program=2'),
@@ -378,10 +378,12 @@ async def _first_resources(dbc, qargs):
 		grade = int(qargs.get('grade', 0)), # 0 = "unspecified" or "all"; common, when a program is treated all the same, and there's no need to differentiate grade
 		solo = int(qargs.get('solo', 0)), # 0 = show the designed content for the program; 1 = show *only* the content unique to the program
 		shop = int(qargs.get('shop', 0)), # 1 = show shopping links
-		subject = int(qargs.get('subject', 0)), # 0 = "all" indicator
+		subject = int(qargs.get('subject', 9)), # 0 = "all" indicator
 		cycles = (4, 1), # default: "cycle 1" ("4" refers to grammar that belongs to "all cycles" (like timeline grammar) - this is hardcode! TODO:FIX!)
 		first_week = int(qargs.get('first_week', 0)), # TODO: hardcode default to week 0! replace with lookup for user's "current week"
 		last_week = int(qargs.get('last_week', 1)), # TODO: see above; lookup user's current-week
+		grammar_supplement = int(qargs.get('grammar_supplement', 0)), # 1 = show grammar (at the bottom of assignments)
+		for_print = int(qargs.get('for_print', 0)), # 1 = no buttons, no header
 	)
 	return (spec, await k_db_handlers[spec.program](dbc, spec)) # need to send spec, itself, as there's no other way for retrieving end (ws_resources function) to get spec hereafter!
 
