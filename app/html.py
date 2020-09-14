@@ -533,7 +533,7 @@ def latin_grammar(container, spec, records, show_cw):
 	def render(record, container): # callback function, see _grammar_resources()
 		with container:
 			t.div(t.b(record['name']))
-			answer = record['pattern']
+			t.div(record['pattern'])
 			if record['example']: # TODO: PUT this into "more details" drop?
 				t.div('Example: %s - %s' % (record['example'], record['example_worked']))
 				if record['example_translated']:
