@@ -376,9 +376,10 @@ async def _first_resources(dbc, qargs):
 		deep_search = False,
 		program = int(qargs.get('program', 1)), # hardcode default to "grammar school" program if program choice not made (TODO: set this, instead, to logged-in-user's attached program
 		grade = int(qargs.get('grade', 0)), # 0 = "unspecified" or "all"; common, when a program is treated all the same, and there's no need to differentiate grade
-		solo = int(qargs.get('solo', 0)), # 0 = show the designed content for the program; 1 = show *only* the content unique to the program
+		solo = int(qargs.get('solo', 0)), # 0 = show the designed content for the program; 1 = show *only* the content unique to the program -- TODO: DEPRECATED? I think 'grammar_supplement' now takes care of this, and can't find references to solo elsewhere.....
 		shop = int(qargs.get('shop', 0)), # 1 = show shopping links
-		subject = int(qargs.get('subject', 9)), # 0 = "all" indicator
+		#subject = qargs.get('subject', '2, 8, 4'), # 0 = "all" indicator
+		subject = qargs.get('subject', 0), # 0 = "all" indicator
 		cycles = (4, 1), # default: "cycle 1" ("4" refers to grammar that belongs to "all cycles" (like timeline grammar) - this is hardcode! TODO:FIX!)
 		first_week = int(qargs.get('first_week', 0)), # TODO: hardcode default to week 0! replace with lookup for user's "current week"
 		last_week = int(qargs.get('last_week', 1)), # TODO: see above; lookup user's current-week

@@ -250,8 +250,11 @@ async def _get_assignments_DEPRECATE(dbc, spec, resource_spec):
 async def _get_resources(dbc, spec, resource_specs):
 	# Returns list of Resource_Result objects; one per subject, in the order specified in resource_specs
 	result = []
+	try: split_spec_subject_ids = [int(x) for x in str(spec.subject).split(',')]
+	except: split_spec_subject_ids = ()
 	for ss in resource_specs:
-		if spec.subject == 0 or spec.subject == k_subject_ids[ss.subject_title]:
+		subject_id = k_subject_ids[ss.subject_title]
+		if spec.subject == 0 or spec.subject == subject_id or subject_id in split_spec_subject_ids:
 			rrs = []
 			for rs in ss.resource_specs:
 				rr = RR(rs.handler, await rs.getter(dbc, spec, rs))
