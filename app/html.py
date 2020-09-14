@@ -389,7 +389,7 @@ def _grammar_resources(container, spec, records, show_cw, subject_directory, ren
 				resource_div = t.div(cls = 'resource_record')
 				buttonstrip = t.div(cls = 'buttonstrip')
 			
-				if audio_widgets:
+				if audio_widgets and not spec.for_print:
 					filename_base = subject_directory + '/c%sw%s' % (record['cycle'], record['week'])
 					with buttonstrip:
 						t.audio(t.source(src = _aurl(filename_base + '.mp3'), type = 'audio/mpeg'), id = filename_base) # invisible
@@ -502,7 +502,7 @@ def english_grammar(container, spec, records, show_cw):
 			t.div(t.b(record['prompt']))
 			answer = record['answer']
 			if record['example']:
-				answer += '(' + record['example'] + ')'
+				answer += ' (' + record['example'] + ')'
 			t.div(answer)
 
 	_grammar_resources(container, spec, records, show_cw, 'english', render, True)
@@ -535,10 +535,9 @@ def latin_grammar(container, spec, records, show_cw):
 			t.div(t.b(record['name']))
 			answer = record['pattern']
 			if record['example']: # TODO: PUT this into "more details" drop?
-				example = 'Example: %s - %s' % (record['example'], record['example_worked'])
+				t.div('Example: %s - %s' % (record['example'], record['example_worked']))
 				if record['example_translated']:
-					example += '(' + record['example_translated'] + ')'
-				t.div(example)
+					t.div(' (' + record['example_translated'] + ')')
 
 	_grammar_resources(container, spec, records, show_cw, 'latin', render, True)
 
@@ -857,6 +856,8 @@ def _event_formatted(record):
 				end = str(end)
 			result += end
 		result += ')'
+	if record['subseq']: # "extra" event
+		result = '[' + result + ']'
 	return result
 
 # -----------------------------------------------------------------------------
