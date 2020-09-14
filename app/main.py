@@ -383,9 +383,12 @@ async def _first_resources(dbc, qargs):
 		cycles = (4, 1), # default: "cycle 1" ("4" refers to grammar that belongs to "all cycles" (like timeline grammar) - this is hardcode! TODO:FIX!)
 		first_week = int(qargs.get('first_week', 0)), # TODO: hardcode default to week 0! replace with lookup for user's "current week"
 		last_week = int(qargs.get('last_week', 1)), # TODO: see above; lookup user's current-week
+		week = qargs.get('week', None), # convenience - use this to specify first_week = last_week = week
 		grammar_supplement = int(qargs.get('grammar_supplement', 1)), # 1 = show grammar (at the bottom of assignments)
 		for_print = int(qargs.get('for_print', 0)), # 1 = no buttons, no header
 	)
+	if spec.week != None:
+		spec.first_week = spec.last_week = int(spec.week)
 	return (spec, await k_db_handlers[spec.program](dbc, spec)) # need to send spec, itself, as there's no other way for retrieving end (ws_resources function) to get spec hereafter!
 
 
