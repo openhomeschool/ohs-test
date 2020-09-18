@@ -473,8 +473,9 @@ def show_shopping(records):
 def science_grammar(container, spec, records, show_cw):
 	def render(record, container): # callback function, see _grammar_resources()
 		with container:
-			t.div(t.b(record['prompt']))
-			t.div(record['answer'])
+			t.div(t.b('What %s %s?' % (record['prompt_prefix'], record['prompt'])))
+			answer_prompt = record['answer_prefix'].capitalize() + ' ' + record['prompt'] if record['answer_prefix'] else record['prompt'].capitalize()
+			t.div('%s %s %s' % (answer_prompt, record['answer_verb'], record['answer']))
 
 	_grammar_resources(container, spec, records, show_cw, 'science', render, True)
 
@@ -526,7 +527,7 @@ def latin_vocabulary(container, spec, records, show_cw):
 	def render(record, container): # callback function, see _grammar_resources()
 		_add_eqality_record(container, record, 'word', 'translation')
 
-	_grammar_resources(container, spec, records, show_cw, 'latin', render, False, t.table)
+	_grammar_resources(container, spec, records, show_cw, 'latin', render, True, t.table)
 
 @subject_resources('latin_grammar')
 def latin_grammar(container, spec, records, show_cw):
