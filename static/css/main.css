@@ -391,7 +391,7 @@ label.answer_option_label {
 	padding: 2px;
 	font-size: 1.0em;
 	
-	width: 52px;
+	width: 50px;
 }
 
 .cw-spacer {
@@ -401,7 +401,7 @@ label.answer_option_label {
 }
 
 .cw-button {
-	width: 58px; /* This is tuned to work together with .cw width, with buttons at the top; wish I could do this in a cleaner way */
+	width: 56px; /* This is tuned to work together with .cw width, with buttons at the top; wish I could do this in a cleaner way */
 }
 
 
