@@ -392,7 +392,7 @@ def _grammar_resources(container, spec, records, show_cw, subject_directory, ren
 				if audio_widgets and not spec.for_print:
 					filename_base = subject_directory + '/c%sw%s' % (record['cycle'], record['week'])
 					with buttonstrip:
-						t.audio(t.source(src = _aurl(filename_base + '.mp3'), type = 'audio/mpeg'), id = filename_base) # invisible
+						t.audio(t.source(src = _aurl(filename_base + '.mp3?v=13'), type = 'audio/mpeg'), id = filename_base) # invisible
 						t.button('>', title = 'Audio song', onclick = 'play_pause("%s", this);' % filename_base, ondblclick = 'restart_play("%s", this);' % filename_base)
 						t.button(t.img(src = _iurl('eighth-note.png')), title = 'Musical score', onclick = 'window.open("%s","_blank");' % _aurl(filename_base + '.pdf'))
 						t.button(t.img(src = _iurl('cursive-c.png')), title = 'Copywork')
