@@ -388,16 +388,18 @@ def _grammar_resources(container, spec, records, show_cw, subject_directory, ren
 				cycle_week = (record['cycle'], record['week'])
 				resource_div = t.div(cls = 'resource_record')
 				buttonstrip = t.div(cls = 'buttonstrip')
-			
+
 				if audio_widgets and not spec.for_print:
 					filename_base = subject_directory + '/c%sw%s' % (record['cycle'], record['week'])
 					with buttonstrip:
-						t.audio(t.source(src = _aurl(filename_base + '.mp3?v=13'), type = 'audio/mpeg'), id = filename_base) # invisible
-						t.button('>', title = 'Audio song', onclick = 'play_pause("%s", this);' % filename_base, ondblclick = 'restart_play("%s", this);' % filename_base)
-						t.button(t.img(src = _iurl('eighth-note.png')), title = 'Musical score', onclick = 'window.open("%s","_blank");' % _aurl(filename_base + '.pdf'))
-						t.button(t.img(src = _iurl('cursive-c.png')), title = 'Copywork')
+						t.audio(t.source(src = _aurl(filename_base + '.mp3?v=13'), type = 'audio/mpeg'), controls = True, id = filename_base, style = 'display:none;') # invisible
+						t.button('►', title = 'Audio song', onclick = 'play_pause("%s", this);' % filename_base)
+						t.button('♬', title = 'Musical score', onclick = 'window.open("%s","_blank");' % _aurl(filename_base + '.pdf'))
+						#t.button(t.img(src = _iurl('eighth-note.png')), title = 'Musical score', onclick = 'window.open("%s","_blank");' % _aurl(filename_base + '.pdf'))
+						t.button('ℓ', title = 'Copywork')
+						#t.button(t.img(src = _iurl('cursive-c.png')), title = 'Copywork')
 						t.button('Ξ', title = 'Details')
-						
+
 				_add_cw(record, buttonstrip, spec)
 				resource_div += buttonstrip
 				if record_container_class:
@@ -468,6 +470,23 @@ def show_shopping(records):
 				t.div(t.a(t.img(src = _lurl(record['source_logo'])), title, href = record['url'], target = '_blank'), cls = 'shopping_link')
 
 	return result.render()
+
+@subject_resources('multiplication_facts')
+def multiplication_facts(container, spec, records, show_cw):
+	def render(record, container): # callback function, see _grammar_resources()
+		with container:
+			t.div(t.b('%ss:' % record['operand1']))
+			products = record['products'].split(',')
+			with t.table(cls = 'celled'):
+				with t.tbody(cls = 'celled'):
+					with t.tr(cls = 'celled'):
+						for operand2 in range(len(products)):
+							t.td(operand2 + 1, cls = 'celled')
+					with t.tr(cls = 'celled'):
+						for product in products:
+							t.td(product, cls = 'celled')
+
+	_grammar_resources(container, spec, records, show_cw, 'multiplication_facts', render, True)
 
 @subject_resources('science_grammar')
 def science_grammar(container, spec, records, show_cw):
@@ -723,7 +742,7 @@ def _doc(title, css = None, scripts = None):
 	d = document(title = title)
 	with d.head:
 		t.meta(name = 'viewport', content = 'width=device-width, initial-scale=1')
-		t.link(href = settings.k_static_url + 'css/main.css?v=13', rel = 'stylesheet')
+		t.link(href = settings.k_static_url + 'css/main.css?v=14', rel = 'stylesheet')
 	return d
 
 def _error(error):
@@ -893,7 +912,9 @@ def _multi_choice_question(question, options, prompt_prefix, prompt_text, option
 def _js_util():
 	return raw('''
 
-	function $(id) { return document.getElementById(id); };
+	function $(id) {
+		return document.getElementById(id);
+	};
 		
 	function ws_send(message) {
 		if (!ws || ws.readyState == WebSocket.CLOSING || ws.readyState == WebSocket.CLOSED) {
@@ -1117,19 +1138,19 @@ def _js_play_pause():
 	return raw('''
 		function play_pause(audio_id, button) {
 			var audio = $(audio_id);
-			if (audio.paused) {
-				button.innerHTML = '||';
-				return audio.play();
+			if (!audio.paused || audio.style.display === "block") {
+				button.innerHTML = '►';
+				audio.style.display = "none";
+				audio.pause();
+				audio.currentTime = 0;
 			} else {
-				button.innerHTML = '>';
-				return audio.pause();
+				audio.onended = function() {
+					button.innerHTML = '►';
+					audio.style.display = "none";
+				};
+				button.innerHTML = '■';
+				audio.style.display = "block";
+				audio.play();
 			}
-		};
-
-		function restart_play(audio_id, button) {
-			var audio = $(audio_id);
-			button.innerHTML = '||';
-			audio.currentTime = 0;
-			return audio.play();
 		};
 	''')
