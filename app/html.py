@@ -584,7 +584,7 @@ def timeline(container, spec, records, show_cw):
 	def render(record, container): # callback function, see _grammar_resources()
 		container += t.div(_event_formatted(record))
 
-	_grammar_resources(container, spec, records, show_cw, 'timeline', render, False)
+	_grammar_resources(container, spec, records, show_cw, 'timeline', render, True)
 
 
 @subject_resources('history_assignments')
