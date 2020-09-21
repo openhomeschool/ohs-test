@@ -267,6 +267,7 @@ async def _get_resources(dbc, spec, resource_specs):
 k_timeline_grammar_rs = RS(_get_grammar_resources, 'Timeline', 'timeline', 'event', ('name', 'keywords'), ('primary_sentence', 'secondary_sentence'), None, 'cw.cycle, cw.week, event.seq')
 k_history_grammar_rs = RS(_get_grammar_resources, 'History', 'history_grammar', 'history', ('name', 'keywords', 'primary_sentence'), ('secondary_sentence',), ('event on history.event = event.id',))
 k_science_grammar_rs = RS(_get_grammar_resources, 'Science', 'science_grammar', 'science', ('prompt', 'answer'), ('note',))
+k_multiplication_fact_grammar_rs = RS(_get_grammar_resources, 'Math', 'multiplication_facts', 'multiplication_facts', ('operand1', 'products'),)
 k_english_vocabulary_rs = RS(_get_grammar_resources, 'English', 'english_vocabulary', 'vocabulary', ('word', 'definition'), ('root',), None, 'cw.cycle, cw.week, position')
 k_english_grammar_rs = RS(_get_grammar_resources, 'English', 'english_grammar', 'english', ('prompt', 'answer'), ('advanced', 'example',))
 k_latin_vocabulary_rs = RS(_get_grammar_resources, 'Latin', 'latin_vocabulary', 'latin_vocabulary', ('word', 'translation'), None, None, 'cw.cycle, cw.week, position')
@@ -277,6 +278,7 @@ k_grammar_resources = [
 	SS('History', (k_history_grammar_rs, )),
 	# TODO: geography
 	# TODO: math
+	SS('Math', (k_multiplication_fact_grammar_rs, )),
 	SS('Science', (k_science_grammar_rs, )),
 	SS('English', (k_english_vocabulary_rs, k_english_grammar_rs, )),
 	SS('Latin', (k_latin_vocabulary_rs, k_latin_grammar_rs, )),

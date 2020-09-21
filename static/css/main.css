@@ -287,6 +287,17 @@ label.answer_option_label {
 	max-height: 100%;
 }
 
+.celled {
+	border-collapse: collapse;
+	border-spacing: 0px;
+}
+.celled tr td {
+	border: 1px solid black;
+	padding: 5px;
+	text-align: center;
+	width: 1.4em;
+}
+
 /*
 .resource_block table {
 	width: 90%;
