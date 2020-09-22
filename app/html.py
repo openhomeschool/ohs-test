@@ -507,7 +507,7 @@ def english_vocabulary(container, spec, records, show_cw):
 	def render(record, container): # callback function, see _grammar_resources()
 		_add_eqality_record(container, record, 'word', 'definition')
 
-	_grammar_resources(container, spec, records, show_cw, 'english', render, False, t.table)
+	_grammar_resources(container, spec, records, show_cw, 'english', render, True, t.table)
 
 def _add_eqality_record(table, record, left_field_name, right_field_name):
 	table += t.tr(
