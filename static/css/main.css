@@ -624,6 +624,10 @@ hr.bighr {
 
 
 
+ul {
+	margin: 2px;
+	padding-left: 30px;
+}
 
 
 ul.bulletless {

@@ -328,6 +328,27 @@ async def shop_year(request):
 	return await _resources(request, {'shop': 1, 'program': 3, 'first_week': 0, 'last_week': 28})
 
 
+g_detail_handlers = dict()
+def detail_handler(handler):
+	def decorator(func):
+		g_detail_handlers[handler] = func
+		return func
+	return decorator
+
+@r.get('/q/{key}')
+async def detail(request):
+	dbc = request.app['db']
+	detail = await db.get_detail(dbc, request.match_info['key'])
+	if detail: # is a 2-tuple: {table, record}
+		table, record, details = detail
+		return await g_detail_handlers[table](record, details)
+	else:
+		raise web.HTTPNotFound(location = gurl(r, 'home')) # TODO - replace with a pagetthat indicates failure to find the 'key'
+
+@detail_handler('event')
+async def timeline_event_detail(record, details):
+	return hr(html.timeline_event_detail(record, details))
+
 _links = lambda request: (
 	('Grammar', _http_url(request, '/resources', {'program': 1})),
 	('7th-9th Assignments', _http_url(request, '/resources', {'program': 3})),

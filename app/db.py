@@ -226,6 +226,8 @@ async def get_shopping_links(dbc, resource_id):
 #DEPRECATE: 	return await sql.get_external_resources(spec)
 
 
+async def get_detail(dbc, key):
+	return await sql.get_detail(dbc, key)
 
 # -----------------------------------------------------------------------------
 # Sundry
