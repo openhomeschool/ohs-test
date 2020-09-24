@@ -389,7 +389,7 @@ def _grammar_resources(container, spec, records, show_cw, subject_directory, ren
 				resource_div = t.div(cls = 'resource_record')
 				buttonstrip = t.div(cls = 'buttonstrip')
 
-				if audio_widgets and not spec.for_print:
+				if audio_widgets and (not spec or not spec.for_print):
 					filename_base = subject_directory + '/c%sw%s' % (record['cycle'], record['week'])
 					with buttonstrip:
 						t.audio(t.source(src = _aurl(filename_base + '.mp3?v=14'), type = 'audio/mpeg'), controls = True, id = filename_base, style = 'display:none;') # invisible
@@ -691,6 +691,47 @@ def resource_list(spec, results, url, show_cw = True):
 			g_subject_resource_handlers[subresult.handler](subject_container, spec, subresult.records, show_cw)
 	return container.render()
 
+
+def timeline_event_detail(record, details):
+	
+	def render(record, container): # callback function, see _grammar_resources()
+		with container:
+			t.div(t.b(_event_formatted(record)))
+			t.div(str(record['primary_sentence']))
+			if record['secondary_sentence']:
+				t.div('  [' + record['secondary_sentence'] + ']')
+			t.div((t.b('Region: '), record['location']))
+			t.hr(cls = 'bighr')
+			
+		ul = None
+		title = None
+		for detail in details:
+			if title != detail['detail_title']:
+				title = detail['detail_title']
+				ul = None # reset
+				if not detail['sequence']: # singleton
+					container += t.div((t.b(title), ': ' + detail['detail']))
+					title = None # reset
+				else:
+					container += t.div((t.b(title)))
+					ul = t.ul()
+					container += ul
+					ul += t.li(raw(detail['detail']))
+			else: # assert(ul != None)
+				ul += t.li(raw(detail['detail']))
+
+
+	d = _doc('Timeline Event Detail - ' + record['name'])
+	section = _new_subject_section(d, 'Timeline')
+	_grammar_resources(section, None, (record,), True, 'timeline', render, True)
+
+	with d:
+
+		# JS (intentionally at bottom of file; see https://faqs.skillcrush.com/article/176-where-should-js-script-tags-be-linked-in-html-documents and many stackexchange answers):
+		t.script(_js_util())
+	return d.render()
+	
+
 # -----------------------------------------------------------------------------
 # Question handlers:
 
@@ -831,7 +872,7 @@ def _dropdown(filt, qargs, cls, urls = False, title = None, button_class = None)
 	)
 
 
-def _add_cw(record, div, spec):
+def _add_cw(record, div, spec = None):
 	# For now: not showing the "cycle" - it just takes up screen real estate
 	'''
 	cycle = record['cycle']
@@ -842,7 +883,9 @@ def _add_cw(record, div, spec):
 	'''
 	with div:
 		#temporarily, not showing cycle: t.div(cycle, cls = 'cw')
-		week = record['week'] if record['week'] > spec.first_week else spec.first_week # that is, if the actual first week on record predates the first week that we're looking at, just show the first week we're looking at
+		week = record['week']
+		if spec and record['week'] < spec.first_week: # that is, if the actual first week on record predates the first week that we're looking at, just show the first week we're looking at:
+			week = spec.first_week
 		t.div('W-', week, cls = 'cw')
 
 def _add_cw_spacer(div):
