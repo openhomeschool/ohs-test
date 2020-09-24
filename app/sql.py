@@ -350,6 +350,23 @@ async def get_external_resource_detail(id):
 async def get_shopping_links(dbc, resource_id):
 	return await fetchall(dbc, ('select *, resource_type.name as type_name, resource_source.name as source_name, resource_source.logo as source_logo, resource.note as resource_note from resource_acquisition join resource_type on resource_acquisition.type = resource_type.id join resource_source on resource_acquisition.source = resource_source.id join resource on resource_acquisition.resource = resource.id where resource.id = ? order by resource_acquisition.source', (resource_id, )))
 
+async def get_detail(dbc, key):
+	for table in ('event', 'science', ): # TODO: the rest of the tables with a qr_code field...
+		result = await fetchone(dbc, (f'''
+			select {table}.*, location.name as location, cw.cycle, cw.week from {table}
+			join location on {table}.region = location.id
+			join qr_key on {table}.qr_key = qr_key.id
+			join cycle_week as cw on {table}.cw = cw.id
+			where qr_key.key = ?''', (key,)))
+		details = await fetchall(dbc, (f'''
+			select detail.*, detail_title.title as detail_title from detail
+			join detail_title on detail.title = detail_title.id
+			order by detail_title.sequence, detail.sequence
+			''', ()))
+		if result:
+			return (table, result, details)
+		#else continue trying other tables
+	#else return None
 
 async def get_programs(dbc):
 	return await fetchall(dbc, ('select * from program', ()))
