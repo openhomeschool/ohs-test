@@ -706,19 +706,20 @@ def timeline_event_detail(record, details):
 		ul = None
 		title = None
 		for detail in details:
+			detail_detail = detail['detail'] if not detail['url'] else t.a(detail['detail'], href = detail['url'], target = "_blank")
 			if title != detail['detail_title']:
 				title = detail['detail_title']
 				ul = None # reset
 				if not detail['sequence']: # singleton
-					container += t.div((t.b(title), ': ' + detail['detail']))
+					container += t.div((t.b(title), ': ' + detail_detail))
 					title = None # reset
 				else:
 					container += t.div((t.b(title)))
 					ul = t.ul()
 					container += ul
-					ul += t.li(raw(detail['detail']))
+					ul += t.li(detail_detail)
 			else: # assert(ul != None)
-				ul += t.li(raw(detail['detail']))
+				ul += t.li(detail_detail)
 
 
 	d = _doc('Timeline Event Detail - ' + record['name'])
@@ -921,7 +922,7 @@ def _event_formatted(record):
 		result += ')'
 	if record['subseq']: # "extra" event
 		result = '[' + result + ']'
-	return result
+	return t.a(result, href = '/detail/event/%d' % record['id'], target = "_blank", cls = 'hover_link')
 
 # -----------------------------------------------------------------------------
 # Question-handler helpers:

@@ -339,11 +339,23 @@ def detail_handler(handler):
 async def detail(request):
 	dbc = request.app['db']
 	detail = await db.get_detail(dbc, request.match_info['key'])
-	if detail: # is a 2-tuple: {table, record}
+	if detail: # is a 3-tuple: {table, record, details}
 		table, record, details = detail
 		return await g_detail_handlers[table](record, details)
 	else:
 		raise web.HTTPNotFound(location = gurl(r, 'home')) # TODO - replace with a pagetthat indicates failure to find the 'key'
+
+@r.get('/detail/{table}/{id}')
+async def event_detail(request):
+	dbc = request.app['db']
+	table = request.match_info['table']
+	detail = await db.get_detail_by_id(dbc, table, request.match_info['id'])
+	if detail: # is a 2-tuple: {record, details}
+		record, details = detail
+		return await g_detail_handlers[table](record, details)
+	else:
+		raise web.HTTPNotFound(location = gurl(r, 'home')) # TODO - replace with a pagetthat indicates failure to find the 'key'
+
 
 @detail_handler('event')
 async def timeline_event_detail(record, details):
