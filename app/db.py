@@ -229,6 +229,9 @@ async def get_shopping_links(dbc, resource_id):
 async def get_detail(dbc, key):
 	return await sql.get_detail(dbc, key)
 
+async def get_detail_by_id(dbc, table, id):
+	return await sql.get_detail_by_id(dbc, table, id)
+
 # -----------------------------------------------------------------------------
 # Sundry
 

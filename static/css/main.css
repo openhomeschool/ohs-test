@@ -42,6 +42,13 @@ button {
 	cursor: pointer;
 }
 
+a.hover_link {
+	color: black;
+	cursor: pointer;
+	text-decoration: none;
+}
+a.hover_link:hover {background-color: #ddd}
+
 #correct_answer_flash {
 	color:red;
 	font-size:150%;
