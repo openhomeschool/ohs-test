@@ -358,15 +358,33 @@ async def get_detail(dbc, key):
 			join qr_key on {table}.qr_key = qr_key.id
 			join cycle_week as cw on {table}.cw = cw.id
 			where qr_key.key = ?''', (key,)))
-		details = await fetchall(dbc, (f'''
-			select detail.*, detail_title.title as detail_title from detail
-			join detail_title on detail.title = detail_title.id
-			order by detail_title.sequence, detail.sequence
-			''', ()))
 		if result:
+			details = await _get_detail(dbc, table, result['id'])
 			return (table, result, details)
 		#else continue trying other tables
 	#else return None
+
+async def get_detail_by_id(dbc, table, id):
+	result = await fetchone(dbc, (f'''
+		select {table}.*, location.name as location, cw.cycle, cw.week from {table}
+		join location on {table}.region = location.id
+		join cycle_week as cw on {table}.cw = cw.id
+		where {table}.id = ?''', (id,)))
+	if result:
+		details = await _get_detail(dbc, table, id)
+		return (result, details)
+	#else return None
+
+async def _get_detail(dbc, table, id):
+	return await fetchall(dbc, (f'''
+		select detail.*, detail_title.title as detail_title from detail
+		join detail_title on detail.title = detail_title.id
+		join {table}_detail on {table}_detail.detail = detail.id
+		join {table} on {table}.id = {table}_detail.{table}
+		where {table}.id = ?
+		order by detail_title.sequence, detail.sequence
+		''', (id,)))
+
 
 async def get_programs(dbc):
 	return await fetchall(dbc, ('select * from program', ()))
