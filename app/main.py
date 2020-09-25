@@ -335,7 +335,7 @@ def detail_handler(handler):
 		return func
 	return decorator
 
-@r.get('/q/{key}')
+@r.get('/Q/{key}')
 async def detail(request):
 	dbc = request.app['db']
 	detail = await db.get_detail(dbc, request.match_info['key'])
