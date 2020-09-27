@@ -4,6 +4,8 @@ __version__ = '0.1'
 __license__ = 'MIT'
 
 import functools
+import re
+
 import logging
 l = logging.getLogger(__name__)
 
@@ -692,14 +694,18 @@ def resource_list(spec, results, url, show_cw = True):
 	return container.render()
 
 
+def _youglishify(text):
+	return raw(re.sub(r'(\w+)', r'<a href="https://youglish.com/pronounce/\1/english?" class="hover_link" target="_blank">\1</a>', text))
+
 def timeline_event_detail(record, details):
 	
 	def render(record, container): # callback function, see _grammar_resources()
 		with container:
 			t.div(t.b(_event_formatted(record)))
-			t.div(str(record['primary_sentence']))
+			t.div(_youglishify(str(record['primary_sentence'])))
 			if record['secondary_sentence']:
-				t.div('  [' + record['secondary_sentence'] + ']')
+				t.div(_youglishify('[' + record['secondary_sentence'] + ']'))
+			t.hr(cls = 'bighr')
 			t.div((t.b('Region: '), record['location']))
 			t.hr(cls = 'bighr')
 			
@@ -730,6 +736,7 @@ def timeline_event_detail(record, details):
 
 		# JS (intentionally at bottom of file; see https://faqs.skillcrush.com/article/176-where-should-js-script-tags-be-linked-in-html-documents and many stackexchange answers):
 		t.script(_js_util())
+		t.script(_js_play_pause())
 	return d.render()
 	
 
