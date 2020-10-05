@@ -717,7 +717,8 @@ def timeline_event_detail(record, details):
 				title = detail['detail_title']
 				ul = None # reset
 				if not detail['sequence']: # singleton
-					container += t.div((t.b(title), ': ' + detail_detail))
+					l.debug('@@@ %s' % detail_detail)
+					container += t.div((t.b(title), ': ', detail_detail))
 					title = None # reset
 				else:
 					container += t.div((t.b(title)))
