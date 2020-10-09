@@ -473,6 +473,32 @@ def show_shopping(records):
 
 	return result.render()
 
+@subject_resources('general')
+def general(container, spec, records, show_cw):
+	def render(record, container): # callback function, see _grammar_resources()
+		with container:
+			path = _geurl('%s/c%dw%d.pdf' % (record['path'], record['cycle'], record['week']))
+			t.div(t.a('W-%d %s' % (record['week'], record['real_title']), href = path, cls = 'hover_link'))
+
+	_grammar_resources(container, spec, records, show_cw, 'general', render, False)
+
+
+@subject_resources('geography')
+def geography(container, spec, records, show_cw):
+	cw = None
+
+	def render(record, container): # callback function, see _grammar_resources()
+		nonlocal cw
+		new_cw = record['cycle'], record['week'] if record['week'] > spec.first_week else spec.first_week # that is, if the actual first week on record predates the first week that we're looking at, just show the first week we're looking at
+		if new_cw != cw:
+			cw = new_cw
+			path = 'c%dw%d.png?v=1' % (record['cycle'], record['week'])
+			container += t.div(t.img(src = _murl(path)))
+			container += t.span(record['name'])
+		container += t.span(', ' + record['name'])
+
+	_grammar_resources(container, spec, records, show_cw, 'geography', render, False, t.div)
+
 @subject_resources('multiplication_facts')
 def multiplication_facts(container, spec, records, show_cw):
 	def render(record, container): # callback function, see _grammar_resources()
@@ -783,6 +809,8 @@ def multi_choice_history_sequence_question(question, options):
 _dress_bool_attrs = lambda attrs: dict([(f, True) for f in attrs])
 _gurl = lambda url: settings.k_url_prefix + url # 
 _surl = lambda url: settings.k_static_url + url # static
+_geurl = lambda url: settings.k_static_url + 'general/' + url # "general" (e.g., copywork; will fix better later
+_murl = lambda url: settings.k_static_url + 'maps/' + url
 _aurl = lambda url: settings.k_static_url + 'audio/' + url # audio
 _iurl = lambda url: settings.k_static_url + 'images/' + url # images
 _lurl = lambda url: settings.k_static_url + 'images/logos/' + url # logos
