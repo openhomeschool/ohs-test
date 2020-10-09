@@ -167,6 +167,26 @@ class RR: # Resource Result
 	records: list = None
 
 
+async def _get_general_grammar(dbc, spec, resource_spec):
+	if spec.shop:
+		pass # TODO: put top-level comments here!
+	spec.table = resource_spec.table # some of the following functions want table in spec (they don't get passed resource_spec)
+	joins, wheres, args = [f"general_title on {resource_spec.table}.title = general_title.id", f"download on {resource_spec.table}.download = download.id"], [], []
+	_filter_cycle_week_range(spec, joins, wheres, args, False)
+	
+	return await fetchall(dbc, (f"select {resource_spec.table}.*, general_title.title as real_title, download.name as download_name, download.path as path, cw.cycle as cycle, cw.week as week from {resource_spec.table} "
+											+ _join(joins) + _where(wheres) + f" order by cw.cycle, cw.week, general_title.seq, {resource_spec.table}.seq", args))
+
+
+async def _get_geography_grammar(dbc, spec, resource_spec):
+	if spec.shop:
+		pass # TODO: put top-level comments here!
+	spec.table = resource_spec.table # some of the following functions want table in spec (they don't get passed resource_spec)
+	joins, wheres, args = [], [f"{resource_spec.table}.bonus is not true"], []
+	_filter_cycle_week_range(spec, joins, wheres, args, False)
+	
+	return await fetchall(dbc, (f"select * from {resource_spec.table} " + _join(joins) + _where(wheres) + f" order by cw.cycle, cw.week, seq", args))
+
 
 async def _get_grammar_resources(dbc, spec, resource_spec):
 	if spec.shop:
@@ -253,7 +273,7 @@ async def _get_resources(dbc, spec, resource_specs):
 	try: split_spec_subject_ids = [int(x) for x in str(spec.subject).split(',')]
 	except: split_spec_subject_ids = ()
 	for ss in resource_specs:
-		subject_id = k_subject_ids[ss.subject_title]
+		subject_id = k_subject_ids.get(ss.subject_title, 0)
 		if spec.subject == 0 or spec.subject == subject_id or subject_id in split_spec_subject_ids:
 			rrs = []
 			for rs in ss.resource_specs:
@@ -264,8 +284,10 @@ async def _get_resources(dbc, spec, resource_specs):
 	return result
 
 
+k_general_grammar_rs = RS(_get_general_grammar, 'General', 'general', 'general', ())
 k_timeline_grammar_rs = RS(_get_grammar_resources, 'Timeline', 'timeline', 'event', ('name', 'keywords'), ('primary_sentence', 'secondary_sentence'), None, 'cw.cycle, cw.week, event.seq')
 k_history_grammar_rs = RS(_get_grammar_resources, 'History', 'history_grammar', 'history', ('name', 'keywords', 'primary_sentence'), ('secondary_sentence',), ('event on history.event = event.id',))
+k_geography_grammar_rs = RS(_get_geography_grammar, 'Geography', 'geography', 'location', ())
 k_science_grammar_rs = RS(_get_grammar_resources, 'Science', 'science_grammar', 'science', ('prompt', 'answer'), ('note',))
 k_multiplication_fact_grammar_rs = RS(_get_grammar_resources, 'Math', 'multiplication_facts', 'multiplication_facts', ('operand1', 'products'),)
 k_english_vocabulary_rs = RS(_get_grammar_resources, 'English', 'english_vocabulary', 'vocabulary', ('word', 'definition'), ('root',), None, 'cw.cycle, cw.week, position')
@@ -274,10 +296,10 @@ k_latin_vocabulary_rs = RS(_get_grammar_resources, 'Latin', 'latin_vocabulary', 
 k_latin_grammar_rs = RS(_get_grammar_resources, 'Latin', 'latin_grammar', 'latin', ('name', 'pattern'), ('example',))
 
 k_grammar_resources = [
+	SS('All', (k_general_grammar_rs, )),
 	SS('Timeline', (k_timeline_grammar_rs, )),
 	SS('History', (k_history_grammar_rs, )),
-	# TODO: geography
-	# TODO: math
+	SS('Geography', (k_geography_grammar_rs, )),
 	SS('Math', (k_multiplication_fact_grammar_rs, )),
 	SS('Science', (k_science_grammar_rs, )),
 	SS('English', (k_english_vocabulary_rs, k_english_grammar_rs, )),
