@@ -477,8 +477,8 @@ def show_shopping(records):
 def general(container, spec, records, show_cw):
 	def render(record, container): # callback function, see _grammar_resources()
 		with container:
-			path = _geurl('%s/c%dw%d.pdf?v=1' % (record['path'], record['cycle'], record['week']))
-			t.div(t.a('W-%d %s' % (record['week'], record['real_title']), href = path, cls = 'hover_link', target = "_blank"))
+			path = _geurl('%s/%s%s?v=1' % (record['download_path'], record['filename_crux'], record['filename_suffix']))
+			t.div(t.a('%s - %s' % (record['real_title'], record['description']), href = path, cls = 'hover_link', target = "_blank"))
 
 	_grammar_resources(container, spec, records, show_cw, 'general', render, False)
 

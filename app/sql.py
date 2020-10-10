@@ -171,10 +171,10 @@ async def _get_general_grammar(dbc, spec, resource_spec):
 	if spec.shop:
 		pass # TODO: put top-level comments here!
 	spec.table = resource_spec.table # some of the following functions want table in spec (they don't get passed resource_spec)
-	joins, wheres, args = [f"general_title on {resource_spec.table}.title = general_title.id", f"download on {resource_spec.table}.download = download.id"], [], []
+	joins, wheres, args = [f"general_title on {resource_spec.table}.title = general_title.id", f"download on {resource_spec.table}.path = download.id"], [], []
 	_filter_cycle_week_range(spec, joins, wheres, args, False)
 	
-	return await fetchall(dbc, (f"select {resource_spec.table}.*, general_title.title as real_title, download.name as download_name, download.path as path, cw.cycle as cycle, cw.week as week from {resource_spec.table} "
+	return await fetchall(dbc, (f"select {resource_spec.table}.*, general_title.title as real_title, download.filename_suffix, download.path as download_path, cw.cycle as cycle, cw.week as week from {resource_spec.table} "
 											+ _join(joins) + _where(wheres) + f" order by cw.cycle, cw.week, general_title.seq, {resource_spec.table}.seq", args))
 
 
