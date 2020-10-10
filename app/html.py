@@ -490,12 +490,14 @@ def geography(container, spec, records, show_cw):
 	def render(record, container): # callback function, see _grammar_resources()
 		nonlocal cw
 		new_cw = record['cycle'], record['week'] if record['week'] > spec.first_week else spec.first_week # that is, if the actual first week on record predates the first week that we're looking at, just show the first week we're looking at
+		name = record['name']
 		if new_cw != cw:
 			cw = new_cw
-			path = 'c%dw%d.png?v=1' % (record['cycle'], record['week'])
+			path = 'c%dw%02d_geography.png?v=2' % (record['cycle'], record['week'])
 			container += t.div(t.img(src = _murl(path)))
-			container += t.span(record['name'])
-		container += t.span(', ' + record['name'])
+		else:
+			name = ', ' + name
+		container += t.span(name)
 
 	_grammar_resources(container, spec, records, show_cw, 'geography', render, False, t.div)
 
