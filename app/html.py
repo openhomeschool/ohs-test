@@ -497,7 +497,7 @@ def geography(container, spec, records, show_cw):
 			container += t.div(t.img(src = _murl(path)))
 		else:
 			name = ', ' + name
-		container += t.span(name)
+		container += t.span(_youglishify(str(name)))
 
 	_grammar_resources(container, spec, records, show_cw, 'geography', render, False, t.div)
 
