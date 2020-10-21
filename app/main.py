@@ -361,8 +361,12 @@ async def event_detail(request):
 async def timeline_event_detail(record, details):
 	return hr(html.timeline_event_detail(record, details))
 
+k_temp_this_week = 5
+
 _links = lambda request: (
 	('Grammar', _http_url(request, '/resources', {'program': 1})),
+	('Rev-4', _http_url(request, '/resources', {'program': 1, 'first_week': max(0, k_temp_this_week - 3), 'last_week': k_temp_this_week})),
+	('Rev-6', _http_url(request, '/resources', {'program': 1, 'first_week': max(0, k_temp_this_week - 5), 'last_week': k_temp_this_week})),
 	('7th-9th Assignments', _http_url(request, '/resources', {'program': 3})),
 	('Shop', _http_url(request, '/shop')),
 	('Quiz', _http_url(request, '/quiz/history/sequence')), # TODO!
@@ -401,7 +405,6 @@ k_db_handlers = { # 'id' keys must coincide with DB 'program' table
 	6: db.get_grammar_resources, # TODO: placeholder
 }
 
-
 async def _first_resources(dbc, qargs):
 	spec = util.Struct(
 		#user_id = session['user_id'],
@@ -414,8 +417,8 @@ async def _first_resources(dbc, qargs):
 		#subject = qargs.get('subject', '2, 8, 4'), # 0 = "all" indicator
 		subject = qargs.get('subject', 0), # 0 = "all" indicator
 		cycles = (4, 1), # default: "cycle 1" ("4" refers to grammar that belongs to "all cycles" (like timeline grammar) - this is hardcode! TODO:FIX!)
-		first_week = int(qargs.get('first_week', 5)), # TODO: hardcode default to week 0! replace with lookup for user's "current week"
-		last_week = int(qargs.get('last_week', 5)), # TODO: see above; lookup user's current-week
+		first_week = int(qargs.get('first_week', k_temp_this_week)), # TODO: hardcode default to week 0! replace with lookup for user's "current week"
+		last_week = int(qargs.get('last_week', k_temp_this_week)), # TODO: see above; look up user's current-week
 		week = qargs.get('week', None), # convenience - use this to specify first_week = last_week = week
 		grammar_supplement = int(qargs.get('grammar_supplement', 1)), # 1 = show grammar (at the bottom of assignments)
 		for_print = int(qargs.get('for_print', 0)), # 1 = no buttons, no header
