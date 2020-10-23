@@ -822,7 +822,7 @@ def _doc(title, css = None, scripts = None):
 	d = document(title = title)
 	with d.head:
 		t.meta(name = 'viewport', content = 'width=device-width, initial-scale=1')
-		t.link(href = settings.k_static_url + 'css/main.css?v=14', rel = 'stylesheet')
+		t.link(href = settings.k_static_url + 'css/main.css?v=15', rel = 'stylesheet')
 	return d
 
 def _error(error):

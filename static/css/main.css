@@ -27,7 +27,7 @@ input[type="text"], input[type="email"], input[type="password"] {
 input[type="submit"] {
 	margin-top: 15px;
 	font-size: 150%;
-	border-radius: 4px;
+	border-radius: 5px;
 }
 
 input[type="radio"] {
@@ -35,9 +35,10 @@ input[type="radio"] {
 }
 
 button {
+	padding: 7px 10px;
 	margin-top: 15px;
-	font-size: 150%;
-	border-radius: 4px;
+	font-size: 160%;
+	border-radius: 5px;
 	border: 1px;
 	cursor: pointer;
 }
@@ -178,7 +179,7 @@ label.answer_option_label {
 
 .quiz_button {
 	margin: .5em .5em .5em 2em;
-	border-radius: 4px;
+	border-radius: 5px;
 	border: 1px;
 	cursor: pointer;
 	background-color: #7475b8;
@@ -190,7 +191,7 @@ label.answer_option_label {
 .dropdown-button {
 	margin: 2px;
 	font-size: 1em;
-	border-radius: 4px;
+	border-radius: 5px;
 	color: white;
 	background-color: #7475b8;
 	border: 1px;
@@ -364,7 +365,7 @@ label.answer_option_label {
 .resource_block button {
 	margin: 2px;
 	font-size: 1em;
-	border-radius: 4px;
+	border-radius: 5px;
 	color: white;
 	background-color: #7475b8;
 	border: 1px;
@@ -398,7 +399,7 @@ label.answer_option_label {
 
 .cw {
 	border: 1px solid black;
-	border-radius: 4px;
+	border-radius: 5px;
 	text-align: center;
 	display: inline-block;
 	float: right;
@@ -510,8 +511,8 @@ label.answer_option_label {
 .flex-wrap .main button {
 	margin: 1px;
 	font-size: 1em;
-	border-radius: 4px;
-	height: 25px;
+	border-radius: 5px;
+	min-height: 25px;
 	color: white;
 	/* background-color: #bfc0dd; */
 	background-color: #7475b8;
@@ -522,7 +523,7 @@ label.answer_option_label {
 .flex-wrap .main .chaser {
 	margin: 1px;
 	font-size: 0.8em;
-	border-radius: 4px;
+	border-radius: 5px;
 	height: 18px;
 	color: white;
 	background-color: #bdbdcb;
@@ -537,8 +538,8 @@ label.answer_option_label {
 
 
 .flex-wrap .buttonstrip button {
-	width: 25px;
-	height: 25px;
+	min-width: 25px;
+	min-height: 25px;
 	vertical-align: bottom;
 }
 
