@@ -338,8 +338,7 @@ def resources(ws_url, filters, cycles, weeks, qargs, links): # TODO: this is bas
 						with t.div(id = '%s-container' % key):
 							_dropdown((key, options), qargs, 'ib-left')
 					_dropdown(weeks[0], qargs, 'ib-right', button_class = 'cw-button')
-					t.div(cls = 'clear') # next row...
-					t.div(_text_input('search', None, ('autofocus',), {'autocomplete': 'off', 'oninput': 'search(this.value)'}, 'Search', type_ = 'search'), cls = 'search')
+					t.div(_text_input('search', None, ('autofocus',), {'autocomplete': 'off', 'oninput': 'search(this.value)', 'class': 'search'}, 'Search', type_ = 'search'), cls = 'clear')
 					_dropdown(weeks[1], qargs, 'ib-right', button_class = 'cw-button')
 					_dropdown(cycles, qargs, 'ib-right', button_class = 'cw-button')
 
