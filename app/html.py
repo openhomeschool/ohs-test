@@ -534,14 +534,15 @@ def science_resources(container, spec, records, show_cw):
 @subject_resources('english_vocabulary')
 def english_vocabulary(container, spec, records, show_cw):
 	def render(record, container): # callback function, see _grammar_resources()
-		_add_eqality_record(container, record, 'word', 'definition')
+		_add_eqality_record(container, record, 'word', 'definition', True)
 
 	_grammar_resources(container, spec, records, show_cw, 'english', render, True, t.table)
 
-def _add_eqality_record(table, record, left_field_name, right_field_name):
+def _add_eqality_record(table, record, left_field_name, right_field_name, youglishit = False):
+	youglishify = _youglishify if youglishit else str
 	table += t.tr(
-		t.td(t.b(record[left_field_name]), cls = 'left-equality-cell'),
-		t.td(' = ', record[right_field_name], cls = 'right-equality-cell')
+		t.td(t.b(youglishify(str(record[left_field_name]))), cls = 'left-equality-cell'),
+		t.td(' = ', youglishify(str(record[right_field_name])), cls = 'right-equality-cell')
 	)
 
 @subject_resources('english_grammar')
@@ -573,7 +574,7 @@ def math_resources(container, spec, records, show_cw):
 @subject_resources('latin_vocabulary')
 def latin_vocabulary(container, spec, records, show_cw):
 	def render(record, container): # callback function, see _grammar_resources()
-		_add_eqality_record(container, record, 'word', 'translation')
+		_add_eqality_record(container, record, 'word', 'translation', False)
 
 	_grammar_resources(container, spec, records, show_cw, 'latin', render, True, t.table)
 
@@ -599,8 +600,8 @@ def latin_resources(container, spec, records, show_cw):
 def history_grammar(container, spec, records, show_cw):
 	def render(record, container): # callback function, see _grammar_resources()
 		with container:
-			t.div(t.b('%s - tell me more' % record['name']))
-			t.div(record['primary_sentence'])
+			t.div(t.b(t.a('%s - tell me more' % record['name'], href = _gurl('/detail/event/%d' % record['event']), target = "_blank", cls = 'hover_link')))
+			t.div(_youglishify(str(record['primary_sentence'])))
 
 	_grammar_resources(container, spec, records, show_cw, 'history', render, True)
 
@@ -728,7 +729,7 @@ def timeline_event_detail(record, details):
 	
 	def render(record, container): # callback function, see _grammar_resources()
 		with container:
-			t.div(t.b(_event_formatted(record)))
+			t.div(t.b(_event_formatted(record, False)))
 			t.div(_youglishify(str(record['primary_sentence'])))
 			if record['secondary_sentence']:
 				t.div(_youglishify('[' + record['secondary_sentence'] + ']'))
@@ -930,8 +931,8 @@ def _add_cw_spacer(div):
 	with div:
 		t.div('. ', cls = 'cw-spacer')
 
-def _event_formatted(record):
-	result = record['name']
+def _event_formatted(record, detail_link = True):
+	result = record['name'] if detail_link else _youglishify(record['name'])
 	if not record['fake_start_date']:
 		result += ' ('
 		# Start date:
@@ -959,7 +960,10 @@ def _event_formatted(record):
 		result += ')'
 	if record['subseq']: # "extra" event
 		result = '[' + result + ']'
-	return t.a(result, href = _gurl('/detail/event/%d' % record['id']), target = "_blank", cls = 'hover_link')
+	if detail_link:
+		return t.a(result, href = _gurl('/detail/event/%d' % record['id']), target = "_blank", cls = 'hover_link')
+	#else:
+	return result
 
 # -----------------------------------------------------------------------------
 # Question-handler helpers:
