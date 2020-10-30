@@ -296,7 +296,6 @@ k_latin_vocabulary_rs = RS(_get_grammar_resources, 'Latin', 'latin_vocabulary', 
 k_latin_grammar_rs = RS(_get_grammar_resources, 'Latin', 'latin_grammar', 'latin', ('name', 'pattern'), ('example',))
 
 k_grammar_resources = [
-	SS('All', (k_general_grammar_rs, )),
 	SS('Timeline', (k_timeline_grammar_rs, )),
 	SS('History', (k_history_grammar_rs, )),
 	SS('Geography', (k_geography_grammar_rs, )),
@@ -304,6 +303,7 @@ k_grammar_resources = [
 	SS('Science', (k_science_grammar_rs, )),
 	SS('English', (k_english_vocabulary_rs, k_english_grammar_rs, )),
 	SS('Latin', (k_latin_vocabulary_rs, k_latin_grammar_rs, )),
+	SS('All', (k_general_grammar_rs, )),
 ]
 
 
