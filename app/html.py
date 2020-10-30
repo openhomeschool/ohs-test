@@ -527,7 +527,7 @@ def science_grammar(container, spec, records, show_cw):
 		with container:
 			t.div(t.b('What %s %s?' % (record['prompt_prefix'], record['prompt'])))
 			answer_prompt = record['answer_prefix'].capitalize() + ' ' + record['prompt'] if record['answer_prefix'] else record['prompt'].capitalize()
-			t.div('%s %s %s' % (answer_prompt, record['answer_verb'], record['answer']))
+			t.div(_youglishify('%s %s %s' % (answer_prompt, record['answer_verb'], record['answer'])))
 
 	_grammar_resources(container, spec, records, show_cw, 'science', render, True)
 
