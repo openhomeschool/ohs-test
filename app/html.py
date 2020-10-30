@@ -400,10 +400,8 @@ def _grammar_resources(container, spec, records, show_cw, subject_directory, ren
 						t.audio(t.source(src = _aurl(filename_base + '.mp3?v=14'), type = 'audio/mpeg'), controls = True, id = filename_base, style = 'display:none;') # invisible
 						t.button('►', title = 'Audio song', onclick = 'play_pause("%s", this);' % filename_base)
 						t.button('♬', title = 'Musical score', onclick = 'window.open("%s","_blank");' % _aurl(filename_base + '.pdf'))
-						#t.button(t.img(src = _iurl('eighth-note.png')), title = 'Musical score', onclick = 'window.open("%s","_blank");' % _aurl(filename_base + '.pdf'))
-						t.button('ℓ', title = 'Copywork')
-						#t.button(t.img(src = _iurl('cursive-c.png')), title = 'Copywork')
-						t.button('Ξ', title = 'Details')
+						#t.button('ℓ', title = 'Copywork')
+						#t.button('Ξ', title = 'Details')
 
 				_add_cw(record, buttonstrip, spec)
 				resource_div += buttonstrip
@@ -816,6 +814,7 @@ _dress_bool_attrs = lambda attrs: dict([(f, True) for f in attrs])
 _gurl = lambda url: settings.k_url_prefix + url # 
 _surl = lambda url: settings.k_static_url + url # static
 _geurl = lambda url: settings.k_static_url + 'general/' + url # "general" (e.g., copywork; will fix better later
+_scurl = lambda url: settings.k_static_url + 'science/' + url 
 _murl = lambda url: settings.k_static_url + 'maps/' + url
 _aurl = lambda url: settings.k_static_url + 'audio/' + url # audio
 _iurl = lambda url: settings.k_static_url + 'images/' + url # images
