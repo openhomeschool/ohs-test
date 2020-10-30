@@ -322,8 +322,11 @@ def grades_filter_button(key, options):
 def resources(ws_url, filters, cycles, weeks, qargs, links): # TODO: this is basically identical to select_user (and presumably other search-driven pages whose content comes via websocket); consolidate!
 	d = _doc('Resources')
 	for_print = int(qargs.get('for_print', 0)) # 1 = no buttons, no header
+	show_search = int(qargs.get('show_search', 1)) # 1 = show, 0 = don't
+	show_go = int(qargs.get('show_go', 1)) # 1 = show, 0 = don't
+
 	with d:
-		if not for_print:
+		if show_go and not for_print:
 			with t.div(cls = 'flex-wrap'): # TODO: make a 'header_block' or something; different border color, perhaps
 				t.div(t.b('Go'), cls = 'title') # TODO: replace with a magnifying-glass gif!
 				with t.div(cls = 'main'):
@@ -331,6 +334,7 @@ def resources(ws_url, filters, cycles, weeks, qargs, links): # TODO: this is bas
 						t.button(name, title = name, onclick = f'window.open("{url}", "_self");')
 					
 
+		if show_search and not for_print:
 			with t.div(cls = 'flex-wrap'): # TODO: make a 'header_block' or something; different border color, perhaps
 				t.div(t.b('Search'), cls = 'title') # TODO: replace with a magnifying-glass gif!
 				with t.div(cls = 'main'):
