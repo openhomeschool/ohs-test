@@ -303,7 +303,7 @@ k_grammar_resources = [
 	SS('Science', (k_science_grammar_rs, )),
 	SS('English', (k_english_vocabulary_rs, k_english_grammar_rs, )),
 	SS('Latin', (k_latin_vocabulary_rs, k_latin_grammar_rs, )),
-	SS('All', (k_general_grammar_rs, )),
+	SS('Extra', (k_general_grammar_rs, )),
 ]
 
 
