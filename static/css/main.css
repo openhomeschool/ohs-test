@@ -432,6 +432,12 @@ label.answer_option_label {
 	clear: right;
 }
 
+.buttonstrip_detail {
+	display: none; /* detail is only displayed on command */
+	float: right;
+	clear: right;
+}
+
 .resource_record .pair {
 	display: inline-block;
 	float: left;
@@ -540,6 +546,11 @@ label.answer_option_label {
 
 
 .flex-wrap .buttonstrip button {
+	min-width: 25px;
+	height: 33px;
+	vertical-align: bottom;
+}
+.flex-wrap .buttonstrip_detail button {
 	min-width: 25px;
 	height: 33px;
 	vertical-align: bottom;

@@ -397,14 +397,19 @@ def _grammar_resources(container, spec, records, show_cw, subject_directory, ren
 				if audio_widgets and (not spec or not spec.for_print):
 					filename_base = subject_directory + '/c%sw%s' % (record['cycle'], record['week'])
 					with buttonstrip:
-						t.audio(t.source(src = _aurl(filename_base + '.mp3?v=14'), type = 'audio/mpeg'), controls = True, id = filename_base, style = 'display:none;') # invisible
 						t.button('►', title = 'Audio song', onclick = 'play_pause("%s", this);' % filename_base)
 						t.button('♬', title = 'Musical score', onclick = 'window.open("%s","_blank");' % _aurl(filename_base + '.pdf'))
 						#t.button('ℓ', title = 'Copywork')
 						#t.button('Ξ', title = 'Details')
+					buttonstrip_detail = t.div(cls = 'buttonstrip_detail', id = filename_base + '_container') # invisible at first
+					with buttonstrip_detail:
+						t.audio(t.source(src = _aurl(filename_base + '.mp3?v=15'), type = 'audio/mpeg'), controls = True, id = filename_base)
+						t.button('-', title = 'Lower pitch', onclick = 'lower_pitch("%s");' % filename_base)
 
 				_add_cw(record, buttonstrip, spec)
 				resource_div += buttonstrip
+				if audio_widgets:
+					resource_div += buttonstrip_detail
 				if record_container_class:
 					record_container = record_container_class()
 					resource_div += record_container
@@ -519,13 +524,27 @@ def multiplication_facts(container, spec, records, show_cw):
 
 	_grammar_resources(container, spec, records, show_cw, 'multiplication_facts', render, True)
 
+
+def _add_eqality_record(table, record, left_field_name, right_field_name, youglishit = False):
+	youglishify = _youglishify if youglishit else str
+	table += t.tr(
+		t.td(t.b(youglishify(str(record[left_field_name]))), cls = 'left-equality-cell'),
+		t.td(' = ', youglishify(str(record[right_field_name])), cls = 'right-equality-cell')
+	)
+
+def _prefix_answer(record, youglishit = False):
+	answer_prompt = record['answer_prefix'].capitalize() + ' ' + record['prompt'] if record['answer_prefix'] else record['prompt'].capitalize()
+	answer = '%s %s %s' % (answer_prompt, record['answer_verb'], record['answer'])
+	if youglishit:
+		answer = _youglishify('%s %s %s' % (answer_prompt, record['answer_verb'], record['answer']))
+	return answer
+
 @subject_resources('science_grammar')
 def science_grammar(container, spec, records, show_cw):
 	def render(record, container): # callback function, see _grammar_resources()
 		with container:
 			t.div(t.b('What %s %s?' % (record['prompt_prefix'], record['prompt'])))
-			answer_prompt = record['answer_prefix'].capitalize() + ' ' + record['prompt'] if record['answer_prefix'] else record['prompt'].capitalize()
-			t.div(_youglishify('%s %s %s' % (answer_prompt, record['answer_verb'], record['answer'])))
+			t.div(_prefix_answer(record, True))
 
 	_grammar_resources(container, spec, records, show_cw, 'science', render, True)
 
@@ -540,19 +559,12 @@ def english_vocabulary(container, spec, records, show_cw):
 
 	_grammar_resources(container, spec, records, show_cw, 'english', render, True, t.table)
 
-def _add_eqality_record(table, record, left_field_name, right_field_name, youglishit = False):
-	youglishify = _youglishify if youglishit else str
-	table += t.tr(
-		t.td(t.b(youglishify(str(record[left_field_name]))), cls = 'left-equality-cell'),
-		t.td(' = ', youglishify(str(record[right_field_name])), cls = 'right-equality-cell')
-	)
-
 @subject_resources('english_grammar')
 def english_grammar(container, spec, records, show_cw):
 	def render(record, container): # callback function, see _grammar_resources()
 		with container:
-			t.div(t.b(record['prompt']))
-			answer = record['answer']
+			t.div(t.b('What %s %s?' % (record['prompt_prefix'], record['prompt'])))
+			answer = _prefix_answer(record)
 			if record['example']:
 				answer += ' (' + record['example'] + ')'
 			t.div(answer)
@@ -1226,19 +1238,23 @@ def _js_play_pause():
 	return raw('''
 		function play_pause(audio_id, button) {
 			var audio = $(audio_id);
-			if (!audio.paused || audio.style.display === "block") {
+			var container = $(audio_id + '_container');
+			if (!audio.paused || container.style.display === "block") {
 				button.innerHTML = '►';
-				audio.style.display = "none";
+				container.style.display = "none";
 				audio.pause();
 				audio.currentTime = 0;
 			} else {
 				audio.onended = function() {
 					button.innerHTML = '►';
-					audio.style.display = "none";
+					container.style.display = "none";
 				};
 				button.innerHTML = '■';
-				audio.style.display = "block";
+				container.style.display = "block";
 				audio.play();
 			}
+		};
+		function lower_pitch(audio_id) {
+			
 		};
 	''')
