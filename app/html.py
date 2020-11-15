@@ -539,6 +539,14 @@ def _prefix_answer(record, youglishit = False):
 		answer = _youglishify('%s %s %s' % (answer_prompt, record['answer_verb'], record['answer']))
 	return answer
 
+@subject_resources('math_vocabulary')
+def math_vocabulary(container, spec, records, show_cw):
+	def render(record, container): # callback function, see _grammar_resources()
+		_add_eqality_record(container, record, 'word', 'equivalent', True)
+
+	_grammar_resources(container, spec, records, show_cw, 'math', render, False, t.table)
+
+
 @subject_resources('science_grammar')
 def science_grammar(container, spec, records, show_cw):
 	def render(record, container): # callback function, see _grammar_resources()
