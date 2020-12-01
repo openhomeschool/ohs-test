@@ -361,7 +361,7 @@ async def event_detail(request):
 async def timeline_event_detail(record, details):
 	return hr(html.timeline_event_detail(record, details))
 
-k_temp_this_week = 9
+k_temp_this_week = 10
 
 _links = lambda request: (
 	('Grammar', _http_url(request, '/resources', {'program': 1})),
