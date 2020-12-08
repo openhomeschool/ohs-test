@@ -636,7 +636,8 @@ def history_resources(container, spec, records, show_cw):
 @subject_resources('timeline')
 def timeline(container, spec, records, show_cw):
 	def render(record, container): # callback function, see _grammar_resources()
-		container += t.div(_event_formatted(record))
+		if not record['subseq']: # for now, ignoring subseq records... TODO! (probably want these, still, for high-schoolers!)
+			container += t.div(_event_formatted(record))
 
 	_grammar_resources(container, spec, records, show_cw, 'timeline', render, True)
 
@@ -984,7 +985,7 @@ def _event_formatted(record, detail_link = True):
 			result += end
 		result += ')'
 	if record['subseq']: # "extra" event
-		pass #TODO: decide whether and where to put this back in: result = '[' + result + ']'
+		result = '[' + result + ']'
 	if detail_link:
 		return t.a(result, href = _gurl('/detail/event/%d' % record['id']), target = "_blank", cls = 'hover_link')
 	#else:
