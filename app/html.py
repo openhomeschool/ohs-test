@@ -403,7 +403,7 @@ def _grammar_resources(container, spec, records, show_cw, subject_directory, ren
 						#t.button('Ξ', title = 'Details')
 					buttonstrip_detail = t.div(cls = 'buttonstrip_detail', id = filename_base + '_container') # invisible at first
 					with buttonstrip_detail:
-						t.audio(t.source(src = _aurl(filename_base + '.mp3?v=23'), type = 'audio/mpeg'), controls = True, id = filename_base)
+						t.audio(t.source(src = _aurl(filename_base + '.mp3?v=24'), type = 'audio/mpeg'), controls = True, id = filename_base)
 						#t.button('-', title = 'Lower pitch', onclick = 'lower_pitch("%s");' % filename_base)
 
 				_add_cw(record, buttonstrip, spec)
