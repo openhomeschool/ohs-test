@@ -984,7 +984,7 @@ def _event_formatted(record, detail_link = True):
 			result += end
 		result += ')'
 	if record['subseq']: # "extra" event
-		result = '[' + result + ']'
+		pass #TODO: decide whether and where to put this back in: result = '[' + result + ']'
 	if detail_link:
 		return t.a(result, href = _gurl('/detail/event/%d' % record['id']), target = "_blank", cls = 'hover_link')
 	#else:
