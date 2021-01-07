@@ -15,6 +15,8 @@ Install and Configuration
 	$ cd ohs-test/
 	$ pip install -r requirements.txt
 
+(Note, the pip install may rely on apt-installs like libffi-dev, ...)
+
 Create the database::
 
 	$ cat ohs-test.sql | sqlite3 ohs-test.db
