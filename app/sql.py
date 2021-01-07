@@ -24,7 +24,13 @@ Use like this:
 '''
 
 async def fetchone(db, sql_and_args):
+	#TODO: sql_and_args[0] += ' limit 1'
 	e = await db.execute(*sql_and_args)
+	return await e.fetchone()
+
+async def fetchone_(db, sql, args):
+	sql += ' limit 1'
+	e = await db.execute(sql, args)
 	return await e.fetchone()
 
 async def fetchall(db, sql_and_args):
@@ -114,6 +120,96 @@ async def get_surrounding_event_records(spec, count, event):
 	l.debug('SURROUNDING EVENTS: %s' % ['%s (%s), ' % (e['name'], e['id']) for e in result])
 	l.debug('ANSWER: %d' % answer)
 	return result, answer
+
+
+
+
+
+
+
+async def _fetch_new_fact(dbc, spec):
+	joins = [f"{spec.assessment_join_table} on {spec.assessment_join_table}.fact = {spec.fact_table}.id",
+				f"assessment on {spec.assessment_join_table}.assessment = assessment.id", ]
+	order_by_desc = ', '.join([f'{field} desc' for field in spec.order_by_fields])
+	order_by_asc = ', '.join(spec.order_by_fields)
+	
+	last = await fetchone_(dbc, f"select {spec.fact_table}.* from {spec.fact_table} " + _join(joins) + _where(spec.wheres + ["assessment.student = ?", ]) + f" order by {order_by_desc} ", [spec.student_id, ])
+	if not last: # Not a single record that matches spec; therefore, fetch a first (use order_by in ascent):
+		return await fetchone_(dbc, f"select {spec.fact_table}.* from {spec.fact_table} " + _where(spec.wheres) + f" order by {order_by_asc} ", [])
+	#else, get next fact "after" fetched one:
+	new_fact = await fetchone_(dbc, f"select {spec.fact_table}.* from {spec.fact_table} " 
+				+ _where(spec.wheres + ["arithmetic_fact.operand1 >= ?", "arithmetic_fact.operand2 > ?"]) + f" order by {order_by_asc} ", [last['operand1'], last['operand2']])
+	return new_fact
+	
+def _add_assessment(dbc, spec):
+	cursor = dbc.cursor()
+	cursor.execute("insert into assessment (speed_ms, correct, student) values (?, ?, ?)", [spec.speed_ms, spec.correct, spec.student])
+	cursor.execute(f"insert into {spec.assessment_join_table} (fact, assessment) values (?, ?)", [spec.fact_id, cursor.lastrowid])
+	dbc.commit()
+	
+"""
+spec = util.Struct(
+  assessment_join_table = 'arithmetic_fact_assessments',
+  fact_table = 'arithmetic_fact',
+  wheres = [f"arithmetic_fact.operator = '+'", ],
+  order_by_fields = ['arithmetic_fact.operand1', 'arithmetic_fact.operand2']
+)
+spec.student_id = 2
+
+after sql._fetch_new_fact(dbc, spec) ...
+>>> result['operand1']
+0
+>>> result['operand2']
+1
+>>> result['operator']
+'+'
+>>> result['answer']
+1
+
+spec2 = util.Struct(
+	assessment_join_table = 'arithmetic_fact_assessments',
+	fact_id = 146, # = result['id'] from _fetch_new_fact() or like
+	speed_ms = 5,
+	correct = 1,
+	student = 2,
+)
+sql._add_assessment(dbc, spec2) # results in new records in assessment and arithmetic_fact_assessments
+
+
+async def _fetch_new(dbc, spec):
+	joins = [f"{spec.assessment_join_table} on {spec.assessment_join_table}.fact = {spec.fact_table}.id",
+				f"assessment on {spec.assessment_join_table}.assessment = assessment.id", ]
+	wheres = [f"student = {spec.student_id}", ]
+	
+	return await fetchone(dbc, (f"select {spec.fact_table}.* from {spec.fact_table} " + _join(joins) + _where(wheres) + f" order by {spec.order_by} ", args))
+
+
+spec.assessment_join_table = 'arithmetic_fact_assessments'
+spec.fact_table = 'arithmetic_fact'
+spec.wheres = ["arithmetic_fact.operator = '+'", ] # TODO: add random operator support
+# For progressive or 'new' - find the "highest" record attached to the student, so far:
+spec.order_by_fields = ['arithmetic_fact.operand1', 'arithmetic_fact.operand2']
+
+#_fetch_personal_challenger
+#_fetch_typical_challenger
+#_fetch_mastered
+
+
+async def get_arithmetic_facts(dbc, spec):
+	if spec.progressive:
+		
+	joins, wheres, args = [f"general_title on {resource_spec.table}.title = general_title.id", f"download on {resource_spec.table}.path = download.id"], [], []
+	_filter_cycle_week_range(spec, joins, wheres, args, False)
+	
+	return await fetchall(dbc, (f"select {resource_spec.table}.*, general_title.title as real_title, download.filename_suffix, download.path as download_path, cw.cycle as cycle, cw.week as week from {resource_spec.table} "
+											+ _join(joins) + _where(wheres) + f" order by cw.cycle, cw.week, general_title.seq, {resource_spec.table}.seq", args))
+
+	await fetchall(spec.db, 
+	return await sql.get_arithmetic_fact(dbc, spec)
+"""
+
+
+
 
 
 

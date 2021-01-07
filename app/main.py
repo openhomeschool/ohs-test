@@ -328,6 +328,13 @@ async def shop_year(request):
 	return await _resources(request, {'shop': 1, 'program': 3, 'first_week': 0, 'last_week': 28})
 
 
+
+@r.get('/quiz/arithmetic')
+async def quiz_arithmetic(request):
+	pass #calculator!
+
+
+
 g_detail_handlers = dict()
 def detail_handler(handler):
 	def decorator(func):
@@ -612,6 +619,7 @@ async def init(argv):
 		g('/quiz/science/random', q('get_science_random_question', 'multi_choice_question')),
 		g('/quiz/math/facts/multiplication', q('get_math_facts_question', 'multi_choice_question')),
 		g('/quiz/math/grammar', q('get_math_grammar_question', 'multi_choice_question')),
+		# trying new, more directional approach ... g(settings.k_arithmetic_grammar, q('Arithmetic_QT', 'multi_choice_arithmetic_question')),
 		g(settings.k_english_grammar, q('English_Grammar_QT', 'multi_choice_english_grammar_question')),
 		g(settings.k_english_vocabulary, q('English_Vocabulary_QT', 'multi_choice_english_vocabulary_question')),
 		g('/quiz/english/random', q('get_english_random_question', 'multi_choice_question')),
