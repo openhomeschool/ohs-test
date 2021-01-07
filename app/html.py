@@ -398,12 +398,12 @@ def _grammar_resources(container, spec, records, show_cw, subject_directory, ren
 					filename_base = subject_directory + '/c%sw%s' % (record['cycle'], record['week'])
 					with buttonstrip:
 						t.button('►', title = 'Audio song', onclick = 'play_pause("%s", this);' % filename_base)
-						t.button('♬', title = 'Musical score', onclick = 'window.open("%s","_blank");' % _aurl(filename_base + '.pdf'))
+						t.button('♬', title = 'Musical score', onclick = 'window.open("%s","_blank");' % _aurl(filename_base + '.pdf?v=1'))
 						#t.button('ℓ', title = 'Copywork')
 						#t.button('Ξ', title = 'Details')
 					buttonstrip_detail = t.div(cls = 'buttonstrip_detail', id = filename_base + '_container') # invisible at first
 					with buttonstrip_detail:
-						t.audio(t.source(src = _aurl(filename_base + '.mp3?v=25'), type = 'audio/mpeg'), controls = True, id = filename_base)
+						t.audio(t.source(src = _aurl(filename_base + '.mp3?v=26'), type = 'audio/mpeg'), controls = True, id = filename_base)
 						#t.button('-', title = 'Lower pitch', onclick = 'lower_pitch("%s");' % filename_base)
 
 				_add_cw(record, buttonstrip, spec)

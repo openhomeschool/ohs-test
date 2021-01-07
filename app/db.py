@@ -204,6 +204,44 @@ class History_Sequence_QT(Question_Transaction):
 # db.execute('insert into test_event_sequence_target (user, event, correct_option) values (?, ?, ?)', (user_id, event_id, correct_event_id)
 # db.executemany('insert into test_event_sequence_incorrect_option (target, incorrect_option
 
+
+
+
+# ------------------------
+# Arithmetic -- old/original idea; this is all of it - didn't take very far....
+@qt
+class Arithmetic_QT(Question_Transaction):
+	table = 'arithmetic_fact'
+	@classmethod # need to use factory pattern creation scheme b/c can't await in __init__
+	async def create(cls, db, user_id):
+		self = Arithmetic_QT(db, user_id)
+		self._question = await sql.fetchone(db, sql.get_next_arithmetic_fact(self))
+		self._options, self._answer_id = await sql.get_surrounding_event_records(self, self.answer_option_count, self._question)
+		return self
+
+	@property
+	def exclude_people_groups(self):
+		return True # always exclude people_group records (events) for history-sequence questions
+
+	@property
+	def date_range(self):
+		return self._date_range
+
+	def log_user_answer(self, answer_id):
+		l.debug('History_Sequence_QT.log_user_answer(%s)' % answer_id)
+
+# ------------------------
+# Arithmetic -- new design....
+
+async def get_arithmetic_facts(dbc, spec):
+	return await sql.get_arithmetic_facts(dbc, spec)
+
+async def assess_arithmetic_fact(dbc, spec): # spec contains arithmetic_fact_id, user's answer (or, more likely, 'correct' True/False, and speed_ms
+	return await sql.assess_arithmetic_fact(dbc, spec)
+
+
+
+
 # -----------------------------------------------------------------------------
 # Resource handlers
 
