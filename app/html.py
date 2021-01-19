@@ -403,7 +403,7 @@ def _grammar_resources(container, spec, records, show_cw, subject_directory, ren
 						#t.button('Ξ', title = 'Details')
 					buttonstrip_detail = t.div(cls = 'buttonstrip_detail', id = filename_base + '_container') # invisible at first
 					with buttonstrip_detail:
-						t.audio(t.source(src = _aurl(filename_base + '.mp3?v=27'), type = 'audio/mpeg'), controls = True, id = filename_base)
+						t.audio(t.source(src = _aurl(filename_base + '.mp3?v=28'), type = 'audio/mpeg'), controls = True, id = filename_base)
 						#t.button('-', title = 'Lower pitch', onclick = 'lower_pitch("%s");' % filename_base)
 
 				_add_cw(record, buttonstrip, spec)
@@ -483,7 +483,7 @@ def show_shopping(records):
 def general(container, spec, records, show_cw):
 	def render(record, container): # callback function, see _grammar_resources()
 		with container:
-			path = _geurl('%s/%s%s?v=5' % (record['download_path'], record['filename_crux'], record['filename_suffix']))
+			path = _geurl('%s/%s%s?v=6' % (record['download_path'], record['filename_crux'], record['filename_suffix']))
 			t.div(t.a('%s - %s' % (record['real_title'], record['description']), href = path, cls = 'hover_link', target = "_blank"))
 
 	_grammar_resources(container, spec, records, show_cw, 'general', render, False)
@@ -499,7 +499,7 @@ def geography(container, spec, records, show_cw):
 		name = record['name']
 		if new_cw != cw:
 			cw = new_cw
-			path = 'c%dw%02d_geography.png?v=3' % (record['cycle'], record['week'])
+			path = 'c%dw%02d_geography.png?v=4' % (record['cycle'], record['week'])
 			container += t.div(t.img(src = _murl(path)))
 		else:
 			name = ', ' + name
@@ -588,6 +588,10 @@ def literature_resources(container, spec, records, show_cw):
 def poetry_resources(container, spec, records, show_cw):
 	_external_resources(container, spec, records, show_cw)
 
+@subject_resources('computer_resources')
+def computer_resources(container, spec, records, show_cw):
+	_external_resources(container, spec, records, show_cw)
+
 @subject_resources('math_resources')
 def math_resources(container, spec, records, show_cw):
 	_external_resources(container, spec, records, show_cw)
@@ -644,8 +648,8 @@ def timeline(container, spec, records, show_cw):
 def history_assignments(container, spec, records, show_cw):
 	_assignments(container, spec, records, show_cw)
 
-@subject_resources('poetry_assignments')
-def poetry_assignments(container, spec, records, show_cw):
+@subject_resources('computer_assignments')
+def computer_assignments(container, spec, records, show_cw):
 	_assignments(container, spec, records, show_cw)
 
 @subject_resources('latin_assignments')
@@ -846,7 +850,7 @@ def _doc(title, css = None, scripts = None):
 	d = document(title = title)
 	with d.head:
 		t.meta(name = 'viewport', content = 'width=device-width, initial-scale=1')
-		t.link(href = settings.k_static_url + 'css/main.css?v=16', rel = 'stylesheet')
+		t.link(href = settings.k_static_url + 'css/main.css?v=17', rel = 'stylesheet')
 	return d
 
 def _error(error):
