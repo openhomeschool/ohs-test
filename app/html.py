@@ -397,13 +397,13 @@ def _grammar_resources(container, spec, records, show_cw, subject_directory, ren
 				if audio_widgets and (not spec or not spec.for_print):
 					filename_base = subject_directory + '/c%sw%s' % (record['cycle'], record['week'])
 					with buttonstrip:
-						t.button('♬', title = 'Musical score', onclick = 'window.open("%s","_blank");' % _aurl(filename_base + '.pdf?v=2'))
+						t.button('♬', title = 'Musical score', onclick = 'window.open("%s","_blank");' % _aurl(filename_base + '.pdf?v=3'))
 						t.button('►', title = 'Audio song', onclick = 'play_pause("%s", this);' % filename_base)
 						#t.button('ℓ', title = 'Copywork')
 						#t.button('Ξ', title = 'Details')
 					buttonstrip_detail = t.div(cls = 'buttonstrip_detail', id = filename_base + '_container') # invisible at first
 					with buttonstrip_detail:
-						t.audio(t.source(src = _aurl(filename_base + '.mp3?v=29'), type = 'audio/mpeg'), controls = True, id = filename_base)
+						t.audio(t.source(src = _aurl(filename_base + '.mp3?v=30'), type = 'audio/mpeg'), controls = True, id = filename_base)
 						#t.button('-', title = 'Lower pitch', onclick = 'lower_pitch("%s");' % filename_base)
 
 				_add_cw(record, buttonstrip, spec)
@@ -1001,7 +1001,7 @@ def _event_formatted(record, detail_link = True):
 	filename_base = 'timeline/e%s' % record['id']
 	final = t.div(
 		t.button('►', title = 'audio', onclick = '$("%s").play();' % filename_base, cls = 'mini_button'),
-		t.audio(t.source(src = _aurl(filename_base + '.mp3?v=1'), type = 'audio/mpeg'), controls = False, id = filename_base))
+		t.audio(t.source(src = _aurl(filename_base + '.mp3?v=2'), type = 'audio/mpeg'), controls = False, id = filename_base))
 	if detail_link:
 		final += t.a(result, href = _gurl('/detail/event/%d' % record['id']), target = "_blank", cls = 'hover_link')
 	else:
