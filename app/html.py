@@ -397,13 +397,13 @@ def _grammar_resources(container, spec, records, show_cw, subject_directory, ren
 				if audio_widgets and (not spec or not spec.for_print):
 					filename_base = subject_directory + '/c%sw%s' % (record['cycle'], record['week'])
 					with buttonstrip:
-						t.button('►', title = 'Audio song', onclick = 'play_pause("%s", this);' % filename_base)
 						t.button('♬', title = 'Musical score', onclick = 'window.open("%s","_blank");' % _aurl(filename_base + '.pdf?v=2'))
+						t.button('►', title = 'Audio song', onclick = 'play_pause("%s", this);' % filename_base)
 						#t.button('ℓ', title = 'Copywork')
 						#t.button('Ξ', title = 'Details')
 					buttonstrip_detail = t.div(cls = 'buttonstrip_detail', id = filename_base + '_container') # invisible at first
 					with buttonstrip_detail:
-						t.audio(t.source(src = _aurl(filename_base + '.mp3?v=28'), type = 'audio/mpeg'), controls = True, id = filename_base)
+						t.audio(t.source(src = _aurl(filename_base + '.mp3?v=29'), type = 'audio/mpeg'), controls = True, id = filename_base)
 						#t.button('-', title = 'Lower pitch', onclick = 'lower_pitch("%s");' % filename_base)
 
 				_add_cw(record, buttonstrip, spec)
@@ -525,18 +525,28 @@ def multiplication_facts(container, spec, records, show_cw):
 	_grammar_resources(container, spec, records, show_cw, 'multiplication_facts', render, True)
 
 
-def _add_eqality_record(table, record, left_field_name, right_field_name, youglishit = False):
+def _add_eqality_record(table, record, left_field_name, right_field_name, youglishit = False, audio_base = None):
 	youglishify = _youglishify if youglishit else str
-	table += t.tr(
+
+	tr = t.tr(
 		t.td(t.b(youglishify(str(record[left_field_name]))), cls = 'left-equality-cell'),
-		t.td(' = ', youglishify(str(record[right_field_name])), cls = 'right-equality-cell')
 	)
+	right_text = youglishify(str(record[right_field_name]))
+	if audio_base:
+		tr += t.td(
+			t.button('►', title = 'audio', onclick = '$("%s").play();' % audio_base, cls = 'mini_button'),
+			t.audio(t.source(src = _aurl(audio_base + '.mp3?v=1'), type = 'audio/mpeg'), controls = False, id = audio_base),
+			right_text,
+			cls = 'right-equality-cell')
+	else:
+		tr += t.td(right_text)
+	table += tr
 
 def _prefix_answer(record, youglishit = False):
 	answer_prompt = record['answer_prefix'].capitalize() + ' ' + record['prompt'] if record['answer_prefix'] else record['prompt'].capitalize()
 	answer = '%s %s %s' % (answer_prompt, record['answer_verb'], record['answer'])
 	if youglishit:
-		answer = _youglishify('%s %s %s' % (answer_prompt, record['answer_verb'], record['answer']))
+		answer = _youglishify('%s %s %s.' % (answer_prompt, record['answer_verb'], record['answer']))
 	return answer
 
 @subject_resources('math_vocabulary')
@@ -563,7 +573,7 @@ def science_resources(container, spec, records, show_cw):
 @subject_resources('english_vocabulary')
 def english_vocabulary(container, spec, records, show_cw):
 	def render(record, container): # callback function, see _grammar_resources()
-		_add_eqality_record(container, record, 'word', 'definition', True)
+		_add_eqality_record(container, record, 'word', 'definition', True, 'english/ev%s' % record['id'])
 
 	_grammar_resources(container, spec, records, show_cw, 'english', render, True, t.table)
 
@@ -600,7 +610,7 @@ def math_resources(container, spec, records, show_cw):
 @subject_resources('latin_vocabulary')
 def latin_vocabulary(container, spec, records, show_cw):
 	def render(record, container): # callback function, see _grammar_resources()
-		_add_eqality_record(container, record, 'word', 'translation', False)
+		_add_eqality_record(container, record, 'word', 'translation', False, 'latin/lv%s' % record['id'])
 
 	_grammar_resources(container, spec, records, show_cw, 'latin', render, True, t.table)
 
@@ -850,7 +860,7 @@ def _doc(title, css = None, scripts = None):
 	d = document(title = title)
 	with d.head:
 		t.meta(name = 'viewport', content = 'width=device-width, initial-scale=1')
-		t.link(href = settings.k_static_url + 'css/main.css?v=17', rel = 'stylesheet')
+		t.link(href = settings.k_static_url + 'css/main.css?v=18', rel = 'stylesheet')
 	return d
 
 def _error(error):
@@ -988,10 +998,16 @@ def _event_formatted(record, detail_link = True):
 		result += ')'
 	if record['subseq']: # "extra" event
 		result = '[' + result + ']'
+	filename_base = 'timeline/e%s' % record['id']
+	final = t.div(
+		t.button('►', title = 'audio', onclick = '$("%s").play();' % filename_base, cls = 'mini_button'),
+		t.audio(t.source(src = _aurl(filename_base + '.mp3?v=1'), type = 'audio/mpeg'), controls = False, id = filename_base))
 	if detail_link:
-		return t.a(result, href = _gurl('/detail/event/%d' % record['id']), target = "_blank", cls = 'hover_link')
+		final += t.a(result, href = _gurl('/detail/event/%d' % record['id']), target = "_blank", cls = 'hover_link')
+	else:
+		final += result
 	#else:
-	return result
+	return final
 
 # -----------------------------------------------------------------------------
 # Question-handler helpers:
