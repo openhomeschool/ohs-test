@@ -397,13 +397,13 @@ def _grammar_resources(container, spec, records, show_cw, subject_directory, ren
 				if audio_widgets and (not spec or not spec.for_print):
 					filename_base = subject_directory + '/c%sw%s' % (record['cycle'], record['week'])
 					with buttonstrip:
-						t.button('♬', title = 'Musical score', onclick = 'window.open("%s","_blank");' % _aurl(filename_base + '.pdf?v=3'))
+						t.button('♬', title = 'Musical score', onclick = 'window.open("%s","_blank");' % _aurl(filename_base + '.pdf?v=4'))
 						t.button('►', title = 'Audio song', onclick = 'play_pause("%s", this);' % filename_base)
 						#t.button('ℓ', title = 'Copywork')
 						#t.button('Ξ', title = 'Details')
 					buttonstrip_detail = t.div(cls = 'buttonstrip_detail', id = filename_base + '_container') # invisible at first
 					with buttonstrip_detail:
-						t.audio(t.source(src = _aurl(filename_base + '.mp3?v=30'), type = 'audio/mpeg'), controls = True, id = filename_base)
+						t.audio(t.source(src = _aurl(filename_base + '.mp3?v=31'), type = 'audio/mpeg'), controls = True, id = filename_base)
 						#t.button('-', title = 'Lower pitch', onclick = 'lower_pitch("%s");' % filename_base)
 
 				_add_cw(record, buttonstrip, spec)
@@ -483,7 +483,7 @@ def show_shopping(records):
 def general(container, spec, records, show_cw):
 	def render(record, container): # callback function, see _grammar_resources()
 		with container:
-			path = _geurl('%s/%s%s?v=6' % (record['download_path'], record['filename_crux'], record['filename_suffix']))
+			path = _geurl('%s/%s%s?v=7' % (record['download_path'], record['filename_crux'], record['filename_suffix']))
 			t.div(t.a('%s - %s' % (record['real_title'], record['description']), href = path, cls = 'hover_link', target = "_blank"))
 
 	_grammar_resources(container, spec, records, show_cw, 'general', render, False)
@@ -535,7 +535,7 @@ def _add_eqality_record(table, record, left_field_name, right_field_name, yougli
 	if audio_base:
 		tr += t.td(
 			t.button('►', title = 'audio', onclick = '$("%s").play();' % audio_base, cls = 'mini_button'),
-			t.audio(t.source(src = _aurl(audio_base + '.mp3?v=1'), type = 'audio/mpeg'), controls = False, id = audio_base),
+			t.audio(t.source(src = _aurl(audio_base + '.mp3?v=2'), type = 'audio/mpeg'), controls = False, id = audio_base),
 			right_text,
 			cls = 'right-equality-cell')
 	else:
