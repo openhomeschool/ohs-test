@@ -403,7 +403,7 @@ def _grammar_resources(container, spec, records, show_cw, subject_directory, ren
 						#t.button('Ξ', title = 'Details')
 					buttonstrip_detail = t.div(cls = 'buttonstrip_detail', id = filename_base + '_container') # invisible at first
 					with buttonstrip_detail:
-						t.audio(t.source(src = _aurl(filename_base + '.mp3?v=31'), type = 'audio/mpeg'), controls = True, id = filename_base)
+						t.audio(t.source(src = _aurl(filename_base + '.mp3?v=32'), type = 'audio/mpeg'), controls = True, id = filename_base)
 						#t.button('-', title = 'Lower pitch', onclick = 'lower_pitch("%s");' % filename_base)
 
 				_add_cw(record, buttonstrip, spec)
@@ -535,7 +535,7 @@ def _add_eqality_record(table, record, left_field_name, right_field_name, yougli
 	if audio_base:
 		tr += t.td(
 			t.button('►', title = 'audio', onclick = '$("%s").play();' % audio_base, cls = 'mini_button'),
-			t.audio(t.source(src = _aurl(audio_base + '.mp3?v=2'), type = 'audio/mpeg'), controls = False, id = audio_base),
+			t.audio(t.source(src = _aurl(audio_base + '.mp3?v=3'), type = 'audio/mpeg'), controls = False, id = audio_base),
 			right_text,
 			cls = 'right-equality-cell')
 	else:
@@ -1001,7 +1001,7 @@ def _event_formatted(record, detail_link = True):
 	filename_base = 'timeline/e%s' % record['id']
 	final = t.div(
 		t.button('►', title = 'audio', onclick = '$("%s").play();' % filename_base, cls = 'mini_button'),
-		t.audio(t.source(src = _aurl(filename_base + '.mp3?v=2'), type = 'audio/mpeg'), controls = False, id = filename_base))
+		t.audio(t.source(src = _aurl(filename_base + '.mp3?v=3'), type = 'audio/mpeg'), controls = False, id = filename_base))
 	if detail_link:
 		final += t.a(result, href = _gurl('/detail/event/%d' % record['id']), target = "_blank", cls = 'hover_link')
 	else:
