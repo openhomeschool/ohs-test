@@ -429,6 +429,8 @@ async def _first_resources(dbc, qargs):
 		week = qargs.get('week', None), # convenience - use this to specify first_week = last_week = week
 		grammar_supplement = int(qargs.get('grammar_supplement', 1)), # 1 = show grammar (at the bottom of assignments)
 		for_print = int(qargs.get('for_print', 0)), # 1 = no buttons, no header
+		secondaries = int(qargs.get('secondaries', 0)), # 1 = include secondary history sentences, etc. ("advanced" material), 0 = don't
+		timeline_sentences = int(qargs.get('timeline_sentences', 0)), # 1 = include timeline sentences, 0 = don't
 		show_search = int(qargs.get('show_search', 1)), # 1 = show search bar, 0 = don't
 		show_go = int(qargs.get('show_go', 1)), # 1 = show go bar, 0 = don't
 	)
