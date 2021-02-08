@@ -408,7 +408,7 @@ def _grammar_resources(container, spec, records, show_cw, subject_directory, ren
 
 				_add_cw(record, buttonstrip, spec)
 				resource_div += buttonstrip
-				if audio_widgets:
+				if audio_widgets and (not spec or not spec.for_print):
 					resource_div += buttonstrip_detail
 				if record_container_class:
 					record_container = record_container_class()
@@ -573,7 +573,8 @@ def science_resources(container, spec, records, show_cw):
 @subject_resources('english_vocabulary')
 def english_vocabulary(container, spec, records, show_cw):
 	def render(record, container): # callback function, see _grammar_resources()
-		_add_eqality_record(container, record, 'word', 'definition', True, 'english/ev%s' % record['id'])
+		audio_base = 'english/ev%s' % record['id'] if not spec.for_print else None # "turn off" audio if spec.for_print
+		_add_eqality_record(container, record, 'word', 'definition', True, audio_base)
 
 	_grammar_resources(container, spec, records, show_cw, 'english', render, True, t.table)
 
@@ -610,7 +611,8 @@ def math_resources(container, spec, records, show_cw):
 @subject_resources('latin_vocabulary')
 def latin_vocabulary(container, spec, records, show_cw):
 	def render(record, container): # callback function, see _grammar_resources()
-		_add_eqality_record(container, record, 'word', 'translation', False, 'latin/lv%s' % record['id'])
+		audio_base = 'latin/lv%s' % record['id'] if not spec.for_print else None # "turn off" audio if spec.for_print
+		_add_eqality_record(container, record, 'word', 'translation', False, audio_base)
 
 	_grammar_resources(container, spec, records, show_cw, 'latin', render, True, t.table)
 
@@ -637,7 +639,10 @@ def history_grammar(container, spec, records, show_cw):
 	def render(record, container): # callback function, see _grammar_resources()
 		with container:
 			t.div(t.b(t.a('%s - tell me more' % record['name'], href = _gurl('/detail/event/%d' % record['event']), target = "_blank", cls = 'hover_link')))
-			t.div(_youglishify(str(record['primary_sentence'])))
+			text = str(record['primary_sentence'])
+			if spec.secondaries and record['secondary_sentence']:
+				text += ' [' + record['secondary_sentence'] + ']'
+			t.div(_youglishify(text))
 
 	_grammar_resources(container, spec, records, show_cw, 'history', render, True)
 
@@ -648,8 +653,8 @@ def history_resources(container, spec, records, show_cw):
 @subject_resources('timeline')
 def timeline(container, spec, records, show_cw):
 	def render(record, container): # callback function, see _grammar_resources()
-		if not record['subseq']: # for now, ignoring subseq records... TODO! (probably want these, still, for high-schoolers!)
-			container += t.div(_event_formatted(record))
+		if not record['subseq'] or spec.secondaries:
+			container += t.div(_event_formatted(record, spec.for_print, spec.timeline_sentences))
 
 	_grammar_resources(container, spec, records, show_cw, 'timeline', render, True)
 
@@ -766,7 +771,7 @@ def timeline_event_detail(record, details):
 	
 	def render(record, container): # callback function, see _grammar_resources()
 		with container:
-			t.div(t.b(_event_formatted(record, False)))
+			t.div(t.b(_event_formatted(record, False, False, False))) # false on the timeline_sentence because we're including it explicitly below, youglishified
 			t.div(_youglishify(str(record['primary_sentence'])))
 			if record['secondary_sentence']:
 				t.div(_youglishify('[' + record['secondary_sentence'] + ']'))
@@ -969,7 +974,7 @@ def _add_cw_spacer(div):
 	with div:
 		t.div('. ', cls = 'cw-spacer')
 
-def _event_formatted(record, detail_link = True):
+def _event_formatted(record, for_print, timeline_sentences, detail_link = True):
 	result = record['name'] if detail_link else _youglishify(record['name'])
 	if not record['fake_start_date']:
 		result += ' ('
@@ -998,15 +1003,28 @@ def _event_formatted(record, detail_link = True):
 		result += ')'
 	if record['subseq']: # "extra" event
 		result = '[' + result + ']'
-	filename_base = 'timeline/e%s' % record['id']
-	final = t.div(
-		t.button('►', title = 'audio', onclick = '$("%s").play();' % filename_base, cls = 'mini_button'),
-		t.audio(t.source(src = _aurl(filename_base + '.mp3?v=3'), type = 'audio/mpeg'), controls = False, id = filename_base))
-	if detail_link:
-		final += t.a(result, href = _gurl('/detail/event/%d' % record['id']), target = "_blank", cls = 'hover_link')
+
+	if timeline_sentences:
+		result = t.b(result)
 	else:
+		result = t.span(result)
+
+	final = t.div()
+	if for_print:
 		final += result
-	#else:
+		if timeline_sentences:
+			final += t.span(' ' + record['primary_sentence'])
+	else:
+		filename_base = 'timeline/e%s' % record['id']
+		final += t.button('►', title = 'audio', onclick = '$("%s").play();' % filename_base, cls = 'mini_button')
+		final += t.audio(t.source(src = _aurl(filename_base + '.mp3?v=3'), type = 'audio/mpeg'), controls = False, id = filename_base)
+		if detail_link:
+			final += t.a(result, href = _gurl('/detail/event/%d' % record['id']), target = "_blank", cls = 'hover_link')
+		else:
+			final += result
+		if timeline_sentences:
+			final += t.span(' ' + record['primary_sentence'])
+
 	return final
 
 # -----------------------------------------------------------------------------
