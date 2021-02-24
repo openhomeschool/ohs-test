@@ -396,20 +396,26 @@ def _grammar_resources(container, spec, records, show_cw, subject_directory, ren
 
 				if audio_widgets and (not spec or not spec.for_print):
 					filename_base = subject_directory + '/c%sw%s' % (record['cycle'], record['week'])
+					filename_accompanied_base = subject_directory + '/c%sw%s-accompanied' % (record['cycle'], record['week'])
 					with buttonstrip:
 						t.button('♬', title = 'Musical score', onclick = 'window.open("%s","_blank");' % _aurl(filename_base + '.pdf?v=5'))
-						t.button('►', title = 'Audio song', onclick = 'play_pause("%s", this);' % filename_base)
+						t.button('»', title = 'Accompanied song', onclick = 'play_pause("%s", this, "»");' % filename_accompanied_base)
+						t.button('►', title = 'Audio song', onclick = 'play_pause("%s", this, "►");' % filename_base)
 						#t.button('ℓ', title = 'Copywork')
 						#t.button('Ξ', title = 'Details')
 					buttonstrip_detail = t.div(cls = 'buttonstrip_detail', id = filename_base + '_container') # invisible at first
 					with buttonstrip_detail:
 						t.audio(t.source(src = _aurl(filename_base + '.mp3?v=36'), type = 'audio/mpeg'), controls = True, id = filename_base)
 						#t.button('-', title = 'Lower pitch', onclick = 'lower_pitch("%s");' % filename_base)
+					buttonstrip_accompanied_detail = t.div(cls = 'buttonstrip_detail', id = filename_accompanied_base + '_container') # invisible at first
+					with buttonstrip_accompanied_detail:
+						t.audio(t.source(src = _aurl(filename_accompanied_base + '.mp3?v=36'), type = 'audio/mpeg'), controls = True, id = filename_accompanied_base)
 
 				_add_cw(record, buttonstrip, spec)
 				resource_div += buttonstrip
 				if audio_widgets and (not spec or not spec.for_print):
 					resource_div += buttonstrip_detail
+					resource_div += buttonstrip_accompanied_detail
 				if record_container_class:
 					record_container = record_container_class()
 					resource_div += record_container
@@ -1283,17 +1289,17 @@ def _js_show_hide_shopping():
 
 def _js_play_pause():
 	return raw('''
-		function play_pause(audio_id, button) {
+		function play_pause(audio_id, button, play_character) {
 			var audio = $(audio_id);
 			var container = $(audio_id + '_container');
 			if (!audio.paused || container.style.display === "block") {
-				button.innerHTML = '►';
+				button.innerHTML = play_character;
 				container.style.display = "none";
 				audio.pause();
 				audio.currentTime = 0;
 			} else {
 				audio.onended = function() {
-					button.innerHTML = '►';
+					button.innerHTML = play_character;
 					container.style.display = "none";
 				};
 				button.innerHTML = '■';
