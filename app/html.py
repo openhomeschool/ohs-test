@@ -564,13 +564,24 @@ def math_vocabulary(container, spec, records, show_cw):
 
 	_grammar_resources(container, spec, records, show_cw, 'math', render, False, t.table)
 
+def _format_answer(answer, youglishit = False):
+	if youglishit:
+		answer = _youglishify(answer, False)
+	first_star_pos = answer.find('*')
+	if first_star_pos >= 0 and len(answer) > first_star_pos + 1:
+		prelude = answer[:first_star_pos]
+		answer = prelude + '<ul><li>' + answer[first_star_pos + 1:].replace('*', '</li><li>') + '</li>'
+	return raw(answer)
 
 @subject_resources('science_grammar')
 def science_grammar(container, spec, records, show_cw):
 	def render(record, container): # callback function, see _grammar_resources()
 		with container:
-			t.div(t.b('What %s %s?' % (record['prompt_prefix'], record['prompt'])))
-			t.div(_prefix_answer(record, True))
+			#TODO: DEPRECATE after fixing cycle 1 grammar: t.div(t.b('What %s %s?' % (record['prompt_prefix'], record['prompt'])))
+			#TODO: DEPRECATE after fixing cycle 1 grammar: t.div(_prefix_answer(record, True))
+			#TODO: NEW (below):
+			t.div(t.b('%s - tell me more' % (record['prompt'],)))
+			t.div(_format_answer(record['answer'], True))
 
 	_grammar_resources(container, spec, records, show_cw, 'science', render, True)
 
@@ -787,8 +798,12 @@ def resource_list(spec, results, url, show_cw = True):
 	return container.render()
 
 
-def _youglishify(text):
-	return raw(re.sub(r'(\w+)', r'<a href="https://youglish.com/pronounce/\1/english?" class="hover_link" target="_blank">\1</a>', text))
+def _youglishify(text, rawify = True):
+	result = re.sub(r'(\w+)', r'<a href="https://youglish.com/pronounce/\1/english?" class="hover_link" target="_blank">\1</a>', text)
+	if rawify:
+		return raw(result)
+	#else:
+	return result
 
 def timeline_event_detail(record, details):
 	
