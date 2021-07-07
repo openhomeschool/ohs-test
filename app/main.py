@@ -369,6 +369,7 @@ async def timeline_event_detail(record, details):
 	return hr(html.timeline_event_detail(record, details))
 
 k_temp_this_week = 28
+k_temp_this_cycle = 1
 
 _links = lambda request: (
 	('Grammar', _http_url(request, '/resources', {'program': 1})),
@@ -423,7 +424,7 @@ async def _first_resources(dbc, qargs):
 		shop = int(qargs.get('shop', 0)), # 1 = show shopping links
 		#subject = qargs.get('subject', '2, 8, 4'), # 0 = "all" indicator
 		subject = qargs.get('subject', 0), # 0 = "all" indicator
-		cycles = (4, 1), # default: "cycle 1" ("4" refers to grammar that belongs to "all cycles" (like timeline grammar) - this is hardcode! TODO:FIX!)
+		cycles = (4, int(qargs.get('cycle', k_temp_this_cycle))), # default: "cycle 1" ("4" refers to grammar that belongs to "all cycles" (like timeline grammar) - this is hardcode! TODO:FIX!)
 		first_week = int(qargs.get('first_week', k_temp_this_week)), # TODO: hardcode default to week 0! replace with lookup for user's "current week"
 		last_week = int(qargs.get('last_week', k_temp_this_week)), # TODO: see above; look up user's current-week
 		week = qargs.get('week', None), # convenience - use this to specify first_week = last_week = week

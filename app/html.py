@@ -611,6 +611,10 @@ def poetry_resources(container, spec, records, show_cw):
 def computer_resources(container, spec, records, show_cw):
 	_external_resources(container, spec, records, show_cw)
 
+@subject_resources('spanish_resources')
+def spanish_resources(container, spec, records, show_cw):
+	_external_resources(container, spec, records, show_cw)
+
 @subject_resources('math_resources')
 def math_resources(container, spec, records, show_cw):
 	_external_resources(container, spec, records, show_cw)
@@ -673,6 +677,10 @@ def history_assignments(container, spec, records, show_cw):
 
 @subject_resources('computer_assignments')
 def computer_assignments(container, spec, records, show_cw):
+	_assignments(container, spec, records, show_cw)
+
+@subject_resources('spanish_assignments')
+def spanish_assignments(container, spec, records, show_cw):
 	_assignments(container, spec, records, show_cw)
 
 @subject_resources('latin_assignments')
@@ -761,14 +769,21 @@ def resource_list(spec, results, url, show_cw = True):
 	# Cycle, Week, Subject, Content (subject-specific presentation, option of "more details"), "essential" resources (e.g., song audio)
 	container = t.div(cls = 'resource_list')
 	for result in results:
-		subject_container = _new_subject_section(container, result.subject_title)
-		first = True
+		# See if we need to display this subject container at all:
+		moot = True
 		for subresult in result.subresults:
-			if not first:
-				subject_container += t.hr(cls = 'bighr')
-			else:
-				first = False
-			g_subject_resource_handlers[subresult.handler](subject_container, spec, subresult.records, show_cw)
+			if subresult.records:
+				moot = False
+				break
+		if not moot: # only build the subject container and fill it if any actual results were found in the above little test
+			subject_container = _new_subject_section(container, result.subject_title)
+			first = True
+			for subresult in result.subresults:
+				if not first:
+					subject_container += t.hr(cls = 'bighr')
+				else:
+					first = False
+				g_subject_resource_handlers[subresult.handler](subject_container, spec, subresult.records, show_cw)
 	return container.render()
 
 
