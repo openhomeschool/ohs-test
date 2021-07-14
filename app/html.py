@@ -330,8 +330,11 @@ def resources(ws_url, filters, cycles, weeks, qargs, links): # TODO: this is bas
 			with t.div(cls = 'flex-wrap'): # TODO: make a 'header_block' or something; different border color, perhaps
 				t.div(t.b('Go'), cls = 'title') # TODO: replace with a magnifying-glass gif!
 				with t.div(cls = 'main'):
-					for name, url in links:
-						t.button(name, title = name, onclick = f'window.open("{url}", "_self");')
+					for name, content, url in links:
+						onclick = f'window.open("{content}", "_self");'
+						if not url: # assume script, or other 'raw':
+							onclick = f'{content};'
+						t.button(name, title = name, onclick = onclick)
 					
 
 		if show_search and not for_print:
@@ -355,6 +358,8 @@ def resources(ws_url, filters, cycles, weeks, qargs, links): # TODO: this is bas
 		t.script(_js_calendar_widget())
 		t.script(_js_show_hide_shopping())
 		t.script(_js_play_pause())
+		t.script(_js_play_random())
+			
 	return d.render()
 
 
@@ -1168,7 +1173,7 @@ def _js_socket_quiz_manager(url, db_handler, html_function):
 		}
 		else { } // TODO: handle no selection! Allow user to skip?!
 
-		check_element = $(check)
+		check_element = $(check);
 		check_element.parentElement.classList.remove("quiz_answer_option");
 		check_element.parentElement.classList.add("quiz_right_answer_option");
 		setTimeout(function() { send_answer(selected.value); }, show_answer_delay);
@@ -1206,16 +1211,23 @@ def _js_filter_list(url):
 			case "show":
 				$("content").innerHTML = payload.result;
 				spec = JSON.parse(payload.spec);
-				fw_button = $("first_week-button")
+				fw_button = $("first_week-button");
 				if (fw_button) { // this basically means that we're printing only
 					fw_button.innerHTML = "W-" + spec.first_week;
 					$("last_week-button").innerHTML = "W-" + spec.last_week;
 					if (payload.grades != null)
-						$("grade-container").innerHTML = payload.grades
+						$("grade-container").innerHTML = payload.grades;
 				}
 				break;
 			case "show_shopping":
-				$(payload.div_id).innerHTML = payload.result
+				$(payload.div_id).innerHTML = payload.result;
+				break;
+			case "play_random_url":
+				if (payload.error == 1) {
+					alert("Sorry, failed to get random audio to play back.");
+				} else {
+					play_random_url("%(path)s" + payload.prompt, "%(path)s" + payload.target);
+				}
 				break;
 		}
 	};
@@ -1224,7 +1236,7 @@ def _js_filter_list(url):
 	function search(str) {
 		ws_send(JSON.stringify({call: "filter", filter: "search", data: str}));
 	};
-	''' % {'url': url})
+	''' % {'url': url, 'path': settings.k_static_url + 'audio/'})
 
 	return r
 
@@ -1342,4 +1354,50 @@ def _js_play_pause():
 		function lower_pitch(audio_id) {
 			
 		};
+	''')
+
+def _js_play_random():
+	return raw('''
+		var random_audio = null;
+		var play_random = false;
+		function start_random_play() {
+			play_random = true;
+			if (random_audio != null) {
+				random_audio.play();
+			} else {
+				request_play_random_url();
+			}
+		};
+		function pause_random_play() {
+			play_random = false;
+			if (random_audio != null) {
+				random_audio.pause();
+			}
+		};
+		function toggle_random_play(button) {
+			if (play_random) {
+				button.innerHTML = '► Random';
+				pause_random_play();
+			} else {
+				button.innerHTML = '■ Random';
+				start_random_play();
+			}
+		};
+		function play_random_url(prompt_url, target_url) {
+			if (play_random) { // double-check
+				random_audio = new Audio(prompt_url); // TODO: validate url!!!
+				random_audio.play();
+				random_audio.onended = function() {
+					random_audio = new Audio(target_url); // TODO: validate url!!!
+					setTimeout(() => random_audio.play(), 1500);
+					random_audio.onended = function() {
+						setTimeout(() => request_play_random_url(), 1500); // next!
+					}
+				}
+			}
+		};
+		function request_play_random_url() {
+			ws_send(JSON.stringify({call: "get_random_audio_url"}));
+		};
+		
 	''')

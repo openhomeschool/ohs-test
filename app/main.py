@@ -372,13 +372,14 @@ k_temp_this_week = 28
 k_temp_this_cycle = 1
 
 _links = lambda request: (
-	('Grammar', _http_url(request, '/resources', {'program': 1})),
-	('Rev-4', _http_url(request, '/resources', {'program': 1, 'first_week': max(0, k_temp_this_week - 3), 'last_week': k_temp_this_week})),
-	('Rev-6', _http_url(request, '/resources', {'program': 1, 'first_week': max(0, k_temp_this_week - 5), 'last_week': k_temp_this_week})),
-	('7th-9th Assignments', _http_url(request, '/resources', {'program': 3})),
-	('Shop', _http_url(request, '/shop')),
-	('Quiz', _http_url(request, '/quiz/history/sequence')), # TODO!
+	('Grammar', _http_url(request, '/resources', {'program': 1}), True),
+	('Gram-Review', _http_url(request, '/resources', {'program': 1, 'first_week': max(0, k_temp_this_week - 3), 'last_week': k_temp_this_week}), True),
+	('► Random', 'toggle_random_play(this)', False),
 	#('4-6 assignments': _http_url(request, '/resources?program=2'),
+	('7th-9th', _http_url(request, '/resources', {'program': 3}), True),
+	('10th-12th', _http_url(request, '/resources', {'program': 4}), True),
+	#('Shop', _http_url(request, '/shop'), True),
+	('Quiz', _http_url(request, '/quiz/history/sequence'), True), # TODO!
 )
 
 async def _resources(request, qargs):
@@ -401,6 +402,8 @@ async def _resources(request, qargs):
 
 	links = _links(request)
 	return hr(html.resources(_ws_url(request, '/ws_resources'), filters, cycles, weeks, qargs, links))
+
+
 
 
 
@@ -434,6 +437,7 @@ async def _first_resources(dbc, qargs):
 		timeline_sentences = int(qargs.get('timeline_sentences', 0)), # 1 = include timeline sentences, 0 = don't
 		show_search = int(qargs.get('show_search', 1)), # 1 = show search bar, 0 = don't
 		show_go = int(qargs.get('show_go', 1)), # 1 = show go bar, 0 = don't
+		random_audio_type = int(qargs.get('random_audio_type', 4)), # 4 = 'song-simple'
 	)
 	if spec.week != None:
 		spec.first_week = spec.last_week = int(spec.week)
@@ -490,9 +494,17 @@ async def ws_resources(request):
 				result = await db.get_shopping_links(dbc, match.group(1)) # group(1) is the actual id matched, after the prefix
 				await ws.send_json({'call': 'show_shopping', 'div_id': payload['resource_id'], 'result': html.show_shopping(result)})
 
+			elif payload['call'] == 'get_random_audio_url':
+				prompt, target = await db.get_random_audio_url(dbc, spec)
+				error, prompt_url, target_url = 1, '', ''
+				if prompt and target:
+					error, prompt_url, target_url = 0, prompt['url'], target['url']
+				await ws.send_json({'call': 'play_random_url', 'prompt': prompt_url, 'target': target_url, 'error': error})
+
 		except ValueError as e:
 			l.warning('invalid filter input to ws_resources') # but do nothing else; client code already checks for validity; this must/might be an attack attempt; no need to respond
 
+	# First WS send wrapped up in return of handler...
 	return await _ws_handler(request, msg_handler, _make_msg(result, spec, await _grades(spec.program)))
 
 

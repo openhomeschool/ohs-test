@@ -273,6 +273,9 @@ async def get_detail_by_id(dbc, table, id):
 # -----------------------------------------------------------------------------
 # Sundry
 
+async def get_random_audio_url(dbc, spec):
+	return await sql.get_random_audio_url(dbc, spec)
+
 async def get_programs(dbc):
 	return await sql.get_programs(dbc)
 
