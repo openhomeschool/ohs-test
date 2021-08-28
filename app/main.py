@@ -180,13 +180,13 @@ class Invitation(web.View):
 		if valid.rec_invitation.match(code):
 			dbc = r.app['db']
 			invitation = await db.get_new_user_invitation(dbc, code)
-			person_id = invitation['person']
+			person_id, academic_year = invitation['person'], invitation['academic_year']
 			person = await db.get_person(dbc, person_id)
-			family = await db.get_family(dbc, person_id)
+			family = await db.get_family(dbc, person_id, academic_year)
 			contact = await db.get_person_contact_info(dbc, person_id)
-			costs = await db.get_costs(dbc)
-			leader = await db.get_leader(dbc, person_id)
-			payments = await db.get_payments(dbc, [g['id'] for g in family.guardians])
+			costs = await db.get_costs(dbc, academic_year)
+			leader = await db.get_leader(dbc, person_id, academic_year)
+			payments = await db.get_payments(dbc, [g['id'] for g in family.guardians], academic_year)
 			return hr(html.invitation(html.Form(settings.k_url_prefix + r.path), invitation, person, family, contact, costs, leader, payments))
 		else:
 			return hr(html.invalid_invitation()) # this might be an attack attempt!
@@ -323,9 +323,13 @@ async def default(request):
 async def resources(request):
 	return await _resources(request, request.query)
 
-@r.get('/shop')
-async def shop_year(request):
-	return await _resources(request, {'shop': 1, 'program': 3, 'first_week': 0, 'last_week': 28})
+@r.get('/shop3')
+async def shop_year_program3(request):
+	return await _resources(request, {'shop': 1, 'cycle': 2, 'program': 3, 'first_week': 0, 'last_week': 28, 'grammar_supplement': 0})
+
+@r.get('/shop4')
+async def shop_year_program4(request):
+	return await _resources(request, {'shop': 1, 'cycle': 2, 'program': 4, 'first_week': 0, 'last_week': 28, 'grammar_supplement': 0})
 
 
 
@@ -425,7 +429,6 @@ async def _first_resources(dbc, qargs):
 		grade = int(qargs.get('grade', 0)), # 0 = "unspecified" or "all"; common, when a program is treated all the same, and there's no need to differentiate grade
 		solo = int(qargs.get('solo', 0)), # 0 = show the designed content for the program; 1 = show *only* the content unique to the program -- TODO: DEPRECATED? I think 'grammar_supplement' now takes care of this, and can't find references to solo elsewhere.....
 		shop = int(qargs.get('shop', 0)), # 1 = show shopping links
-		#subject = qargs.get('subject', '2, 8, 4'), # 0 = "all" indicator
 		subject = qargs.get('subject', 0), # 0 = "all" indicator
 		cycles = (4, int(qargs.get('cycle', k_temp_this_cycle))), # default: "cycle 1" ("4" refers to grammar that belongs to "all cycles" (like timeline grammar) - this is hardcode! TODO:FIX!)
 		first_week = int(qargs.get('first_week', k_temp_this_week)), # TODO: hardcode default to week 0! replace with lookup for user's "current week"

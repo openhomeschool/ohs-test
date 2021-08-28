@@ -297,8 +297,8 @@ async def get_person(dbc, id):
 async def get_person_user(dbc, person_id):
 	return await sql.get_person_user(dbc, person_id)
 
-async def get_family(dbc, id):
-	return await sql.get_family(dbc, id)
+async def get_family(dbc, id, academic_year_id):
+	return await sql.get_family(dbc, id, academic_year_id)
 
 from dataclasses import dataclass
 async def get_person_contact_info(dbc, person_id):
@@ -314,11 +314,11 @@ async def get_heads_of_households(dbc):
 async def get_family_children(dbc, parent_id):
 	return await sql.get_family_children(dbc, parent_id)
 
-async def get_costs(dbc):
-	return await sql.get_costs(dbc)
+async def get_costs(dbc, academic_year_id):
+	return await sql.get_costs(dbc, academic_year_id)
 
-async def get_payments(dbc, guardian_ids):
-	return await sql.get_payments(dbc, guardian_ids)
+async def get_payments(dbc, guardian_ids, academic_year_id):
+	return await sql.get_payments(dbc, guardian_ids, academic_year_id)
 
-async def get_leader(dbc, person_id):
-	return await sql.get_leader(dbc, person_id)
+async def get_leader(dbc, person_id, academic_year_id):
+	return await sql.get_leader(dbc, person_id, academic_year_id)

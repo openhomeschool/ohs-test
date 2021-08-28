@@ -85,7 +85,7 @@ def _format_money(amount_cents):
 	if cents == 0:
 		return t.b('$%d' % dollars) # keep it simple - no need to show ".00"
 	#else:
-	return t.b('$%d.%d' % (dollars, cents))
+	return t.b('$%d.%02d' % (dollars, cents))
 
 def _format_cost(cost):
 	return ('%s: ' % cost['name'], _format_money(cost['amount']))
@@ -148,12 +148,17 @@ def invitation(form, invitation, person, family, contact, costs, leader, payment
 						cl(', '.join(['%s %s' % (g['first_name'], g['last_name']) for g in fg]))
 					t.hr()
 				with t.div(cls = 'resource_record'):
-					program = None
+					program_grouped = {}
 					for child in family.children:
-						if child['program_name'] != program:
-							program = child['program_name']
-							cl(t.b('%s (%s)' % (program, child['program_schedule'])))
-						cli(_format_person(child))
+						program_name = '%s (%s)' % (child['program_name'], child['program_schedule'])
+						if program_name not in program_grouped.keys():
+							program_grouped[program_name] = [child,]
+						else:
+							program_grouped[program_name].append(child)
+					for program_name, children in program_grouped.items():
+						cl(t.b(program_name))
+						for child in children:
+							cli(_format_person(child))
 		
 		leadership_offset = 0
 		if leader:
@@ -575,7 +580,7 @@ def _format_answer(answer, youglishit = False):
 	first_star_pos = answer.find('*')
 	if first_star_pos >= 0 and len(answer) > first_star_pos + 1:
 		prelude = answer[:first_star_pos]
-		answer = prelude + '<ul><li>' + answer[first_star_pos + 1:].replace('*', '</li><li>') + '</li>'
+		answer = prelude + '<ul><li>' + answer[first_star_pos + 1:].replace('*', '</li><li>') + '</li></ul>'
 	return raw(answer)
 
 @subject_resources('science_grammar')

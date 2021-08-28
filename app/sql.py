@@ -579,11 +579,13 @@ _children_programs = '''select c.*, program.name as program_name, program.schedu
 	join person as c on child_guardian.child = c.id
 	join person as g on child_guardian.guardian = g.id
 	join enrollment on enrollment.student = c.id
-	join program on program.id = enrollment.program'''
+	join academic_year on enrollment.academic_year = academic_year.id
+	join program on program.id = enrollment.program
+	'''
 
-_order_group_children = ' order by c.birthdate desc'
+_order_group_children = ' order by c.birthdate desc, enrollment.program'
 
-async def get_family(dbc, person_id):
+async def get_family(dbc, person_id, academic_year_id):
 	guardians = await fetchall(dbc, ('select g.* from child_guardian join person as g on child_guardian.guardian = g.id join person as c on child_guardian.child = c.id where c.id = ?', (person_id,)))
 	if guardians:
 		# person_id is a child, and we just got the guardians; now get the other children:
@@ -591,7 +593,7 @@ async def get_family(dbc, person_id):
 		children = await fetchall(dbc, (_children_programs + ' where g.id in ({seq})'.format(seq = ','.join(['?']*len(ids))) + _order_group_children, ids))
 	else:
 		# person_id is a guardian, get children, and other guardians:
-		children = await fetchall(dbc, (_children_programs + ' where g.id = ? ' + _order_group_children, (person_id,)))
+		children = await fetchall(dbc, (_children_programs + ' where g.id = ? and academic_year.id = ?' + _order_group_children, (person_id, academic_year_id))) # TODO: factor out HARDCODE academic_year.id = 2!
 		ids = [c['id'] for c in children]
 		guardians = await fetchall(dbc, ('select g.* from child_guardian join person as g on child_guardian.guardian = g.id join person as c on child_guardian.child = c.id where c.id in ({seq}) group by g.id'.format(seq= ','.join(['?']*len(ids))), ids))
 
@@ -606,21 +608,24 @@ async def get_heads_of_households(dbc):
 async def get_family_children(dbc, parent_id):
 	return await fetchall(dbc, (_children_programs + ' where g.id = ?' + _order_group_children, (parent_id,)))
 
-async def get_costs(dbc):
-	return await fetchall(dbc, ('select * from cost', ()))
+async def get_costs(dbc, academic_year_id):
+	return await fetchall(dbc, ('''select * from cost 
+		join academic_year on cost.academic_year = academic_year.id
+		where academic_year.id = ?
+		''', (academic_year_id,)))
 
-async def get_payments(dbc, guardian_ids):
-	return await fetchall(dbc, ('select * from payment where person in ({seq})'.format(seq = ','.join(['?']*len(guardian_ids))), guardian_ids))
+async def get_payments(dbc, guardian_ids, academic_year_id):
+	return await fetchall(dbc, ('select * from payment where person in ({seq}) and academic_year = ?'.format(seq = ','.join(['?']*len(guardian_ids))), guardian_ids + [academic_year_id,]))
 
-async def get_leader(dbc, person_id):
+async def get_leader(dbc, person_id, academic_year_id):
 	#TODO: Add logic for filtering records for the CURRENT/coming academic year only
 	return await fetchall(dbc, ('''
 			select leader.*, leadership_role.name as role, program.name as program_name, subject.name as subject_name from leader
 			join leadership_role on leader.leadership_role = leadership_role.id
 			join program on leader.program = program.id
 			left join subject on leader.subject = subject.id
-			where person = ?
-		''', (person_id,)))
+			where person = ? and academic_year = ?
+		''', (person_id, academic_year_id)))
 	
 # -----------------------------------------------------------------------------
 # Implementation utilities:
