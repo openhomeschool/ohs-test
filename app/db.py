@@ -311,11 +311,14 @@ async def get_person_contact_info(dbc, person_id):
 async def get_heads_of_households(dbc):
 	return await sql.get_heads_of_households(dbc)
 
-async def get_family_children(dbc, parent_id):
-	return await sql.get_family_children(dbc, parent_id)
+async def get_family_children_DEPRECATED(dbc, parent_id):
+	return await sql.get_family_children_DEPRECATED(dbc, parent_id)
 
 async def get_costs(dbc, academic_year_id):
 	return await sql.get_costs(dbc, academic_year_id)
+
+async def get_cost_offset(dbc, parent_id, academic_year_id):
+	return await sql.get_cost_offset(dbc, parent_id, academic_year_id)
 
 async def get_payments(dbc, guardian_ids, academic_year_id):
 	return await sql.get_payments(dbc, guardian_ids, academic_year_id)

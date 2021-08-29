@@ -88,9 +88,12 @@ def _format_money(amount_cents):
 	return t.b('$%d.%02d' % (dollars, cents))
 
 def _format_cost(cost):
-	return ('%s: ' % cost['name'], _format_money(cost['amount']))
+	return (cost['name'] + ': ', _format_money(cost['amount']))
 
-def invitation(form, invitation, person, family, contact, costs, leader, payments, errors = None):
+def _format_cost_offset(cost_offset):
+	return ('offset (%s): ' % cost_offset['note'], _format_money(cost_offset['amount']))
+
+def invitation(form, invitation, person, family, contact, costs, cost_offsets, leader, payments, errors = None):
 	#TODO: this is ugly long!  dice it up!!
 	
 	cl = lambda content: t.div(content, cls = 'contact_line')
@@ -189,6 +192,10 @@ def invitation(form, invitation, person, family, contact, costs, leader, payment
 						cl(t.span(*_format_cost(cost)))
 						total += cost['amount']
 					covered = set() # duplicate-coverage tracker -- eek, this is a bit too much "logic" for the interface ("view") layer!
+					for cost_offset in cost_offsets:
+						cl(t.span(*_format_cost_offset(cost_offset)))
+						total += cost_offset['amount']
+						
 					for child in family.children:
 						fn = child['first_name']
 						ln = child['last_name']

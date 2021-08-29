@@ -590,7 +590,7 @@ async def get_family(dbc, person_id, academic_year_id):
 	if guardians:
 		# person_id is a child, and we just got the guardians; now get the other children:
 		ids = [g['id'] for g in guardians]
-		children = await fetchall(dbc, (_children_programs + ' where g.id in ({seq})'.format(seq = ','.join(['?']*len(ids))) + _order_group_children, ids))
+		children = await fetchall(dbc, (_children_programs + ' where g.id in ({seq}) and academic_year.id = ?'.format(seq = ','.join(['?']*len(ids))) + _order_group_children, ids + [academic_year_id,]))
 	else:
 		# person_id is a guardian, get children, and other guardians:
 		children = await fetchall(dbc, (_children_programs + ' where g.id = ? and academic_year.id = ?' + _order_group_children, (person_id, academic_year_id))) # TODO: factor out HARDCODE academic_year.id = 2!
@@ -605,14 +605,18 @@ async def get_family(dbc, person_id, academic_year_id):
 async def get_heads_of_households(dbc):
 	return await fetchall(dbc, ('select * from person where head_of_household = 1', ()))
 
-async def get_family_children(dbc, parent_id):
+async def get_family_children_DEPRECATED(dbc, parent_id): # TODO: remove; now just fetched as a part of get_family()
 	return await fetchall(dbc, (_children_programs + ' where g.id = ?' + _order_group_children, (parent_id,)))
 
 async def get_costs(dbc, academic_year_id):
 	return await fetchall(dbc, ('''select * from cost 
 		join academic_year on cost.academic_year = academic_year.id
 		where academic_year.id = ?
-		''', (academic_year_id,)))
+		''', (academic_year_id,))) # TODO: change this to just where academic_year = ? -- no need for the join, in this case!
+
+async def get_cost_offset(dbc, parent_id, academic_year_id):
+	return await fetchall(dbc, ('select * from cost_offset where academic_year = ? and parent = ?', (academic_year_id, parent_id)))
+
 
 async def get_payments(dbc, guardian_ids, academic_year_id):
 	return await fetchall(dbc, ('select * from payment where person in ({seq}) and academic_year = ?'.format(seq = ','.join(['?']*len(guardian_ids))), guardian_ids + [academic_year_id,]))
