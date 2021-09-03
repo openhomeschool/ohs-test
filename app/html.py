@@ -643,6 +643,10 @@ def computer_resources(container, spec, records, show_cw):
 def spanish_resources(container, spec, records, show_cw):
 	_external_resources(container, spec, records, show_cw)
 
+@subject_resources('logic_resources')
+def logic_resources(container, spec, records, show_cw):
+	_external_resources(container, spec, records, show_cw)
+
 @subject_resources('math_resources')
 def math_resources(container, spec, records, show_cw):
 	_external_resources(container, spec, records, show_cw)
@@ -709,6 +713,10 @@ def computer_assignments(container, spec, records, show_cw):
 
 @subject_resources('spanish_assignments')
 def spanish_assignments(container, spec, records, show_cw):
+	_assignments(container, spec, records, show_cw)
+
+@subject_resources('logic_assignments')
+def logic_assignments(container, spec, records, show_cw):
 	_assignments(container, spec, records, show_cw)
 
 @subject_resources('latin_assignments')
