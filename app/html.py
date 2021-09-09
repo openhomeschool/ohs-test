@@ -413,7 +413,7 @@ def _grammar_resources(container, spec, records, show_cw, subject_directory, ren
 
 				if audio_widgets and (not spec or not spec.for_print):
 					filename_base = subject_directory + '/c%sw%s' % (record['cycle'], record['week'])
-					filename_accompanied_base = subject_directory + '/c%sw%s-accompanied' % (record['cycle'], record['week'])
+					filename_accompanied_base = subject_directory + '/c%sw%s-chant' % (record['cycle'], record['week'])
 					with buttonstrip:
 						t.button('♬', title = 'Musical score', onclick = 'window.open("%s","_blank");' % _aurl(filename_base + '.pdf?v=107'))
 						t.button('»', title = 'Accompanied song', onclick = 'play_pause("%s", this, "»");' % filename_accompanied_base)
