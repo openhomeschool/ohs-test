@@ -359,7 +359,7 @@ def resources(ws_url, filters, cycles, weeks, qargs, links): # TODO: this is bas
 					_dropdown(weeks[0], qargs, 'ib-right', button_class = 'cw-button')
 					t.div(_text_input('search', None, ('autofocus',), {'autocomplete': 'off', 'oninput': 'search(this.value)', 'class': 'search'}, 'Search', type_ = 'search'), cls = 'clear')
 					_dropdown(weeks[1], qargs, 'ib-right', button_class = 'cw-button')
-					_dropdown(cycles, qargs, 'ib-right', button_class = 'cw-button')
+					#TODO: BRING BACK! -- _dropdown(cycles, qargs, 'ib-right', button_class = 'cw-button')
 
 		t.div(id = 'content') # filtered results themselves are added here, in this `result` div, via websocket, as search text is typed (see javascript)
 
@@ -687,6 +687,8 @@ def history_grammar(container, spec, records, show_cw):
 			if spec.secondaries and record['secondary_sentence']:
 				text += ' [' + record['secondary_sentence'] + ']'
 			t.div(_youglishify(text))
+			if hasattr(record, 'history_sign_language'):
+				t.div( ', '.join([t.a(r['word'], href = r['url']) for r in record['history_sign_language']]))
 
 	_grammar_resources(container, spec, records, show_cw, 'history', render, True)
 
@@ -830,7 +832,7 @@ def _youglishify(text, rawify = True):
 	#else:
 	return result
 
-def timeline_event_detail(record, details):
+def timeline_event_detail(record, details, signs):
 	
 	def render(record, container): # callback function, see _grammar_resources()
 		with container:
@@ -844,22 +846,30 @@ def timeline_event_detail(record, details):
 			
 		ul = None
 		title = None
-		for detail in details:
-			detail_detail = detail['detail'] if not detail['url'] else t.a(detail['detail'], href = detail['url'], target = "_blank")
-			if title != detail['detail_title']:
-				title = detail['detail_title']
-				ul = None # reset
-				if not detail['sequence']: # singleton
-					l.debug('@@@ %s' % detail_detail)
-					container += t.div((t.b(title), ': ', detail_detail))
-					title = None # reset
-				else:
-					container += t.div((t.b(title)))
-					ul = t.ul()
-					container += ul
+		if details:
+			for detail in details:
+				detail_detail = detail['detail'] if not detail['url'] else t.a(detail['detail'], href = detail['url'], target = "_blank")
+				if title != detail['detail_title']:
+					title = detail['detail_title']
+					ul = None # reset
+					if not detail['sequence']: # singleton
+						l.debug('@@@ %s' % detail_detail)
+						container += t.div((t.b(title), ': ', detail_detail))
+						title = None # reset
+					else:
+						container += t.div((t.b(title)))
+						ul = t.ul()
+						container += ul
+						ul += t.li(detail_detail)
+				else: # assert(ul != None)
 					ul += t.li(detail_detail)
-			else: # assert(ul != None)
-				ul += t.li(detail_detail)
+			container += t.hr(cls = 'bighr')
+		
+		if signs:
+			ull = t.ul()
+			container += t.div((t.b('Signs: '), ull))
+			for sign in signs:
+				ull += t.li(t.a(sign['word'], href = sign['url'], target = "_blank", cls = 'hover_link'))
 
 
 	d = _doc('Timeline Event Detail - ' + record['name'])

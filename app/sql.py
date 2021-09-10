@@ -495,7 +495,8 @@ async def get_detail(dbc, key):
 			where qr_key.key = ?''', (key,)))
 		if result:
 			details = await _get_detail(dbc, table, result['id'])
-			return (table, result, details)
+			signs = await _get_sign_language_detail(dbc, table, result['id'])
+			return (table, result, details, signs)
 		#else continue trying other tables
 	#else return None
 
@@ -507,7 +508,8 @@ async def get_detail_by_id(dbc, table, id):
 		where {table}.id = ?''', (id,)))
 	if result:
 		details = await _get_detail(dbc, table, id)
-		return (result, details)
+		signs = await _get_sign_language_detail(dbc, table, result['id'])
+		return (result, details, signs)
 	#else return None
 
 async def _get_detail(dbc, table, id):
@@ -520,6 +522,13 @@ async def _get_detail(dbc, table, id):
 		order by detail_title.sequence, detail.sequence
 		''', (id,)))
 
+async def _get_sign_language_detail(dbc, table, id):
+	return await fetchall(dbc, (f'''
+		select {table}_sign_language.* from {table}_sign_language
+		join {table} on {table}.id = {table}_sign_language.{table}
+		where {table}.id = ?
+		order by {table}_sign_language.sequence
+		''', (id,)))
 
 async def get_random_audio_url(dbc, spec):
 	async def fetch(**args):

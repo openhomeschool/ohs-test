@@ -351,9 +351,9 @@ def detail_handler(handler):
 async def detail(request):
 	dbc = request.app['db']
 	detail = await db.get_detail(dbc, request.match_info['key'])
-	if detail: # is a 3-tuple: {table, record, details}
-		table, record, details = detail
-		return await g_detail_handlers[table](record, details)
+	if detail: # is a 4-tuple: {table, record, details, signs}
+		table, record, details, signs = detail
+		return await g_detail_handlers[table](record, details, signs)
 	else:
 		raise web.HTTPNotFound(location = gurl(r, 'home')) # TODO - replace with a pagetthat indicates failure to find the 'key'
 
@@ -362,27 +362,27 @@ async def event_detail(request):
 	dbc = request.app['db']
 	table = request.match_info['table']
 	detail = await db.get_detail_by_id(dbc, table, request.match_info['id'])
-	if detail: # is a 2-tuple: {record, details}
-		record, details = detail
-		return await g_detail_handlers[table](record, details)
+	if detail: # is a 3-tuple: {record, details, signs (sign-language signs)}
+		record, details, signs = detail
+		return await g_detail_handlers[table](record, details, signs)
 	else:
 		raise web.HTTPNotFound(location = gurl(r, 'home')) # TODO - replace with a pagetthat indicates failure to find the 'key'
 
 
 @detail_handler('event')
-async def timeline_event_detail(record, details):
-	return hr(html.timeline_event_detail(record, details))
+async def timeline_event_detail(record, details, signs):
+	return hr(html.timeline_event_detail(record, details, signs))
 
 k_temp_this_week = 1
 k_temp_this_cycle = 2
 
 _links = lambda request: (
-	('Grammar', _http_url(request, '/resources', {'program': 1}), True),
+	#('Grammar', _http_url(request, '/resources', {'program': 1}), True),
 	('Gram-Review', _http_url(request, '/resources', {'program': 1, 'first_week': max(0, k_temp_this_week - 3), 'last_week': k_temp_this_week}), True),
 	('► Random', 'toggle_random_play(this)', False),
 	#('4-6 assignments': _http_url(request, '/resources?program=2'),
-	('7th-9th', _http_url(request, '/resources', {'program': 3}), True),
-	('10th-12th', _http_url(request, '/resources', {'program': 4}), True),
+	#('7th-9th', _http_url(request, '/resources', {'program': 3}), True),
+	#('10th-12th', _http_url(request, '/resources', {'program': 4}), True),
 	#('Shop', _http_url(request, '/shop'), True),
 	('Quiz', _http_url(request, '/quiz/history/sequence'), True), # TODO!
 )
