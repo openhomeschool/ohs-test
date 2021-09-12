@@ -487,9 +487,7 @@ async def get_shopping_links(dbc, resource_id):
 
 async def get_detail(dbc, key):
 	for table in ('event', 'science', ): # TODO: the rest of the tables with a qr_code field...
-		result = await fetchone(dbc, (f'''
-			select {table}.*, location.name as location, cw.cycle, cw.week from {table}
-			join location on {table}.region = location.id
+		result = await fetchone(dbc, (await _get_detail_sql_start(table) + f'''
 			join qr_key on {table}.qr_key = qr_key.id
 			join cycle_week as cw on {table}.cw = cw.id
 			where qr_key.key = ?''', (key,)))
@@ -501,9 +499,7 @@ async def get_detail(dbc, key):
 	#else return None
 
 async def get_detail_by_id(dbc, table, id):
-	result = await fetchone(dbc, (f'''
-		select {table}.*, location.name as location, cw.cycle, cw.week from {table}
-		join location on {table}.region = location.id
+	result = await fetchone(dbc, (await _get_detail_sql_start(table) + f'''
 		join cycle_week as cw on {table}.cw = cw.id
 		where {table}.id = ?''', (id,)))
 	if result:
@@ -511,6 +507,12 @@ async def get_detail_by_id(dbc, table, id):
 		signs = await _get_sign_language_detail(dbc, table, result['id'])
 		return (result, details, signs)
 	#else return None
+
+async def _get_detail_sql_start(table):
+	if table == 'event': # event records expect joined location detail; should probably separate this off more elegantly... at least like _get_sign_language_detail...?
+		return f'select {table}.*, location.name as location, cw.cycle, cw.week from {table} join location on {table}.region = location.id '
+	else:
+		return f'select {table}.*, cw.cycle, cw.week from {table} '
 
 async def _get_detail(dbc, table, id):
 	return await fetchall(dbc, (f'''

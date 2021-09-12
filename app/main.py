@@ -373,6 +373,10 @@ async def event_detail(request):
 async def timeline_event_detail(record, details, signs):
 	return hr(html.timeline_event_detail(record, details, signs))
 
+@detail_handler('science')
+async def science_detail(record, details, signs):
+	return hr(html.science_detail(record, details, signs))
+
 k_temp_this_week = 1
 k_temp_this_cycle = 2
 

@@ -554,7 +554,7 @@ def _add_eqality_record(table, record, left_field_name, right_field_name, yougli
 	tr = t.tr(
 		t.td(t.b(youglishify(str(record[left_field_name]))), cls = 'left-equality-cell'),
 	)
-	right_text = youglishify(str(record[right_field_name]))
+	right_text = record[right_field_name].replace('\\', '') # NOTE: NO LONGER youglishifying this!
 	if audio_base:
 		tr += t.td(
 			t.button('►', title = 'audio', onclick = '$("%s").play();' % audio_base, cls = 'mini_button'),
@@ -597,8 +597,8 @@ def science_grammar(container, spec, records, show_cw):
 			#TODO: DEPRECATE after fixing cycle 1 grammar: t.div(t.b('What %s %s?' % (record['prompt_prefix'], record['prompt'])))
 			#TODO: DEPRECATE after fixing cycle 1 grammar: t.div(_prefix_answer(record, True))
 			#TODO: NEW (below):
-			t.div(t.b('%s - tell me more' % (record['prompt'],)))
-			t.div(_format_answer(record['answer'], True))
+			t.div(t.b(t.a('%s - tell me more' % record['prompt'], href = _gurl('/detail/science/%d' % record['id']), target = "_blank", cls = 'hover_link')))
+			t.div(_format_answer(record['answer'], False))
 
 	_grammar_resources(container, spec, records, show_cw, 'science', render, True)
 
@@ -683,12 +683,10 @@ def history_grammar(container, spec, records, show_cw):
 	def render(record, container): # callback function, see _grammar_resources()
 		with container:
 			t.div(t.b(t.a('%s - tell me more' % record['name'], href = _gurl('/detail/event/%d' % record['event']), target = "_blank", cls = 'hover_link')))
-			text = str(record['primary_sentence'])
+			text = str(record['primary_sentence'] + _format_dates(record))
 			if spec.secondaries and record['secondary_sentence']:
 				text += ' [' + record['secondary_sentence'] + ']'
-			t.div(_youglishify(text))
-			if hasattr(record, 'history_sign_language'):
-				t.div( ', '.join([t.a(r['word'], href = r['url']) for r in record['history_sign_language']]))
+			t.div(text)
 
 	_grammar_resources(container, spec, records, show_cw, 'history', render, True)
 
@@ -832,14 +830,54 @@ def _youglishify(text, rawify = True):
 	#else:
 	return result
 
+def _detail_doc(title, subject_section_title, table, record, renderer):
+	d = _doc(title)
+	section = _new_subject_section(d, subject_section_title)
+	_grammar_resources(section, None, (record,), True, table, renderer, True)
+
+	with d:
+		# JS (intentionally at bottom of file; see https://faqs.skillcrush.com/article/176-where-should-js-script-tags-be-linked-in-html-documents and many stackexchange answers):
+		t.script(_js_util())
+		t.script(_js_play_pause())
+	return d.render()
+
+def _add_signs(signs, container):
+	if signs:
+		ull = t.ul()
+		container += t.div((t.b('Signs: '), t.span(('(provided by ', t.a('signingsavvy.com', href = 'https://www.signingsavvy.com/', target = "_blank"), ')')), ull))
+		for sign in signs:
+			#ull += t.li(t.a(sign['word'], href = sign['url'], target = "_blank", cls = 'hover_link'))
+			#ull += t.li((sign['word'], t.br(), t.iframe(width='280', height='157', src = sign['url'], title = sign['word'], frameborder = "0", allow = "accelerometer;", allowfullscreen = '1')))
+			title = [sign['word']]
+			if sign['real_word']:
+				title += ' (%s)' % sign['real_word']
+			ull += t.li((
+				t.a(title, href = sign['reference_url'], target = "_blank", cls = 'hover_link'), t.br(), 
+				t.video(t.source(src = sign['url']), width = '280', height = '157', controls = '1', loop = '1')
+			))
+
+def science_detail(record, details, signs):
+	def render(record, container):
+		with container:
+			t.div(_format_answer(record['answer'], True))
+			if record['note']:
+				t.hr(cls = 'smallhr')
+				t.div(_youglishify(record['note']))
+		container += t.hr(cls = 'bighr')
+		_add_signs(signs, container)
+
+	return _detail_doc('Science Detail - ' + record['prompt'], 'Science', 'science', record, render)
+
+
 def timeline_event_detail(record, details, signs):
 	
 	def render(record, container): # callback function, see _grammar_resources()
 		with container:
 			t.div(t.b(_event_formatted(record, False, False, False))) # false on the timeline_sentence because we're including it explicitly below, youglishified
-			t.div(_youglishify(str(record['primary_sentence'])))
+			t.div((_youglishify(str(record['primary_sentence'])), _format_dates(record)))
 			if record['secondary_sentence']:
-				t.div(_youglishify('[' + record['secondary_sentence'] + ']'))
+				t.hr(cls = 'smallhr')
+				t.div(_youglishify(record['secondary_sentence']))
 			t.hr(cls = 'bighr')
 			t.div((t.b('Region: '), record['location']))
 			t.hr(cls = 'bighr')
@@ -853,7 +891,6 @@ def timeline_event_detail(record, details, signs):
 					title = detail['detail_title']
 					ul = None # reset
 					if not detail['sequence']: # singleton
-						l.debug('@@@ %s' % detail_detail)
 						container += t.div((t.b(title), ': ', detail_detail))
 						title = None # reset
 					else:
@@ -864,24 +901,9 @@ def timeline_event_detail(record, details, signs):
 				else: # assert(ul != None)
 					ul += t.li(detail_detail)
 			container += t.hr(cls = 'bighr')
-		
-		if signs:
-			ull = t.ul()
-			container += t.div((t.b('Signs: '), ull))
-			for sign in signs:
-				ull += t.li(t.a(sign['word'], href = sign['url'], target = "_blank", cls = 'hover_link'))
+			_add_signs(signs, container)
 
-
-	d = _doc('Timeline Event Detail - ' + record['name'])
-	section = _new_subject_section(d, 'Timeline')
-	_grammar_resources(section, None, (record,), True, 'timeline', render, True)
-
-	with d:
-
-		# JS (intentionally at bottom of file; see https://faqs.skillcrush.com/article/176-where-should-js-script-tags-be-linked-in-html-documents and many stackexchange answers):
-		t.script(_js_util())
-		t.script(_js_play_pause())
-	return d.render()
+	return _detail_doc('Timeline Event Detail - ' + record['name'], 'Timeline', 'timeline', record, render) # TODO: change 'Timeline' to 'History?!'
 	
 
 # -----------------------------------------------------------------------------
@@ -1047,10 +1069,10 @@ def _add_cw_spacer(div):
 	with div:
 		t.div('. ', cls = 'cw-spacer')
 
-def _event_formatted(record, for_print, timeline_sentences, detail_link = True):
-	result = record['name'] if detail_link else _youglishify(record['name'])
+def _format_dates(record):
+	result = ' '
 	if not record['fake_start_date']:
-		result += ' ('
+		result += '('
 		# Start date:
 		if record['start_circa']:
 			result += 'c.'
@@ -1074,6 +1096,11 @@ def _event_formatted(record, for_print, timeline_sentences, detail_link = True):
 				end = str(end)
 			result += end
 		result += ')'
+	return result
+
+def _event_formatted(record, for_print, timeline_sentences, detail_link = True):
+	result = record['name'] if detail_link else _youglishify(record['name'])
+	result += _format_dates(record)
 	if record['subseq']: # "extra" event
 		result = '[' + result + ']'
 
