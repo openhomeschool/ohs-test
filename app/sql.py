@@ -350,7 +350,7 @@ async def _get_assignments(dbc, spec, resource_spec):
 		# Get the motherload...
 		group_by = ''
 		joins.append(f'instructions on {spec.table}.instruction = instructions.id')
-		detail_fields = 'instructions.text as instruction, program.grade_first as program_grade_first, program.grade_last as program_grade_last, assignment.grade_first, assignment.grade_last, pages, chapters, items, optional, "order"'
+		detail_fields = 'instructions.text as instruction, program.grade_first as program_grade_first, program.grade_last as program_grade_last, assignment.grade_first, assignment.grade_last, pages, chapters, items, skips, optional, "order"'
 
 	return await fetchall(dbc, (f'select resource.id as resource_id, resource.name as resource_name, cw.cycle as cycle, cw.week as week, {detail_fields} from {spec.table}' \
 		+ _join(joins) + _where(wheres) + group_by + f' order by {resource_spec.order_by}', args))
@@ -712,7 +712,7 @@ def _filter_cycle_week_range(spec, joins, wheres, args, cw_week_range = False, b
 				wheres.append("(? <= cw.week and cw.week <= ?)")
 			args.extend(broaden(spec.first_week, spec.last_week))
 		if spec.cycles:
-			wheres.append("cw.cycle in (%s)" % ', '.join([str(int(i)) for i in spec.cycles]))
+			wheres.append("cw.cycle in (%s)" % ', '.join([str(int(i)) for i in spec.cycles + (4,)])) # add "cycle 4", which is just an "all cycles" indicator
 	#else, no-op
 
 def _filter_program(spec, joins, wheres, args):

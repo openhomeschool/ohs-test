@@ -781,6 +781,7 @@ def _assignments(container, spec, records, show_cw):
 			instruction = instruction.replace('{chapters}', str(record['chapters']))
 			instruction = instruction.replace('{pages}', str(record['pages']))
 			instruction = instruction.replace('{items}', str(record['items']))
+			instruction = instruction.replace('{skips}', str(record['skips']) if record['skips'] else '')
 			if record['optional']:
 				instruction = '[optional] ' + instruction
 			grade_first = record['grade_first']
