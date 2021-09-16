@@ -445,7 +445,7 @@ async def _first_resources(dbc, qargs):
 		timeline_sentences = int(qargs.get('timeline_sentences', 0)), # 1 = include timeline sentences, 0 = don't
 		show_search = int(qargs.get('show_search', 1)), # 1 = show search bar, 0 = don't
 		show_go = int(qargs.get('show_go', 1)), # 1 = show go bar, 0 = don't
-		random_audio_type = int(qargs.get('random_audio_type', 4)), # 4 = 'song-simple'
+		random_audio_type = int(qargs.get('random_audio_type', 7)), # 4 = 'song-simple'
 	)
 	if spec.week != None:
 		spec.first_week = spec.last_week = int(spec.week)
