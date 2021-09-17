@@ -503,10 +503,12 @@ async def ws_resources(request):
 				await ws.send_json({'call': 'show_shopping', 'div_id': payload['resource_id'], 'result': html.show_shopping(result)})
 
 			elif payload['call'] == 'get_random_audio_url':
-				prompt, target = await db.get_random_audio_url(dbc, spec)
 				error, prompt_url, target_url = 1, '', ''
-				if prompt and target:
+				prompt_target = await db.get_random_audio_url(dbc, spec)
+				if prompt_target:
+					prompt, target = prompt_target # real results from get_random_audio_url() are pairs
 					error, prompt_url, target_url = 0, prompt['url'], target['url']
+					l.debug('urls: %s %s' % (prompt_url, target_url))
 				await ws.send_json({'call': 'play_random_url', 'prompt': prompt_url, 'target': target_url, 'error': error})
 
 		except ValueError as e:

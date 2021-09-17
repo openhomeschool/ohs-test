@@ -542,11 +542,14 @@ async def get_random_audio_url(dbc, spec):
 		if prompt_audio:
 			target = head + " <= {rat} and {at}.grammar_audio_type > 1 and {t}.id = ? order by {at}.grammar_audio_type desc" # this fetches the requested random_audio_type and anything "simpler" as a fallback, then sorts (see tail) reverse, by grammar_audio_type, to give preferrential treatment to the right audio-type target; only the top hit is returned.
 			target_audio = await fetchone_(dbc, target.format(**args), (prompt_audio['id'],))
-		
-		return (prompt_audio, target_audio)
+			if not target_audio:
+				return None
+		else:
+			return None
+		return (prompt_audio, target_audio) # only return when we have both values; caller should always check for None!
 	
 	subject_fetch_args = {
-		1: dict(at = 'timeline_audio', t = 'event', f = 'event'),
+		#1: dict(at = 'timeline_audio', t = 'event', f = 'event'),
 		2: dict(at = 'history_audio', t = 'history', f = 'history'),
 		5: dict(at = 'science_audio', t = 'science', f = 'science'),
 	}
@@ -554,7 +557,9 @@ async def get_random_audio_url(dbc, spec):
 		# Fetch an audio-pair (prompt and target) for each subject:
 		result = []
 		for args in subject_fetch_args.values():
-			result.append(await fetch(**args))
+			r = await fetch(**args)
+			if r:
+				result.append(r)
 		return random.choice(result)
 	else:
 		# Fetch an audio-pair for only the specified subject:
