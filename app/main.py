@@ -418,11 +418,14 @@ async def _resources(request, qargs):
 
 k_db_handlers = { # 'id' keys must coincide with DB 'program' table
 	1: db.get_grammar_resources,
-	2: db.get_grammar_resources, # TODO: placeholder
+	2: db.get_middle_resources,
 	3: db.get_high1_resources,
 	4: db.get_high1_resources, # TODO: placeholder
 	5: db.get_grammar_resources, # TODO: placeholder
 	6: db.get_grammar_resources, # TODO: placeholder
+	7: db.get_grammar_resources, # TODO: placeholder
+	8: db.get_high1_resources, # TODO: placeholder
+	9: db.get_high1_resources, # TODO: placeholder
 }
 
 async def _first_resources(dbc, qargs):
@@ -439,7 +442,7 @@ async def _first_resources(dbc, qargs):
 		first_week = int(qargs.get('first_week', k_temp_this_week)), # TODO: hardcode default to week 0! replace with lookup for user's "current week"
 		last_week = int(qargs.get('last_week', k_temp_this_week)), # TODO: see above; look up user's current-week
 		week = qargs.get('week', None), # convenience - use this to specify first_week = last_week = week
-		grammar_supplement = int(qargs.get('grammar_supplement', 1)), # 1 = show grammar (at the bottom of assignments)
+		grammar_supplement = int(qargs.get('grammar_supplement', 0)), # 1 = show grammar (at the bottom of assignments)
 		for_print = int(qargs.get('for_print', 0)), # 1 = no buttons, no header
 		secondaries = int(qargs.get('secondaries', 0)), # 1 = include secondary history sentences, etc. ("advanced" material), 0 = don't
 		timeline_sentences = int(qargs.get('timeline_sentences', 0)), # 1 = include timeline sentences, 0 = don't
@@ -479,7 +482,7 @@ async def ws_resources(request):
 		if program['differentiate']:
 			grades = [('All', 0), ] # select to show all grades together (within program)
 			grades.extend([('%sth' % grade, grade) for grade in range(program['grade_first'], program['grade_last'] + 1)])
-		return html.grades_filter_button('grade', grades)
+		return html.grades_filter_button('grade', grades, program['show_grammar_option'])
 
 	async def msg_handler(payload, ws):
 		nonlocal spec

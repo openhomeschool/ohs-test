@@ -435,6 +435,21 @@ k_logic_assignment_rs = _make_assignment_spec('Logic', 'logic_assignments')
 k_math_assignment_rs = _make_assignment_spec('Math', 'math_assignments')
 k_latin_assignment_rs = _make_assignment_spec('Latin', 'latin_assignments')
 
+k_middle_resources = [
+	SS('Timeline', (k_timeline_grammar_rs, )),
+	SS('History', (k_history_assignment_rs, k_history_grammar_rs, )),
+	SS('Geography', (k_geography_grammar_rs, )),
+	SS('Math', (k_multiplication_fact_grammar_rs, k_math_vocabulary_rs )),
+	SS('Science', (k_science_grammar_rs, )),
+	SS('English', (k_english_vocabulary_rs, k_english_grammar_rs, )),
+	SS('Latin', (k_latin_vocabulary_rs, k_latin_grammar_rs, )),
+	SS('Extra', (k_general_grammar_rs, )),
+]
+
+k_middle_assignments = [
+	SS('History', (k_history_assignment_rs, )),
+]
+
 k_high1_resources = [
 	SS('History', (k_history_assignment_rs, k_history_grammar_rs.triplify(), k_timeline_grammar_rs.triplify(), )), # TODO: add geography?
 	SS('Science', (k_science_assignment_rs, k_science_grammar_rs, )),
@@ -460,10 +475,12 @@ k_high1_assignments = [
 ]
 
 
-
 async def get_grammar_resources(dbc, spec):
 	return await _get_resources(dbc, spec, k_grammar_resources)
 
+async def get_middle_resources(dbc, spec):
+	resources = k_middle_resources if spec.grammar_supplement else k_middle_assignments
+	return await _get_resources(dbc, spec, resources)
 
 async def get_high1_resources(dbc, spec):
 	resources = k_high1_resources if spec.grammar_supplement else k_high1_assignments

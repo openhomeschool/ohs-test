@@ -327,8 +327,11 @@ def quiz(ws_url, db_handler, html_function):
 
 
 
-def grades_filter_button(key, options):
-	return _dropdown((key, options), {}, 'ib-left').render()
+def grades_filter_button(key, options, show_grammar_option):
+	r = [_dropdown((key, options), {}, 'ib-left'), ]
+	if show_grammar_option:
+		r.append(t.div(t.input_(type = 'checkbox', id = 'show_grammar'), t.label('Show Grammar', for_ = 'show_grammar'), cls = 'ib-left'))
+	return t.div(r).render()
 
 
 def resources(ws_url, filters, cycles, weeks, qargs, links): # TODO: this is basically identical to select_user (and presumably other search-driven pages whose content comes via websocket); consolidate!
@@ -763,7 +766,7 @@ def _assignments(container, spec, records, show_cw):
 					title += '[optional] '
 			title += resource_name
 			if not spec.for_print:
-				title += t.button('...', onclick = 'show_hide_details("%s");' % div_id, cls = 'chaser'),
+				#TODO: hook up the "details" to work! --  title += t.button('...', onclick = 'show_hide_details("%s");' % div_id, cls = 'chaser'),
 				title += t.button('$', onclick = 'show_hide_shopping("%s");' % div_id, cls = 'chaser'),
 			container += title
 			if not spec.for_print:

@@ -248,6 +248,9 @@ async def assess_arithmetic_fact(dbc, spec): # spec contains arithmetic_fact_id,
 async def get_grammar_resources(dbc, spec):
 	return await sql.get_grammar_resources(dbc, spec)
 
+async def get_middle_resources(dbc, spec):
+	return await sql.get_middle_resources(dbc, spec)
+
 async def get_high1_resources(dbc, spec):
 	return await sql.get_high1_resources(dbc, spec)
 
