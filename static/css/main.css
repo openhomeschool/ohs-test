@@ -651,11 +651,15 @@ td.right-equality-cell {
 	float: left;
 	margin: 7px 2px;
 	height: 27px;
-	width: 180px;
+	width: 120px;
 }
 
 hr.bighr {
-  border: 1px solid black;
+	border: 1px solid black;
+}
+
+hr.smallhr {
+	border: 0.75px solid gray;
 }
 
 
