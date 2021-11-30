@@ -418,18 +418,18 @@ def _grammar_resources(container, spec, records, show_cw, subject_directory, ren
 					filename_base = subject_directory + '/c%sw%s' % (record['cycle'], record['week'])
 					filename_accompanied_base = subject_directory + '/c%sw%s-chant' % (record['cycle'], record['week'])
 					with buttonstrip:
-						t.button('♬', title = 'Musical score', onclick = 'window.open("%s","_blank");' % _aurl(filename_base + '.pdf?v=a8'))
+						t.button('♬', title = 'Musical score', onclick = 'window.open("%s","_blank");' % _aurl(filename_base + '.pdf?v=a9'))
 						t.button('»', title = 'Accompanied song', onclick = 'play_pause("%s", this, "»");' % filename_accompanied_base)
 						t.button('►', title = 'Audio song', onclick = 'play_pause("%s", this, "►");' % filename_base)
 						#t.button('ℓ', title = 'Copywork')
 						#t.button('Ξ', title = 'Details')
 					buttonstrip_detail = t.div(cls = 'buttonstrip_detail', id = filename_base + '_container') # invisible at first
 					with buttonstrip_detail:
-						t.audio(t.source(src = _aurl(filename_base + '.mp3?v=a8'), type = 'audio/mpeg'), controls = True, id = filename_base)
+						t.audio(t.source(src = _aurl(filename_base + '.mp3?v=a9'), type = 'audio/mpeg'), controls = True, id = filename_base)
 						#t.button('-', title = 'Lower pitch', onclick = 'lower_pitch("%s");' % filename_base)
 					buttonstrip_accompanied_detail = t.div(cls = 'buttonstrip_detail', id = filename_accompanied_base + '_container') # invisible at first
 					with buttonstrip_accompanied_detail:
-						t.audio(t.source(src = _aurl(filename_accompanied_base + '.mp3?v=a8'), type = 'audio/mpeg'), controls = True, id = filename_accompanied_base)
+						t.audio(t.source(src = _aurl(filename_accompanied_base + '.mp3?v=a9'), type = 'audio/mpeg'), controls = True, id = filename_accompanied_base)
 
 				_add_cw(record, buttonstrip, spec)
 				resource_div += buttonstrip
@@ -509,7 +509,7 @@ def show_shopping(records):
 def general(container, spec, records, show_cw):
 	def render(record, container): # callback function, see _grammar_resources()
 		with container:
-			path = _geurl('%s/%s%s?v=a8' % (record['download_path'], record['filename_crux'], record['filename_suffix']))
+			path = _geurl('%s/%s%s?v=a9' % (record['download_path'], record['filename_crux'], record['filename_suffix']))
 			t.div(t.a('%s - %s' % (record['real_title'], record['description']), href = path, cls = 'hover_link', target = "_blank"))
 
 	_grammar_resources(container, spec, records, show_cw, 'general', render, False)
@@ -525,7 +525,7 @@ def geography(container, spec, records, show_cw):
 		name = record['name']
 		if new_cw != cw:
 			cw = new_cw
-			path = 'c%dw%02d_geography.png?v=a8' % (record['cycle'], record['week'])
+			path = 'c%dw%02d_geography.png?v=a9' % (record['cycle'], record['week'])
 			container += t.div(t.img(src = _murl(path)))
 		else:
 			name = ', ' + name
@@ -561,7 +561,7 @@ def _add_eqality_record(table, record, left_field_name, right_field_name, yougli
 	if audio_base:
 		tr += t.td(
 			t.button('►', title = 'audio', onclick = '$("%s").play();' % audio_base, cls = 'mini_button'),
-			t.audio(t.source(src = _aurl(audio_base + '.mp3?v=a8'), type = 'audio/mpeg'), controls = False, id = audio_base),
+			t.audio(t.source(src = _aurl(audio_base + '.mp3?v=a9'), type = 'audio/mpeg'), controls = False, id = audio_base),
 			right_text,
 			cls = 'right-equality-cell')
 	else:
@@ -964,7 +964,7 @@ def _doc(title, css = None, scripts = None):
 	d = document(title = title)
 	with d.head:
 		t.meta(name = 'viewport', content = 'width=device-width, initial-scale=1')
-		t.link(href = settings.k_static_url + 'css/main.css?v=a8', rel = 'stylesheet')
+		t.link(href = settings.k_static_url + 'css/main.css?v=a9', rel = 'stylesheet')
 	return d
 
 def _error(error):
@@ -1121,7 +1121,7 @@ def _event_formatted(record, for_print, timeline_sentences, detail_link = True):
 	else:
 		filename_base = 'timeline/e%s' % record['id']
 		final += t.button('►', title = 'audio', onclick = '$("%s").play();' % filename_base, cls = 'mini_button')
-		final += t.audio(t.source(src = _aurl(filename_base + '.mp3?v=a8'), type = 'audio/mpeg'), controls = False, id = filename_base)
+		final += t.audio(t.source(src = _aurl(filename_base + '.mp3?v=a9'), type = 'audio/mpeg'), controls = False, id = filename_base)
 		if detail_link:
 			final += t.a(result, href = _gurl('/detail/event/%d' % record['id']), target = "_blank", cls = 'hover_link')
 		else:
