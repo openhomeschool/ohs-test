@@ -53,7 +53,7 @@ def get_random_records(spec, count, exclude_ids = None):
 	'''
 	joins, wheres, args = [], [], []
 	_filter_cycle_week_range(spec, joins, wheres, args)
-	_exclude_ids(spec, wheres, exclude_ids)
+	_filter_exclude_ids(spec, wheres, exclude_ids)
 	return _random_select(spec, joins, wheres, count), args
 
 
@@ -67,8 +67,8 @@ def get_random_event_records(spec, count, exclude_ids = None):
 	if spec.exclude_people_groups:
 		wheres.append(f'{spec.table}.people_group is not true')
 	_filter_cycle_week_range(spec, joins, wheres, args)
-	_date_range(spec, wheres, args)
-	_exclude_ids(spec, wheres, exclude_ids)
+	_filter_date_range(spec, wheres, args)
+	_filter_exclude_ids(spec, wheres, exclude_ids)
 	result = _random_select(spec, joins, wheres, count)
 	return result, args
 
@@ -85,7 +85,7 @@ async def get_surrounding_event_records(spec, count, event):
 	if spec.exclude_people_groups:
 		wheres.append(f'{spec.table}.people_group is not true')
 	_filter_cycle_week_range(spec, joins, wheres, args)
-	_date_range(spec, wheres, args)
+	_filter_date_range(spec, wheres, args)
 
 	# Get keyword-similar events:
 	exids = [event['id'],]
@@ -549,7 +549,52 @@ async def _get_sign_language_detail(dbc, table, id):
 		order by {table}_sign_language.sequence
 		''', (id,)))
 
-async def get_random_audio_url(dbc, spec):
+async def get_random_audio_playlist_DEPRECATED_NEVER_FINISHED(dbc, spec):
+	async def fetch(**args):
+		args['rat'] = spec.random_audio_type
+		head = "select {at}.url as url, {at}.{f} as id from {at} join {t} on {at}.{f} = {t}.id where {at}.grammar_audio_type "
+		prompt = head + " = 1 order by random()" # TODO: fix hard-coded grammar_audio_type = 1 ("prompt")
+		prompt_audio = await fetchone_(dbc, prompt.format(**args), [])
+		target_audio = None
+		if prompt_audio:
+			target = head + " <= {rat} and {at}.grammar_audio_type > 1 and {t}.id = ? order by {at}.grammar_audio_type desc" # this fetches the requested random_audio_type and anything "simpler" as a fallback, then sorts (see tail) reverse, by grammar_audio_type, to give preferrential treatment to the right audio-type target; only the top hit is returned.
+			target_audio = await fetchone_(dbc, target.format(**args), (prompt_audio['id'],))
+			if not target_audio:
+				return None
+		else:
+			return None
+		return (prompt_audio, target_audio) # only return when we have both values; caller should always check for None!
+
+
+	joins, wheres, args = [], [], []
+	_filter_cycle_week_range(spec, joins, wheres, args)
+	#!!!!!
+	result = _random_select(spec, joins, wheres, count)
+
+	assert(spec.table == 'event') # sanity check
+	if spec.exclude_people_groups:
+		wheres.append(f'{spec.table}.people_group is not true')
+
+	return result, args
+	
+	subject_fetch_args = {
+		#1: dict(at = 'timeline_audio', t = 'event', f = 'event'),
+		2: dict(at = 'history_audio', t = 'history', f = 'history'),
+		5: dict(at = 'science_audio', t = 'science', f = 'science'),
+	}
+	if spec.subject == 0:
+		# Fetch an audio-pair (prompt and target) for each subject:
+		result = []
+		for args in subject_fetch_args.values():
+			r = await fetch(**args)
+			if r:
+				result.append(r)
+		return random.choice(result)
+	else:
+		# Fetch an audio-pair for only the specified subject:
+		return fetch(subject_fetch_args[spec.subject])
+
+async def get_random_audio_url_DEPRECATED(dbc, spec):
 	async def fetch(**args):
 		args['rat'] = spec.random_audio_type
 		head = "select {at}.url as url, {at}.{f} as id from {at} join {t} on {at}.{f} = {t}.id where {at}.grammar_audio_type "
@@ -742,13 +787,13 @@ def _filter_program(spec, joins, wheres, args):
 	wheres.append('program.id = ?')
 	args.append(spec.program if spec.program else 1) # default to "grammar" program (TODO: hardish code!)
 
-def _date_range(spec, wheres, args):
+def _filter_date_range(spec, wheres, args):
 	if spec.date_range:
 		wheres.append(f"{spec.table}.start >= ? and {spec.table}.start <= ?")
 		args.extend(spec.date_range)
 	#else, no-op
 
-def _exclude_ids(spec, wheres, exclude_ids):
+def _filter_exclude_ids(spec, wheres, exclude_ids):
 	if exclude_ids:
 		wheres.append(f"{spec.table}.id not in (%s)" % ', '.join([str(e) for e in exclude_ids]))
 	#else, no-op

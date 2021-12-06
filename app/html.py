@@ -80,12 +80,11 @@ def _format_person(person, bd = True):
 	return result
 
 def _format_money(amount_cents):
-	dollars = amount_cents / 100
-	cents = amount_cents % 100
-	if cents == 0:
-		return t.b('$%d' % dollars) # keep it simple - no need to show ".00"
-	#else:
-	return t.b('$%d.%02d' % (dollars, cents))
+	if amount_cents % 100 == 0:
+		dollars = '$%d' % (amount_cents // 100)
+	else:
+		dollars = '$%.2f' % (amount_cents / 100)
+	return t.b(dollars)
 
 def _format_cost(cost):
 	return (cost['name'] + ': ', _format_money(cost['amount']))
@@ -227,6 +226,11 @@ def invitation(form, invitation, person, family, contact, costs, cost_offsets, l
 						t.hr()
 				with t.div(cls = 'resource_record'):
 					cl('Balance Due:')
+					l.debug('!!!')
+					l.debug(total)
+					l.debug(total_payments)
+					l.debug(leadership_offset)
+					l.debug('!!!')
 					cli(_format_money(total - total_payments - leadership_offset))
 
 		t.p('If you see any mistakes, please just contact me directly.  Thanks!')
@@ -1287,7 +1291,8 @@ def _js_filter_list(url):
 				if (payload.error == 1) {
 					alert("Sorry, failed to get random audio to play back.");
 				} else {
-					play_random_url("%(path)s" + payload.prompt, "%(path)s" + payload.target);
+					//play_random_url("%(path)s" + payload.prompt, "%(path)s" + payload.target);
+					play_random_url("%(path)s" + payload.path);
 				}
 				break;
 		}
@@ -1444,7 +1449,7 @@ def _js_play_random():
 				start_random_play();
 			}
 		};
-		function play_random_url(prompt_url, target_url) {
+		function play_random_url_DEPRECATED(prompt_url, target_url) {
 			if (play_random) { // double-check
 				random_audio = new Audio(prompt_url); // TODO: validate url!!!
 				random_audio.play();
@@ -1454,6 +1459,15 @@ def _js_play_random():
 					random_audio.onended = function() {
 						setTimeout(() => request_play_random_url(), 1500); // next!
 					}
+				}
+			}
+		};
+		function play_random_url(path) {
+			if (play_random) { // double-check
+				random_audio = new Audio(path); // TODO: validate url/path!!!
+				random_audio.play();
+				random_audio.onended = function() {
+					setTimeout(() => request_play_random_url(), 1500); // next!
 				}
 			}
 		};

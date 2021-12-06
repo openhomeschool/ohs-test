@@ -313,7 +313,8 @@ async def ws_test_twixt(request):
 
 	return await _ws_handler(request, msg_handler, {'call': 'content', 'data': result})
 	
-
+# Container for session-specific "random-play" playlists:
+g_playlists = {}
 
 
 @r.get('/')
@@ -377,13 +378,14 @@ async def timeline_event_detail(record, details, signs):
 async def science_detail(record, details, signs):
 	return hr(html.science_detail(record, details, signs))
 
-k_temp_this_week = 10
+k_temp_this_week = 11
 k_temp_this_cycle = 2
 
 _links = lambda request: (
 	#('Grammar', _http_url(request, '/resources', {'program': 1}), True),
-	('Gram-Review', _http_url(request, '/resources', {'program': 1, 'first_week': max(0, k_temp_this_week - 3), 'last_week': k_temp_this_week}), True),
-	('► Random', 'toggle_random_play(this)', False),
+	('4-Review', _http_url(request, '/resources', {'program': 1, 'first_week': max(0, k_temp_this_week - 3), 'last_week': k_temp_this_week}), True),
+	('All-Review', _http_url(request, '/resources', {'program': 1, 'first_week': 1, 'last_week': k_temp_this_week}), True),
+	#('► Review', 'toggle_random_play(this)', False),
 	#('4-6 assignments': _http_url(request, '/resources?program=2'),
 	#('7th-9th', _http_url(request, '/resources', {'program': 3}), True),
 	#('10th-12th', _http_url(request, '/resources', {'program': 4}), True),
@@ -496,6 +498,9 @@ async def ws_resources(request):
 				result = await k_db_handlers[spec.program](dbc, spec)
 				# Program changes require special treatment of the "grade" filter/button -- grab the grades that are appropriate for this (new) program selected:
 				grades = None if payload['filter'] != 'program' else await _grades(value) # value is program_id in this case
+				# reset any existing playlist; will have to be reconstructed if play_random is attempted again after this filter establishes a new set of grammar
+				del session['playlist']
+				# send the message:
 				await ws.send_json(_make_msg(result, spec, grades))
 
 			elif payload['call'] == 'show_shopping': # handles individual resource clicked to show the shopping options for that resource
@@ -506,6 +511,14 @@ async def ws_resources(request):
 				await ws.send_json({'call': 'show_shopping', 'div_id': payload['resource_id'], 'result': html.show_shopping(result)})
 
 			elif payload['call'] == 'get_random_audio_url':
+				playlist = _create_or_get_random_playlist(session, spec)
+				error, prompt_url, target_url = 1, '', ''
+				if len(playlist) > 0:
+					error = 0
+					prompt_url, target_url = playlist.pop()
+				await ws.send_json({'call': 'play_random_url', 'prompt': prompt_url, 'target': target_url, 'error': error})
+
+				"""DEPRECATE:
 				error, prompt_url, target_url = 1, '', ''
 				prompt_target = await db.get_random_audio_url(dbc, spec)
 				if prompt_target:
@@ -513,6 +526,7 @@ async def ws_resources(request):
 					error, prompt_url, target_url = 0, prompt['url'], target['url']
 					l.debug('urls: %s %s' % (prompt_url, target_url))
 				await ws.send_json({'call': 'play_random_url', 'prompt': prompt_url, 'target': target_url, 'error': error})
+				"""
 
 		except ValueError as e:
 			l.warning('invalid filter input to ws_resources') # but do nothing else; client code already checks for validity; this must/might be an attack attempt; no need to respond
@@ -522,6 +536,21 @@ async def ws_resources(request):
 
 
 # Util ------------------------------------------------------------------------
+
+async def _create_or_get_random_playlist(session, spec):
+	if 'playlist' not in session:
+		new_id = str(uuid4())
+		session['playlist'] = new_id
+		g_playlists[new_id] = []
+	playlist = g_playlists[session['playlist']]
+	if not len(playlist) > 0:
+		# Assemble the playlist (we build an entire playlist at once in order to avoid repetition (each song/etc. shows up only once), and because it's very easy to do one DB operation that results in a whole (randomly-ordered) set/list of "hits", rather than asking the DB every time, one song at a time):
+		if spec.subject in (0, sql.k_subject_ids['History']):
+			html._aurl('history/' + 'stuff')
+		if spec.first_week:
+			pass
+		playlist.append(('prompt!!', 'target!!'))
+	return g_playlists[session['playlist']]
 
 async def _flash(request):
 	session = await get_session(request)
