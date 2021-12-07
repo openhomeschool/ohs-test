@@ -499,7 +499,8 @@ async def ws_resources(request):
 				# Program changes require special treatment of the "grade" filter/button -- grab the grades that are appropriate for this (new) program selected:
 				grades = None if payload['filter'] != 'program' else await _grades(value) # value is program_id in this case
 				# reset any existing playlist; will have to be reconstructed if play_random is attempted again after this filter establishes a new set of grammar
-				del session['playlist']
+				if 'playlist' in session:
+					del session['playlist']
 				# send the message:
 				await ws.send_json(_make_msg(result, spec, grades))
 
