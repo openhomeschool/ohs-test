@@ -11,6 +11,9 @@ import logging
 import re
 import weakref
 
+from os.path import exists
+from random import shuffle
+
 from sqlite3 import PARSE_DECLTYPES
 from dataclasses import dataclass
 
@@ -385,7 +388,7 @@ _links = lambda request: (
 	#('Grammar', _http_url(request, '/resources', {'program': 1}), True),
 	('4-Review', _http_url(request, '/resources', {'program': 1, 'first_week': max(0, k_temp_this_week - 3), 'last_week': k_temp_this_week}), True),
 	('All-Review', _http_url(request, '/resources', {'program': 1, 'first_week': 1, 'last_week': k_temp_this_week}), True),
-	#('► Review', 'toggle_random_play(this)', False),
+	('► Review', 'toggle_random_play(this)', False),
 	#('4-6 assignments': _http_url(request, '/resources?program=2'),
 	#('7th-9th', _http_url(request, '/resources', {'program': 3}), True),
 	#('10th-12th', _http_url(request, '/resources', {'program': 4}), True),
@@ -440,7 +443,7 @@ async def _first_resources(dbc, qargs):
 		solo = int(qargs.get('solo', 0)), # 0 = show the designed content for the program; 1 = show *only* the content unique to the program -- TODO: DEPRECATED? I think 'grammar_supplement' now takes care of this, and can't find references to solo elsewhere.....
 		shop = int(qargs.get('shop', 0)), # 1 = show shopping links
 		subject = qargs.get('subject', 0), # 0 = "all" indicator
-		cycles = (4, int(qargs.get('cycle', k_temp_this_cycle))), # default: "cycle 1" ("4" refers to grammar that belongs to "all cycles" (like timeline grammar) - this is hardcode! TODO:FIX!)
+		cycles = (4, int(qargs.get('cycle', k_temp_this_cycle))), # default: k_temp_this_cycle ("4" refers to grammar that belongs to "all cycles" (like timeline grammar) - this is hardcode! TODO:FIX!)
 		first_week = int(qargs.get('first_week', k_temp_this_week)), # TODO: hardcode default to week 0! replace with lookup for user's "current week"
 		last_week = int(qargs.get('last_week', k_temp_this_week)), # TODO: see above; look up user's current-week
 		week = qargs.get('week', None), # convenience - use this to specify first_week = last_week = week
@@ -499,8 +502,8 @@ async def ws_resources(request):
 				# Program changes require special treatment of the "grade" filter/button -- grab the grades that are appropriate for this (new) program selected:
 				grades = None if payload['filter'] != 'program' else await _grades(value) # value is program_id in this case
 				# reset any existing playlist; will have to be reconstructed if play_random is attempted again after this filter establishes a new set of grammar
-				if 'playlist' in session:
-					del session['playlist']
+				if 'playlist_id' in session:
+					del session['playlist_id']
 				# send the message:
 				await ws.send_json(_make_msg(result, spec, grades))
 
@@ -513,11 +516,11 @@ async def ws_resources(request):
 
 			elif payload['call'] == 'get_random_audio_url':
 				playlist = _create_or_get_random_playlist(session, spec)
-				error, prompt_url, target_url = 1, '', ''
+				error, prompt_url, answer_url = 1, '', ''
 				if len(playlist) > 0:
 					error = 0
-					prompt_url, target_url = playlist.pop()
-				await ws.send_json({'call': 'play_random_url', 'prompt': prompt_url, 'target': target_url, 'error': error})
+					prompt_url, answer_url = playlist.pop()
+				await ws.send_json({'call': 'play_random_url', 'prompt': prompt_url, 'answer': answer_url, 'error': error})
 
 				"""DEPRECATE:
 				error, prompt_url, target_url = 1, '', ''
@@ -538,20 +541,30 @@ async def ws_resources(request):
 
 # Util ------------------------------------------------------------------------
 
-async def _create_or_get_random_playlist(session, spec):
-	if 'playlist' not in session:
+def _create_or_get_random_playlist(session, spec):
+	if 'playlist_id' not in session:
 		new_id = str(uuid4())
-		session['playlist'] = new_id
+		session['playlist_id'] = new_id
 		g_playlists[new_id] = []
-	playlist = g_playlists[session['playlist']]
+	playlist = g_playlists[session['playlist_id']]
 	if not len(playlist) > 0:
 		# Assemble the playlist (we build an entire playlist at once in order to avoid repetition (each song/etc. shows up only once), and because it's very easy to do one DB operation that results in a whole (randomly-ordered) set/list of "hits", rather than asking the DB every time, one song at a time):
-		if spec.subject in (0, sql.k_subject_ids['History']):
-			html._aurl('history/' + 'stuff')
-		if spec.first_week:
-			pass
-		playlist.append(('prompt!!', 'target!!'))
-	return g_playlists[session['playlist']]
+		path_map = {
+			db.k_subject_ids['History']: 'history/',
+			db.k_subject_ids['Science']: 'science/',
+		}
+		for subject, path in path_map.items():
+			if spec.subject in (0, subject): # i.e., spec.subject is either "all subjects" or this one
+				url = html._aurl(path)
+				for cycle in spec.cycles:
+					for week in range(spec.first_week, spec.last_week + 1):
+						fn = f'c{cycle}w{week}.mp3'
+						p_fn = f'c{cycle}w{week}-prompt.mp3'
+						if exists('static/audio/' + path + p_fn) and exists('static/audio/' + path + fn): # TODO: fix hardcode static path (local/server path... static files may be stored elsewhere in future!)
+							playlist.append((url + p_fn, url + fn))
+		shuffle(playlist)
+				
+	return g_playlists[session['playlist_id']]
 
 async def _flash(request):
 	session = await get_session(request)

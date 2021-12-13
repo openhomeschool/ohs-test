@@ -226,11 +226,6 @@ def invitation(form, invitation, person, family, contact, costs, cost_offsets, l
 						t.hr()
 				with t.div(cls = 'resource_record'):
 					cl('Balance Due:')
-					l.debug('!!!')
-					l.debug(total)
-					l.debug(total_payments)
-					l.debug(leadership_offset)
-					l.debug('!!!')
 					cli(_format_money(total - total_payments - leadership_offset))
 
 		t.p('If you see any mistakes, please just contact me directly.  Thanks!')
@@ -1291,8 +1286,7 @@ def _js_filter_list(url):
 				if (payload.error == 1) {
 					alert("Sorry, failed to get random audio to play back.");
 				} else {
-					//play_random_url("%(path)s" + payload.prompt, "%(path)s" + payload.target);
-					play_random_url("%(path)s" + payload.path);
+					play_random_url(payload.prompt, payload.answer);
 				}
 				break;
 		}
@@ -1302,7 +1296,7 @@ def _js_filter_list(url):
 	function search(str) {
 		ws_send(JSON.stringify({call: "filter", filter: "search", data: str}));
 	};
-	''' % {'url': url, 'path': settings.k_static_url + 'audio/'})
+	''' % {'url': url})
 
 	return r
 
@@ -1358,6 +1352,7 @@ def _js_dropdown():
 	};
 
 	function choose_dropdown_option(key, option_id, option_title, button_id) {
+		stop_random_play();
 		ws_send(JSON.stringify({call: "filter", filter: key, data: option_id}));
 		$(button_id).innerHTML = option_title;
 	};
@@ -1434,6 +1429,13 @@ def _js_play_random():
 				request_play_random_url();
 			}
 		};
+		function stop_random_play() {
+			play_random = false;
+			if (random_audio != null) {
+				random_audio.pause();
+				random_audio = null;
+			}
+		};
 		function pause_random_play() {
 			play_random = false;
 			if (random_audio != null) {
@@ -1462,12 +1464,20 @@ def _js_play_random():
 				}
 			}
 		};
-		function play_random_url(path) {
+		function play_random_url(prompt, answer) {
 			if (play_random) { // double-check
-				random_audio = new Audio(path); // TODO: validate url/path!!!
+				random_audio = new Audio(prompt); // TODO: validate url/path!!! (against attack)
 				random_audio.play();
 				random_audio.onended = function() {
-					setTimeout(() => request_play_random_url(), 1500); // next!
+					if (play_random) { // double-check
+						random_audio = new Audio(answer); // TODO: validate url/path!!! (against attack)
+						setTimeout(() => random_audio.play(), 1500); // TODO: use user-specified timeout between prompt and answer!
+						random_audio.onended = function() {
+							if (play_random) { // double-check
+								setTimeout(() => request_play_random_url(), 1500); // next!
+							}
+						}
+					}
 				}
 			}
 		};
