@@ -15,7 +15,7 @@ Install and Configuration
 	$ cd ohs-test/
 	$ pip install -r requirements.txt
 
-(Note, the pip install may rely on apt-installs like libffi-dev, python3-dev, ...)
+(Note, the pip install may rely on apt-installs like build-essential, libffi-dev, python3-dev, ...)
 
 Create the database ('apt install sqlite3' will be required for this, of course)::
 
