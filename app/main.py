@@ -599,10 +599,16 @@ async def _ws_handler(request, msg_handler, initial_send = {'call': 'start', 'da
 	try:
 		async for msg in ws:
 			try:
-				if msg.type == WSMsgType.TEXT:
+				if msg.type == WSMsgType.PING: # some browsers will actually send keepalive pings!
+					 ws.pong() # respond
+				elif msg.type == WSMsgType.PONG:
+					pass # nothing to do, but it's nice if the client/browser actually sends PONGs!
+				elif msg.type == WSMsgType.TEXT:
 					payload = json.loads(msg.data) # Note: payload validated in msg_handler()
 					if payload['call'] == 'ping':
-						await ws.send_json({'call': 'pong'}) # would prefer to use WSMsgType.PING rather than a normal message, but javascript doesn't seem to have specified support for that!
+						await ws.send_json({'call': 'pong'}) # would prefer to use WSMsgType.PING rather than a normal message, but javascript doesn't seem to have specified support for that! (see https://stackoverflow.com/questions/10585355/sending-websocket-ping-pong-frame-from-browser)
+						await ws.ping() # because some browsers will respond to "real" pings from server, or, at *least*, some browsers will keep the connection open, upon receiving a ping, even if they don't properly PONG!
+							# in an ideal world, we wouldn't have our own 'call' 'ping' or 'pong'; rather, we'd rely on ws.ping() or msg.type == WSMsgType.PING, to which we could respond with a PONG, but there's no evidence that many browsers do this
 					else:
 						await msg_handler(payload, ws)
 				elif msg.type == WSMsgType.ERROR:

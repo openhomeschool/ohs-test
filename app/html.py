@@ -1176,11 +1176,15 @@ def _js_util():
 	};
 	
 	function pingpong() {
-		if (!ws) return;
-		if (ws.readyState !== WebSocket.OPEN) return;
+		if (!ws) {
+			return;
+		}
+		if (ws.readyState !== WebSocket.OPEN) {
+			return;
+		}
 		ws.send(JSON.stringify({call: "ping"}));
 	};
-	setInterval(pingpong, 30000); // 30-second heartbeat; default timeouts (like nginx) are usually set to 60-seconds
+	setInterval(pingpong, 5000); // 30-second heartbeat; default timeouts (like nginx) are usually set to 60-seconds
 
 	''')
 
