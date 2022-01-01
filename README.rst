@@ -33,7 +33,7 @@ The adev server will run on port 8000 by default.  Other adev options may be
 desirable, and additions like
 `aiohttp-debugtoolbar <https://github.com/aio-libs/aiohttp-debugtoolbar>`_
 might be useful.
-	
+
 License
 -------
 
