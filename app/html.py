@@ -1470,8 +1470,11 @@ def _js_play_random():
 				random_audio = new Audio(prompt); // TODO: validate url/path!!! (against attack)
 				alert("playing prompt " + prompt);
 				random_audio.play();
+				alert("...started... " + prompt);
 				random_audio.onended = function() {
+					alert("...ended 1... " + prompt);
 					if (play_random) { // double-check
+						alert("...ended 2... " + prompt);
 						random_audio = new Audio(answer); // TODO: validate url/path!!! (against attack)
 						alert("playing answer " + answer);
 						setTimeout(() => random_audio.play(), 1500); // TODO: use user-specified timeout between prompt and answer!
