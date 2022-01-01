@@ -1425,7 +1425,7 @@ def _js_play_random():
 		function start_random_play() {
 			play_random = true;
 			if (random_audio != null) {
-				random_audio.play();
+				random_audio.play(); // onended() handler, below, should pick it up again from here....
 			} else {
 				request_play_random_url();
 			}
@@ -1452,38 +1452,16 @@ def _js_play_random():
 				start_random_play();
 			}
 		};
-		function play_random_url_DEPRECATED(prompt_url, target_url) {
-			if (play_random) { // double-check
-				random_audio = new Audio(prompt_url); // TODO: validate url!!!
-				random_audio.play();
-				random_audio.onended = function() {
-					random_audio = new Audio(target_url); // TODO: validate url!!!
-					setTimeout(() => random_audio.play(), 1500);
-					random_audio.onended = function() {
-						setTimeout(() => request_play_random_url(), 1500); // next!
-					}
-				}
-			}
-		};
 		function play_random_url(prompt, answer) {
-			if (play_random) { // double-check
-				random_audio = new Audio(prompt); // TODO: validate url/path!!! (against attack)
-				alert("playing prompt " + prompt);
-				random_audio.play();
-				alert("...started... " + prompt);
+			random_audio = new Audio(prompt); // TODO: validate url/path!!! (against attack)
+			random_audio.oncanplay = function() {
+				if (play_random) random_audio.play(); // double-check, hasn't been paused in meantime
+			}
+			random_audio.onended = function() {
+				random_audio = new Audio(answer); // TODO: validate url/path!!! (against attack)
+				if (play_random) setTimeout(() => random_audio.play(), 1500); // TODO: use user-specified timeout between prompt and answer! (also, this should give plenty of time for HAVE_ENOUGH_DATA readyState, so we won't listen for that as we did before starting the prompt, above
 				random_audio.onended = function() {
-					alert("...ended 1... " + prompt);
-					if (play_random) { // double-check
-						alert("...ended 2... " + prompt);
-						random_audio = new Audio(answer); // TODO: validate url/path!!! (against attack)
-						alert("playing answer " + answer);
-						setTimeout(() => random_audio.play(), 1500); // TODO: use user-specified timeout between prompt and answer!
-						random_audio.onended = function() {
-							if (play_random) { // double-check
-								setTimeout(() => request_play_random_url(), 1500); // next!
-							}
-						}
-					}
+					if (play_random) setTimeout(() => request_play_random_url(), 1500); // next!
 				}
 			}
 		};
