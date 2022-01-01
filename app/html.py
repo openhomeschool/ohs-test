@@ -1176,12 +1176,9 @@ def _js_util():
 	};
 	
 	function pingpong() {
-		if (!ws) {
-			return;
-		}
-		if (ws.readyState !== WebSocket.OPEN) {
-			return;
-		}
+		if (!ws) return;
+		if (ws.readyState !== WebSocket.OPEN) return;
+		// else:
 		ws.send(JSON.stringify({call: "ping"}));
 	};
 	setInterval(pingpong, 5000); // 30-second heartbeat; default timeouts (like nginx) are usually set to 60-seconds
@@ -1471,10 +1468,12 @@ def _js_play_random():
 		function play_random_url(prompt, answer) {
 			if (play_random) { // double-check
 				random_audio = new Audio(prompt); // TODO: validate url/path!!! (against attack)
+				alert("playing prompt " + prompt);
 				random_audio.play();
 				random_audio.onended = function() {
 					if (play_random) { // double-check
 						random_audio = new Audio(answer); // TODO: validate url/path!!! (against attack)
+						alert("playing answer " + answer);
 						setTimeout(() => random_audio.play(), 1500); // TODO: use user-specified timeout between prompt and answer!
 						random_audio.onended = function() {
 							if (play_random) { // double-check
