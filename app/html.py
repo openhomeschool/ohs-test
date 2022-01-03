@@ -1455,13 +1455,18 @@ def _js_play_random():
 		function play_random_url(prompt, answer) {
 			random_audio = new Audio(prompt); // TODO: validate url/path!!! (against attack)
 			random_audio.oncanplay = function() {
+				alert('new audio now playable: ' + prompt);
 				if (play_random) random_audio.play(); // double-check, hasn't been paused in meantime
+				alert('new audio prompt started');
 			}
 			random_audio.onended = function() {
 				random_audio = new Audio(answer); // TODO: validate url/path!!! (against attack)
+				alert('new audio ANSER now playable: ' + answer);
 				if (play_random) setTimeout(() => random_audio.play(), 1500); // TODO: use user-specified timeout between prompt and answer! (also, this should give plenty of time for HAVE_ENOUGH_DATA readyState, so we won't listen for that as we did before starting the prompt, above
+				alert('new audio prompt started (or starting in 1500ms)');
 				random_audio.onended = function() {
 					if (play_random) setTimeout(() => request_play_random_url(), 1500); // next!
+					alert('next audio request made');
 				}
 			}
 		};
