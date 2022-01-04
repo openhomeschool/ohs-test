@@ -417,18 +417,18 @@ def _grammar_resources(container, spec, records, show_cw, subject_directory, ren
 					filename_base = subject_directory + '/c%sw%s' % (record['cycle'], record['week'])
 					filename_accompanied_base = subject_directory + '/c%sw%s-chant' % (record['cycle'], record['week'])
 					with buttonstrip:
-						t.button('♬', title = 'Musical score', onclick = 'window.open("%s","_blank");' % _aurl(filename_base + '.pdf?v=b2'))
+						t.button('♬', title = 'Musical score', onclick = 'window.open("%s","_blank");' % _aurl(filename_base + '.pdf'))
 						t.button('»', title = 'Accompanied song', onclick = 'play_pause("%s", this, "»");' % filename_accompanied_base)
 						t.button('►', title = 'Audio song', onclick = 'play_pause("%s", this, "►");' % filename_base)
 						#t.button('ℓ', title = 'Copywork')
 						#t.button('Ξ', title = 'Details')
 					buttonstrip_detail = t.div(cls = 'buttonstrip_detail', id = filename_base + '_container') # invisible at first
 					with buttonstrip_detail:
-						t.audio(t.source(src = _aurl(filename_base + '.mp3?v=b2'), type = 'audio/mpeg'), controls = True, id = filename_base)
+						t.audio(t.source(src = _aurl(filename_base + '.mp3'), type = 'audio/mpeg'), controls = True, preload='none', id = filename_base)
 						#t.button('-', title = 'Lower pitch', onclick = 'lower_pitch("%s");' % filename_base)
 					buttonstrip_accompanied_detail = t.div(cls = 'buttonstrip_detail', id = filename_accompanied_base + '_container') # invisible at first
 					with buttonstrip_accompanied_detail:
-						t.audio(t.source(src = _aurl(filename_accompanied_base + '.mp3?v=b2'), type = 'audio/mpeg'), controls = True, id = filename_accompanied_base)
+						t.audio(t.source(src = _aurl(filename_accompanied_base + '.mp3'), type = 'audio/mpeg'), controls = True, preload = 'none', id = filename_accompanied_base)
 
 				_add_cw(record, buttonstrip, spec)
 				resource_div += buttonstrip
@@ -508,7 +508,7 @@ def show_shopping(records):
 def general(container, spec, records, show_cw):
 	def render(record, container): # callback function, see _grammar_resources()
 		with container:
-			path = _geurl('%s/%s%s?v=b2' % (record['download_path'], record['filename_crux'], record['filename_suffix']))
+			path = _geurl('%s/%s%s' % (record['download_path'], record['filename_crux'], record['filename_suffix']))
 			t.div(t.a('%s - %s' % (record['real_title'], record['description']), href = path, cls = 'hover_link', target = "_blank"))
 
 	_grammar_resources(container, spec, records, show_cw, 'general', render, False)
@@ -524,7 +524,7 @@ def geography(container, spec, records, show_cw):
 		name = record['name']
 		if new_cw != cw:
 			cw = new_cw
-			path = 'c%dw%02d_geography.png?v=b2' % (record['cycle'], record['week'])
+			path = 'c%dw%02d_geography.png' % (record['cycle'], record['week'])
 			container += t.div(t.img(src = _murl(path)))
 		else:
 			name = ', ' + name
@@ -560,7 +560,7 @@ def _add_eqality_record(table, record, left_field_name, right_field_name, yougli
 	if audio_base:
 		tr += t.td(
 			t.button('►', title = 'audio', onclick = '$("%s").play();' % audio_base, cls = 'mini_button'),
-			t.audio(t.source(src = _aurl(audio_base + '.mp3?v=b2'), type = 'audio/mpeg'), controls = False, id = audio_base),
+			t.audio(t.source(src = _aurl(audio_base + '.mp3'), type = 'audio/mpeg'), controls = False, preload='none', id = audio_base),
 			right_text,
 			cls = 'right-equality-cell')
 	else:
@@ -963,7 +963,7 @@ def _doc(title, css = None, scripts = None):
 	d = document(title = title)
 	with d.head:
 		t.meta(name = 'viewport', content = 'width=device-width, initial-scale=1')
-		t.link(href = settings.k_static_url + 'css/main.css?v=b2', rel = 'stylesheet')
+		t.link(href = settings.k_static_url + 'css/main.css', rel = 'stylesheet')
 	return d
 
 def _error(error):
@@ -1120,7 +1120,7 @@ def _event_formatted(record, for_print, timeline_sentences, detail_link = True):
 	else:
 		filename_base = 'timeline/e%s' % record['id']
 		final += t.button('►', title = 'audio', onclick = '$("%s").play();' % filename_base, cls = 'mini_button')
-		final += t.audio(t.source(src = _aurl(filename_base + '.mp3?v=b2'), type = 'audio/mpeg'), controls = False, id = filename_base)
+		final += t.audio(t.source(src = _aurl(filename_base + '.mp3'), type = 'audio/mpeg'), controls = False, preload='none', id = filename_base)
 		if detail_link:
 			final += t.a(result, href = _gurl('/detail/event/%d' % record['id']), target = "_blank", cls = 'hover_link')
 		else:
@@ -1279,16 +1279,14 @@ def _js_filter_list(url):
 					if (payload.grades != null)
 						$("grade-container").innerHTML = payload.grades;
 				}
+				// Call for string of random-audio-urls... but NOTE: this doesn't seem to be the best place for this, as this _js_filter_list() may be part of a page that does not avail the random-audio urls...  but moving it down to there ran us into trouble with the variable ws being available; not sure why, yet!
+				request_new_random_url_playlist();
 				break;
 			case "show_shopping":
 				$(payload.div_id).innerHTML = payload.result;
 				break;
-			case "play_random_url":
-				if (payload.error == 1) {
-					alert("Sorry, failed to get random audio to play back.");
-				} else {
-					play_random_url(payload.prompt, payload.answer);
-				}
+			case "set_random_url_playlist":
+				set_random_url_playlist(payload.playlist);
 				break;
 		}
 	};
@@ -1420,58 +1418,41 @@ def _js_play_pause():
 
 def _js_play_random():
 	return raw('''
-		var random_audio = null;
-		var play_random = false;
-		function start_random_play() {
-			play_random = true;
-			if (random_audio != null) {
-				random_audio.play(); // onended() handler, below, should pick it up again from here....
-			} else {
-				request_play_random_url();
+		var random_audio = new Audio();
+		var random_playlist = [];
+		var random_playlist_index = 0;
+
+		random_audio.onended = function() {
+			random_playlist_index += 1; // increment for next iteration
+			if (random_playlist_index >= random_playlist.length) {
+				random_playlist_index = 0;
 			}
+			random_audio.src = random_playlist[random_playlist_index]; // TODO: validate url/path!!! (against attack)
+			setTimeout(() => random_audio.play(), 1500); // TODO: use user-specified timeout between prompt and answer! (also, this should give plenty of time for HAVE_ENOUGH_DATA readyState, so we won't listen for that as we did before starting the prompt, above
 		};
+
 		function stop_random_play() {
-			play_random = false;
-			if (random_audio != null) {
-				random_audio.pause();
-				random_audio = null;
-			}
-		};
-		function pause_random_play() {
-			play_random = false;
-			if (random_audio != null) {
-				random_audio.pause();
-			}
+			random_audio.pause(); // we only pause, until you request_new_random_url_playlist()
 		};
 		function toggle_random_play(button) {
-			if (play_random) {
-				button.innerHTML = '► Random';
-				pause_random_play();
-			} else {
+			if (random_audio.paused) {
 				button.innerHTML = '■ Random';
-				start_random_play();
+				random_audio.play();
+			} else {
+				button.innerHTML = '► Random';
+				random_audio.pause();
 			}
 		};
-		function play_random_url(prompt, answer) {
-			random_audio = new Audio(prompt); // TODO: validate url/path!!! (against attack)
-			random_audio.oncanplay = function() {
-				alert('new audio now playable: ' + prompt);
-				if (play_random) random_audio.play(); // double-check, hasn't been paused in meantime
-				alert('new audio prompt started');
-			}
-			random_audio.onended = function() {
-				random_audio = new Audio(answer); // TODO: validate url/path!!! (against attack)
-				alert('new audio ANSER now playable: ' + answer);
-				if (play_random) setTimeout(() => random_audio.play(), 1500); // TODO: use user-specified timeout between prompt and answer! (also, this should give plenty of time for HAVE_ENOUGH_DATA readyState, so we won't listen for that as we did before starting the prompt, above
-				alert('new audio prompt started (or starting in 1500ms)');
-				random_audio.onended = function() {
-					if (play_random) setTimeout(() => request_play_random_url(), 1500); // next!
-					alert('next audio request made');
-				}
-			}
+
+		function set_random_url_playlist(playlist) { // callback (from server)
+			random_audio.pause();
+			random_playlist = playlist;
+			random_playlist_index = 0;
+			random_audio.src = random_playlist[random_playlist_index]; // TODO: validate url/path!!! (against attack)
+			random_audio.load(); // reset to start
 		};
-		function request_play_random_url() {
-			ws_send(JSON.stringify({call: "get_random_audio_url"}));
+		function request_new_random_url_playlist() {
+			ws_send(JSON.stringify({call: "get_random_url_playlist"}));
 		};
 		
 	''')

@@ -58,6 +58,11 @@ gurl = lambda request, name: settings.k_url_prefix + str(request.app.router[name
 r = web.RouteTableDef()
 def hr(text): return web.Response(text = text, content_type = 'text/html')
 
+# TEMP, DEBUG!!!!  (for running with:
+#   python -m aiohttp.web -H 0.0.0.0 -P 8080 app.main:init
+# "raw", and to get /static
+#r.static('/static', '/home/jmcaine/dev/ohs/ohs-test/static')
+
 def auth(roles):
 	'''
 	Checks `roles` against user's roles, if user is logged in.
@@ -514,23 +519,8 @@ async def ws_resources(request):
 				result = await db.get_shopping_links(dbc, match.group(1)) # group(1) is the actual id matched, after the prefix
 				await ws.send_json({'call': 'show_shopping', 'div_id': payload['resource_id'], 'result': html.show_shopping(result)})
 
-			elif payload['call'] == 'get_random_audio_url':
-				playlist = _create_or_get_random_playlist(session, spec)
-				error, prompt_url, answer_url = 1, '', ''
-				if len(playlist) > 0:
-					error = 0
-					prompt_url, answer_url = playlist.pop()
-				await ws.send_json({'call': 'play_random_url', 'prompt': prompt_url, 'answer': answer_url, 'error': error})
-
-				"""DEPRECATE:
-				error, prompt_url, target_url = 1, '', ''
-				prompt_target = await db.get_random_audio_url(dbc, spec)
-				if prompt_target:
-					prompt, target = prompt_target # real results from get_random_audio_url() are pairs
-					error, prompt_url, target_url = 0, prompt['url'], target['url']
-					l.debug('urls: %s %s' % (prompt_url, target_url))
-				await ws.send_json({'call': 'play_random_url', 'prompt': prompt_url, 'target': target_url, 'error': error})
-				"""
+			elif payload['call'] == 'get_random_url_playlist':
+				await ws.send_json({'call': 'set_random_url_playlist', 'playlist': _create_random_playlist(spec)})
 
 		except ValueError as e:
 			l.warning('invalid filter input to ws_resources') # but do nothing else; client code already checks for validity; this must/might be an attack attempt; no need to respond
@@ -541,30 +531,27 @@ async def ws_resources(request):
 
 # Util ------------------------------------------------------------------------
 
-def _create_or_get_random_playlist(session, spec):
-	if 'playlist_id' not in session:
-		new_id = str(uuid4())
-		session['playlist_id'] = new_id
-		g_playlists[new_id] = []
-	playlist = g_playlists[session['playlist_id']]
-	if not len(playlist) > 0:
-		# Assemble the playlist (we build an entire playlist at once in order to avoid repetition (each song/etc. shows up only once), and because it's very easy to do one DB operation that results in a whole (randomly-ordered) set/list of "hits", rather than asking the DB every time, one song at a time):
-		path_map = {
-			db.k_subject_ids['History']: 'history/',
-			db.k_subject_ids['Science']: 'science/',
-		}
-		for subject, path in path_map.items():
-			if spec.subject in (0, subject): # i.e., spec.subject is either "all subjects" or this one
-				url = html._aurl(path)
-				for cycle in spec.cycles:
-					for week in range(spec.first_week, spec.last_week + 1):
-						fn = f'c{cycle}w{week}.mp3'
-						p_fn = f'c{cycle}w{week}-prompt.mp3'
-						if exists('static/audio/' + path + p_fn) and exists('static/audio/' + path + fn): # TODO: fix hardcode static path (local/server path... static files may be stored elsewhere in future!)
-							playlist.append((url + p_fn, url + fn))
-		shuffle(playlist)
-				
-	return g_playlists[session['playlist_id']]
+def _create_random_playlist(spec):
+	# Assemble the playlist (we build an entire playlist at once in order to avoid repetition (each song/etc. shows up only once), and because it's very easy to do one DB operation that results in a whole (randomly-ordered) set/list of "hits", rather than asking the DB every time, one song at a time):
+	path_map = {
+		db.k_subject_ids['History']: 'history/',
+		db.k_subject_ids['Science']: 'science/',
+	}
+	playlist = []
+	for subject, path in path_map.items():
+		if spec.subject in (0, subject): # i.e., spec.subject is either "all subjects" or this one
+			url = html._aurl(path)
+			for cycle in spec.cycles:
+				for week in range(spec.first_week, spec.last_week + 1):
+					fn = f'c{cycle}w{week}.mp3'
+					p_fn = f'c{cycle}w{week}-prompt.mp3'
+					if exists('static/audio/' + path + p_fn) and exists('static/audio/' + path + fn): # TODO: fix hardcode static path (local/server path... static files may be stored elsewhere in future!)
+						playlist.append((url + p_fn, url + fn))
+	shuffle(playlist)
+	result = []
+	for pair in playlist:
+		result.extend(pair)
+	return result
 
 async def _flash(request):
 	session = await get_session(request)
