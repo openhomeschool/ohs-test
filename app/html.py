@@ -904,7 +904,7 @@ def timeline_event_detail(record, details, signs):
 				else: # assert(ul != None)
 					ul += t.li(detail_detail)
 			container += t.hr(cls = 'bighr')
-			_add_signs(signs, container)
+		_add_signs(signs, container)
 
 	return _detail_doc('Timeline Event Detail - ' + record['name'], 'Timeline', 'timeline', record, render) # TODO: change 'Timeline' to 'History?!'
 	
