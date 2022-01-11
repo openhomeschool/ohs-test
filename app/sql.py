@@ -448,6 +448,8 @@ k_middle_resources = [
 
 k_middle_assignments = [
 	SS('History', (k_history_assignment_rs, )),
+	SS('Logic', (k_logic_assignment_rs, )),
+	SS('Literature', (k_literature_assignment_rs, )),
 ]
 
 k_high1_resources = [
