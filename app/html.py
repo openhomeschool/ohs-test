@@ -418,7 +418,7 @@ def _grammar_resources(container, spec, records, show_cw, subject_directory, ren
 					filename_accompanied_base = subject_directory + '/c%sw%s-chant' % (record['cycle'], record['week'])
 					with buttonstrip:
 						t.button('♬', title = 'Musical score', onclick = 'window.open("%s","_blank");' % _aurl(filename_base + '.pdf'))
-						t.button('»', title = 'Accompanied song', onclick = 'play_pause("%s", this, "»");' % filename_accompanied_base)
+						#t.button('»', title = 'Accompanied song', onclick = 'play_pause("%s", this, "»");' % filename_accompanied_base)
 						t.button('►', title = 'Audio song', onclick = 'play_pause("%s", this, "►");' % filename_base)
 						#t.button('ℓ', title = 'Copywork')
 						#t.button('Ξ', title = 'Details')
