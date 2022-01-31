@@ -233,6 +233,7 @@ k_subject_ids = { # IDs from DB table, mapped to handler names TODO: just create
 	'Computer': 10,
 	'Spanish': 11,
 	'Logic': 12,
+	'Shakespeare': 13,
 }
 
 @dataclass
@@ -418,6 +419,7 @@ k_poetry_exre_rs = _make_exre_resource_spec('Poetry', 'poetry_resources')
 k_computer_exre_rs = _make_exre_resource_spec('Computer', 'computer_resources')
 k_spanish_exre_rs = _make_exre_resource_spec('Spanish', 'spanish_resources')
 k_logic_exre_rs = _make_exre_resource_spec('Logic', 'logic_resources')
+k_shakespeare_exre_rs = _make_exre_resource_spec('Shakespeare', 'shakespeare_resources')
 k_math_exre_rs = _make_exre_resource_spec('Math', 'math_resources')
 k_latin_exre_rs = _make_exre_resource_spec('Latin', 'latin_resources')
 
@@ -432,6 +434,7 @@ k_poetry_assignment_rs = _make_assignment_spec('Poetry', 'poetry_assignments')
 k_computer_assignment_rs = _make_assignment_spec('Computer', 'computer_assignments')
 k_spanish_assignment_rs = _make_assignment_spec('Spanish', 'spanish_assignments')
 k_logic_assignment_rs = _make_assignment_spec('Logic', 'logic_assignments')
+k_shakespeare_assignment_rs = _make_assignment_spec('Shakespeare', 'shakespeare_assignments')
 k_math_assignment_rs = _make_assignment_spec('Math', 'math_assignments')
 k_latin_assignment_rs = _make_assignment_spec('Latin', 'latin_assignments')
 
@@ -461,6 +464,7 @@ k_high1_resources = [
 	SS('Computer', (k_computer_assignment_rs, )),
 	SS('Spanish', (k_spanish_assignment_rs, )),
 	SS('Logic', (k_logic_assignment_rs, )),
+	SS('Shakespeare', (k_shakespeare_assignment_rs, )),
 	SS('Latin', (k_latin_assignment_rs, k_latin_vocabulary_rs, k_latin_grammar_rs, )),
 ]
 
@@ -473,6 +477,7 @@ k_high1_assignments = [
 	SS('Computer', (k_computer_assignment_rs, )),
 	SS('Spanish', (k_spanish_assignment_rs, )),
 	SS('Logic', (k_logic_assignment_rs, )),
+	SS('Shakespeare', (k_shakespeare_assignment_rs, )),
 	SS('Latin', (k_latin_assignment_rs, )),
 ]
 

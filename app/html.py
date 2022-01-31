@@ -651,6 +651,10 @@ def spanish_resources(container, spec, records, show_cw):
 def logic_resources(container, spec, records, show_cw):
 	_external_resources(container, spec, records, show_cw)
 
+@subject_resources('shakespeare_resources')
+def shakespeare_resources(container, spec, records, show_cw):
+	_external_resources(container, spec, records, show_cw)
+
 @subject_resources('math_resources')
 def math_resources(container, spec, records, show_cw):
 	_external_resources(container, spec, records, show_cw)
@@ -721,6 +725,10 @@ def spanish_assignments(container, spec, records, show_cw):
 
 @subject_resources('logic_assignments')
 def logic_assignments(container, spec, records, show_cw):
+	_assignments(container, spec, records, show_cw)
+
+@subject_resources('shakespeare_assignments')
+def shakespeare_assignments(container, spec, records, show_cw):
 	_assignments(container, spec, records, show_cw)
 
 @subject_resources('latin_assignments')
