@@ -391,14 +391,16 @@ k_temp_this_cycle = 2
 
 _links = lambda request: (
 	#('Grammar', _http_url(request, '/resources', {'program': 1}), True),
+	('⌂', _http_url(request, '/resources', {}), True),
+	('→', _http_url(request, '/resources', {'first_week': k_temp_this_week + 1, 'last_week': k_temp_this_week + 1}), True),
 	('4-Review', _http_url(request, '/resources', {'program': 1, 'first_week': max(0, k_temp_this_week - 3), 'last_week': k_temp_this_week}), True),
 	('All-Review', _http_url(request, '/resources', {'program': 1, 'first_week': 1, 'last_week': k_temp_this_week}), True),
-	('► Review', 'toggle_random_play(this)', False),
+	('► Random', 'toggle_random_play(this)', False),
 	#('4-6 assignments': _http_url(request, '/resources?program=2'),
 	#('7th-9th', _http_url(request, '/resources', {'program': 3}), True),
 	#('10th-12th', _http_url(request, '/resources', {'program': 4}), True),
 	#('Shop', _http_url(request, '/shop'), True),
-	('Quiz', _http_url(request, '/quiz/history/sequence'), True), # TODO!
+	#('Quiz', _http_url(request, '/quiz/history/sequence'), True), # TODO!
 )
 
 async def _resources(request, qargs):
