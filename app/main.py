@@ -386,14 +386,14 @@ async def timeline_event_detail(record, details, signs):
 async def science_detail(record, details, signs):
 	return hr(html.science_detail(record, details, signs))
 
-k_temp_this_week = 16
+k_temp_this_week = 17
 k_temp_this_cycle = 2
 
 _links = lambda request: (
 	#('Grammar', _http_url(request, '/resources', {'program': 1}), True),
 	('⌂', _http_url(request, '/resources', {}), True),
 	('→', _http_url(request, '/resources', {'week': k_temp_this_week + 1}), True),
-	('4-Review', _http_url(request, '/resources', {'program': 1, 'first_week': max(0, k_temp_this_week - 3), 'last_week': k_temp_this_week}), True),
+	('4-Review', _http_url(request, '/resources', {'program': 1, 'first_week': max(0, k_temp_this_week - 4), 'last_week': k_temp_this_week}), True),
 	('All-Review', _http_url(request, '/resources', {'program': 1, 'first_week': 1, 'last_week': k_temp_this_week}), True),
 	('► Random', 'toggle_random_play(this)', False),
 	#('4-6 assignments': _http_url(request, '/resources?program=2'),
