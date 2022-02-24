@@ -743,6 +743,10 @@ def math_assignments(container, spec, records, show_cw):
 def literature_assignments(container, spec, records, show_cw):
 	_assignments(container, spec, records, show_cw)
 
+@subject_resources('english_assignments')
+def english_assignments(container, spec, records, show_cw):
+	_assignments(container, spec, records, show_cw)
+
 @subject_resources('science_assignments')
 def science_assignments(container, spec, records, show_cw):
 	_assignments(container, spec, records, show_cw)

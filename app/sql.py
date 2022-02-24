@@ -429,6 +429,7 @@ _make_assignment_spec = lambda subject_title, handler: RS(_get_assignments, subj
 
 k_history_assignment_rs = _make_assignment_spec('History', 'history_assignments')
 k_literature_assignment_rs = _make_assignment_spec('Literature', 'literature_assignments')
+k_english_assignment_rs = _make_assignment_spec('English', 'english_assignments')
 k_science_assignment_rs = _make_assignment_spec('Science', 'science_assignments')
 k_poetry_assignment_rs = _make_assignment_spec('Poetry', 'poetry_assignments')
 k_computer_assignment_rs = _make_assignment_spec('Computer', 'computer_assignments')
@@ -453,6 +454,7 @@ k_middle_assignments = [
 	SS('History', (k_history_assignment_rs, )),
 	SS('Logic', (k_logic_assignment_rs, )),
 	SS('Literature', (k_literature_assignment_rs, )),
+	SS('English', (k_english_assignment_rs, )),
 ]
 
 k_high1_resources = [
