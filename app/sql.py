@@ -393,10 +393,10 @@ k_science_grammar_rs = RS(_get_grammar_resources, 'Science', 'science_grammar', 
 k_multiplication_fact_grammar_rs = RS(_get_grammar_resources, 'Math', 'multiplication_facts', 'multiplication_facts', ('operand1', 'products'),)
 k_math_vocabulary_rs = RS(_get_grammar_resources, 'Math', 'math_vocabulary', 'math_vocabulary', ('word', 'equivalent'), (), None, 'cw.cycle, cw.week, position')
 k_english_vocabulary_rs = RS(_get_grammar_resources, 'English', 'english_vocabulary', 'vocabulary', ('word', 'definition'), ('root',), None, 'cw.cycle, cw.week, position')
-#k_english_grammar_rs = RS(_get_grammar_resources, 'English', 'english_grammar', 'english', ('prompt', 'answer'), ('advanced', 'example',))
 k_english_grammar_rs = RS(_get_grammar_resources, 'English', 'english_grammar', 'english_grammar_example', ('prompt_prefix', 'prompt', 'answer'), ('example',), ('english_grammar_reference on english_grammar_example.english_grammar_reference = english_grammar_reference.id',))
 k_latin_vocabulary_rs = RS(_get_grammar_resources, 'Latin', 'latin_vocabulary', 'latin_vocabulary', ('word', 'translation'), None, None, 'cw.cycle, cw.week, position')
-k_latin_grammar_rs = RS(_get_grammar_resources, 'Latin', 'latin_grammar', 'latin', ('name', 'pattern'), ('example',))
+#k_latin_grammar_rs = RS(_get_grammar_resources, 'Latin', 'latin_grammar', 'latin', ('name', 'pattern'), ('example',))
+k_latin_grammar_rs = RS(_get_grammar_resources, 'Latin', 'latin_grammar', 'latin_grammar_example', ('name', 'pattern'), ('worked', 'translated'), ('latin_grammar_reference on latin_grammar_example.latin_grammar_reference = latin_grammar_reference.id',))
 
 k_grammar_resources = [
 	SS('Timeline', (k_timeline_grammar_rs, )),

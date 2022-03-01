@@ -626,10 +626,9 @@ def english_grammar(container, spec, records, show_cw):
 		with container:
 			t.div(t.b('What %s %s?' % (record['prompt_prefix'], record['prompt'])))
 			#answer = _prefix_answer(record) # TODO!
-			answer = record['answer']
+			t.div(record['answer'])
 			if record['example']:
-				answer += ' -- For example: ' + record['example']
-			t.div(answer)
+				t.div('Example: ' + record['example'])
 
 	_grammar_resources(container, spec, records, show_cw, 'english', render, True, main_audio_base = 'eg', main_audio_suffix_field = 'english_grammar_reference')
 	
@@ -677,13 +676,10 @@ def latin_grammar(container, spec, records, show_cw):
 		with container:
 			t.div(t.b(record['name']))
 			t.div(record['pattern'])
-			if record['example']: # TODO: PUT this into "more details" drop?
-				t.div('Example: %s - %s' % (record['example'], record['example_worked']))
-				if record['example_translated']:
-					t.div(' (' + record['example_translated'] + ')')
+			if record['worked']: # TODO: PUT this into "more details" drop?
+				t.div('Example: %s - %s' % (record['worked'], record['translated']))
 
-	_grammar_resources(container, spec, records, show_cw, 'latin', render, True)
-
+	_grammar_resources(container, spec, records, show_cw, 'latin', render, True, main_audio_base = 'lg', main_audio_suffix_field = 'latin_grammar_reference')
 
 @subject_resources('latin_resources')
 def latin_resources(container, spec, records, show_cw):
