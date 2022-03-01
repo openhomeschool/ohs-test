@@ -621,11 +621,13 @@ def english_vocabulary(container, spec, records, show_cw):
 @subject_resources('english_grammar')
 def english_grammar(container, spec, records, show_cw):
 	def render(record, container): # callback function, see _grammar_resources()
+		audio_base = 'english/eg%s' % record['english_grammar_reference'] if not spec.for_print else None # "turn off" audio if spec.for_print
 		with container:
 			t.div(t.b('What %s %s?' % (record['prompt_prefix'], record['prompt'])))
-			answer = _prefix_answer(record)
+			#answer = _prefix_answer(record) # TODO!
+			answer = record['answer']
 			if record['example']:
-				answer += ' (' + record['example'] + ')'
+				answer += ' -- For example: ' + record['example']
 			t.div(answer)
 
 	_grammar_resources(container, spec, records, show_cw, 'english', render, True)
