@@ -400,7 +400,7 @@ def subject_resources(handler):
 	return decorator
 
 
-def _grammar_resources(container, spec, records, show_cw, subject_directory, render, audio_widgets, record_container_class = None):
+def _grammar_resources(container, spec, records, show_cw, subject_directory, render, audio_widgets, record_container_class = None, main_audio_base = None, main_audio_suffix_field = None):
 	cycle_week = None
 	first = True
 	with container:
@@ -417,6 +417,8 @@ def _grammar_resources(container, spec, records, show_cw, subject_directory, ren
 
 				if audio_widgets and (not spec or not spec.for_print):
 					filename_base = subject_directory + '/c%sw%s' % (record['cycle'], record['week'])
+					if main_audio_base and main_audio_suffix_field:
+						filename_base = subject_directory + '/%s%s' % (main_audio_base, record[main_audio_suffix_field])
 					filename_accompanied_base = subject_directory + '/c%sw%s-chant' % (record['cycle'], record['week'])
 					with buttonstrip:
 						t.button('♬', title = 'Musical score', onclick = 'window.open("%s","_blank");' % _aurl(filename_base + '.pdf' + k_cache_version))
@@ -621,7 +623,6 @@ def english_vocabulary(container, spec, records, show_cw):
 @subject_resources('english_grammar')
 def english_grammar(container, spec, records, show_cw):
 	def render(record, container): # callback function, see _grammar_resources()
-		audio_base = 'english/eg%s' % record['english_grammar_reference'] if not spec.for_print else None # "turn off" audio if spec.for_print
 		with container:
 			t.div(t.b('What %s %s?' % (record['prompt_prefix'], record['prompt'])))
 			#answer = _prefix_answer(record) # TODO!
@@ -630,7 +631,7 @@ def english_grammar(container, spec, records, show_cw):
 				answer += ' -- For example: ' + record['example']
 			t.div(answer)
 
-	_grammar_resources(container, spec, records, show_cw, 'english', render, True)
+	_grammar_resources(container, spec, records, show_cw, 'english', render, True, main_audio_base = 'eg', main_audio_suffix_field = 'english_grammar_reference')
 	
 @subject_resources('literature_resources')
 def literature_resources(container, spec, records, show_cw):
