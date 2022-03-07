@@ -513,7 +513,7 @@ def general(container, spec, records, show_cw):
 	def render(record, container): # callback function, see _grammar_resources()
 		with container:
 			path = _geurl('%s/%s%s' % (record['download_path'], record['filename_crux'], record['filename_suffix']))
-			t.div(t.a('%s - %s%s' % (record['real_title'], record['description'], k_cache_version), href = path, cls = 'hover_link', target = "_blank"))
+			t.div(t.a('%s - %s' % (record['real_title'], record['description']), href = path + k_cache_version, cls = 'hover_link', target = "_blank"))
 
 	_grammar_resources(container, spec, records, show_cw, 'general', render, False)
 
