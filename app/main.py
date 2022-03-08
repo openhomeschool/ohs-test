@@ -386,7 +386,7 @@ async def timeline_event_detail(record, details, signs):
 async def science_detail(record, details, signs):
 	return hr(html.science_detail(record, details, signs))
 
-k_temp_this_week = 19
+k_temp_this_week = 20
 k_temp_this_cycle = 2
 
 _links = lambda request: (
@@ -538,6 +538,10 @@ def _create_random_playlist(spec):
 	path_map = {
 		db.k_subject_ids['History']: 'history/',
 		db.k_subject_ids['Science']: 'science/',
+	}
+	new_path_map = {
+		db.k_subject_ids['English']: 'english/',
+		db.k_subject_ids['Latin']: 'latin/',
 	}
 	playlist = []
 	for subject, path in path_map.items():
