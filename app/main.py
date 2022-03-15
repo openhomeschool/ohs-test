@@ -386,9 +386,10 @@ async def timeline_event_detail(record, details, signs):
 async def science_detail(record, details, signs):
 	return hr(html.science_detail(record, details, signs))
 
-k_temp_this_week = 20
+k_temp_this_week = 21
 k_temp_this_cycle = 2
 
+# cool characters: ⌂♩♪♫♬▲►▼◄→
 _links = lambda request: (
 	#('Grammar', _http_url(request, '/resources', {'program': 1}), True),
 	('⌂', _http_url(request, '/resources', {}), True),
