@@ -16,7 +16,7 @@ from dominate.util import raw
 from . import valid
 from . import settings
 
-k_cache_version = '?v=d5'
+k_cache_version = '?v=d6'
 
 # Classes ---------------------------------------------------------------------
 
