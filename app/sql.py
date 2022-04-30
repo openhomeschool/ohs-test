@@ -609,6 +609,12 @@ async def get_cycles(dbc):
 async def get_new_user_invitation(dbc, code):
 	return await fetchone(dbc, ('select * from new_user_invitation where code = ?', (code,)))
 
+async def get_enrollments(dbc, person_id):
+	return await fetchall(dbc, ('select enrollment.*, program.name as program_name from enrollment join program on enrollment.program = program.id where student = ?', (person_id,)))
+
+async def get_user_enrollment(dbc, user_id):
+	return await fetchone(dbc, ('select * from enrollment join person on enrollment.student = person.id join user on person.user = user.id where user.id = ?', (user_id,)))
+
 async def get_person(dbc, id):
 	return await fetchone(dbc, ('select * from person where id = ?', (id,)))
 

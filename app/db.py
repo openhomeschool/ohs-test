@@ -293,6 +293,12 @@ async def get_cycles(dbc):
 async def get_new_user_invitation(dbc, code):
 	return await sql.get_new_user_invitation(dbc, code)
 
+async def get_enrollments(dbc, person_id):
+	return await sql.get_enrollments(dbc, person_id)
+
+async def get_user_enrollment(dbc, user_id):
+	return await sql.get_user_enrollment(dbc, user_id)
+
 async def get_person(dbc, id):
 	return await sql.get_person(dbc, id)
 
