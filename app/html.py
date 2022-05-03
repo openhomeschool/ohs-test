@@ -234,6 +234,37 @@ def invitation(form, invitation, person, family, contact, costs, cost_offsets, l
 		
 	return d.render()
 
+def _format_enrollment_programs(enrollments):
+	lines = []
+	for enrollment in enrollments:
+		lines.append(enrollment['program_name'] + '(Grade %s)' % enrollment['grade'])
+		
+	return ', '.join(lines)
+	
+def student_invitation(form, invitation, person, enrollments, errors = None):
+
+	# TODO: deport these!
+	cl = lambda content: t.div(content, cls = 'contact_line')
+	cli = lambda content: t.div(content, cls = 'contact_line_inset')
+	
+	d = _doc('Invitation')
+	with d:
+		if not errors: # if there are errors, then we are re-presenting this page; no need to say hello again
+			t.p('Hello %s %s!  Please confirm that all of the following is correct...' % (person['first_name'], person['last_name']))
+		else:
+			pass # TODO: present the errors
+
+		with t.div(cls = 'flex-wrap'):
+			t.div('Enrollment', cls = 'title')
+			with t.div(cls = 'main'):
+				with t.div(cls = 'resource_record'):
+					cl('Programs: ' + _format_enrollment_programs(enrollments))
+
+
+		t.p('If you see any mistakes, please just contact me directly.  Thanks!')
+		
+	return d.render()
+
 def new_user(form, ws_url, errors = None):
 	title = 'New User'
 	d = _doc(title)

@@ -190,13 +190,17 @@ class Invitation(web.View):
 			invitation = await db.get_new_user_invitation(dbc, code)
 			person_id, academic_year = invitation['person'], invitation['academic_year']
 			person = await db.get_person(dbc, person_id)
-			family = await db.get_family(dbc, person_id, academic_year)
-			contact = await db.get_person_contact_info(dbc, person_id)
-			costs = await db.get_costs(dbc, academic_year)
-			cost_offsets = await db.get_cost_offset(dbc, person_id, academic_year)
-			leader = await db.get_leader(dbc, person_id, academic_year)
-			payments = await db.get_payments(dbc, [g['id'] for g in family.guardians], academic_year)
-			return hr(html.invitation(html.Form(settings.k_url_prefix + r.path), invitation, person, family, contact, costs, cost_offsets, leader, payments))
+			enrollments = await db.get_enrollments(dbc, person_id)
+			if enrollments: # this is a student
+				return hr(html.student_invitation(html.Form(settings.k_url_prefix + r.path), invitation, person, enrollments))
+			else: # assume this is a parent (TODO: better way todo this -- for person, add "parent" where head-of-household is kept as a record, anyway (though HOH isn't even as useful!)
+				family = await db.get_family(dbc, person_id, academic_year)
+				contact = await db.get_person_contact_info(dbc, person_id)
+				costs = await db.get_costs(dbc, academic_year)
+				cost_offsets = await db.get_cost_offset(dbc, person_id, academic_year)
+				leader = await db.get_leader(dbc, person_id, academic_year)
+				payments = await db.get_payments(dbc, [g['id'] for g in family.guardians], academic_year)
+				return hr(html.invitation(html.Form(settings.k_url_prefix + r.path), invitation, person, family, contact, costs, cost_offsets, leader, payments))
 		else:
 			return hr(html.invalid_invitation()) # this might be an attack attempt!
 		
