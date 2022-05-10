@@ -390,7 +390,7 @@ async def timeline_event_detail(record, details, signs):
 async def science_detail(record, details, signs):
 	return hr(html.science_detail(record, details, signs))
 
-k_temp_this_week = 27
+k_temp_this_week = 28
 k_temp_this_cycle = 2
 
 # cool characters: ⌂♩♪♫♬▲►▼◄→
