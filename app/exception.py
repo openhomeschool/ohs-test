@@ -1,0 +1,2 @@
+
+class InvalidSwitch(Exception): pass

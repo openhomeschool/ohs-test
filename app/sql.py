@@ -6,11 +6,15 @@ __license__ = 'MIT'
 import copy
 import re
 import random
-
+import bcrypt # cf https://security.stackexchange.com/questions/133239/what-is-the-specific-reason-to-prefer-bcrypt-or-pbkdf2-over-sha256-crypt-in-pass
+from uuid import uuid4
+#OLD user stuff: import hashlib
+#OLD user stuff: import re
 from datetime import date, timedelta
 from dataclasses import dataclass
 
 from . import util
+from . import exception
 
 import logging
 l = logging.getLogger(__name__)
@@ -38,12 +42,202 @@ async def fetchall(db, sql_and_args):
 	e = await db.execute(*sql_and_args)
 	return await e.fetchall()
 
+def prep_where_matches(where_matches):
+	'''
+	`where_matches` must be a list or tuple of 2-tuple pairs, such as:
+		(('username', 'frank'),)
+		(('first_name', 'John'), ('last_name', 'Smith'))
+		(('id', 5),)
+	The results for each of the above would be:
+		('username = ?', ('frank',))
+		('first_name = ? and last_name = ?', ('John', 'Smith')
+		('id = ?', (5,))
+	You could put any of these into a SQL call, like:
+		db.execute('select * from foo where %s' % wheres, values)
+	Where `wheres' and 'values' are the two returns 
+	'''
+	wheres, values = list(zip(*where_matches))
+	wheres = ' and '.join([i + ' = ?' for i in wheres])
+	return wheres, values
+
 
 # -----------------------------------------------------------------------------
 '''
 Main database functions
 Expectation / pattern: these typically return 2-tuples: (sql, arg_list)
 '''
+
+# User stuff ------------------------------------------------------------------
+
+async def _login(dbc, user_id):
+	uuid = str(uuid4())
+	await dbc.execute('insert into user_login ("user", uuid) values (?, ?)', (user_id, uuid))
+	await dbc.commit()
+	return uuid
+
+async def login(dbc, username, password):
+	r = await fetchone(dbc, ('select id, password from "user" where username = ?', (username,)))
+	if r and (password == None or bcrypt.checkpw(password.encode(), r['password'])):
+		return await _login(dbc, r['id'])
+	#else:
+	return None
+
+async def forget_login(dbc, uuid):
+	await dbc.execute('delete from user_login where uuid = ?', (uuid,))
+	await dbc.commit()
+
+async def authenticated(dbc, uuid):
+	return await bool(fetchone(dbc, ('select id from user_login where uuid = ?', (uuid,))))
+
+async def authorized(dbc, uuid, roles):
+	users_roles = await fetchall(dbc, ('select role.name from role join user_role on role.id = user_role.role join user on user.id = user_role.user join user_login on user.id = user_login.user where user_login.uuid = ?', (uuid,)))
+	return bool(set([role['name'] for role in users_roles]).intersection(roles))
+
+async def create_user(dbc, username, password, person_id):
+	pwcrypt = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
+	await dbc.execute('insert into "user" (username, password, person) values (?, ?, ?)', [username, pwcrypt, person_id]) # 'verified' defaults to 0 per db setup
+	await dbc.commit()
+
+async def add_role(dbc, username, role):
+	await add_roles(dbc, username, (role,))
+
+async def add_roles(dbc, username, roles):
+	all_roles = await fetchall(dbc, ('select id, name from role', ()))
+	user = await fetchone(dbc, ('select id from "user" where username = ?', (username,)))
+	roles = [(user['id'], role['id']) for role in all_roles if role['name'] in roles]
+	await add_role_ids(dbc, roles)
+
+async def add_role_id(dbc, role_id, user_id = None):
+	return add_role_ids(dbc, (role_id,), user_id)
+
+async def add_role_ids(dbc, role_ids, user_id = None):
+	'''
+	`role_ids` can either be a list of 2-tuples, each as (user_id, role_id)
+	(Note that user_id might be the same in many tuples, if you're adding many
+	roles for the same user), or else role_ids can be a plain list (or tuple)
+	of role_ids, and the list-of-tuples will be built for you using the provided
+	`user_id`.
+	'''
+	if user_id:
+		role_ids = [(user_id, role_id) for role_id in role_ids]
+	#else role_ids is already a list of (user_id, role_id) tuples
+	l.debug('adding roles: %s', role_ids)
+	await dbc.executemany('insert into user_role ("user", role) values (?, ?)', role_ids)
+	await dbc.commit()
+
+async def verify_new_user(dbc, username):
+	await dbc.execute('update "user" set verified = 1 where username = ?', [username,])
+
+async def delete_user(dbc, username):
+	await dbc.execute('delete from "user" where username = ?', [username,])
+	await dbc.commit()
+
+async def disable_user(dbc, username):
+	await dbc.execute('update "user" set password = NULL where username = ?', [username,]) # can't login with null pw
+	await dbc.commit()
+	
+async def reset_user_password(dbc, username, new_password):
+	pwcrypt = bcrypt.hashpw(new_password.encode(), bcrypt.gensalt())
+	await dbc.execute('update "user" set password = ? where username = ?', [pwcrypt, username])
+	await dbc.commit()
+
+async def get_switch_user_ids(dbc, uuid):
+	return await fetchall(dbc, ('select "user", without_password from user_switch_allow join "user" on user.id = user_switch_allow.from_user join user_login on user.id = user_login.user where user_login.uuid = ?', (uuid,)))
+	
+async def get_usernames(dbc, user_ids):
+	return await fetchall(dbc, ('select id, username from "user" where id in (?)', (user_ids,)))
+
+async def get_username(dbc, uuid):
+	r = await fetchone(dbc, ('select username from "user" join user_login on user_login.user = user.id where user_login.uuid = ?', (uuid,)))
+	if r:
+		return r['username']
+	#else:
+	return None
+
+async def get_user_id(dbc, username):
+	r = await fetchone(dbc, ('select id from "user" where username = ?', (username,)))
+	if r:
+		return r['id']
+	#else:
+	return None
+
+async def add_user_switch_allows(dbc, from_user_ids, user_id = None, without_password = True):
+	'''
+	`from_user_ids` can either be a list of 2-tuples, each as
+		(user_id, from_user(id), without_password))
+	(Note that user_id might be the same in many tuples, if you're adding many
+	from_user_ids for the same user), or else from_user_ids can be a plain list (or tuple)
+	of user ids, and the list-of-tuples will be built for you using the provided
+	`user_id` and `without_password`.
+	'''
+	if user_id:
+		from_user_ids = [(user_id, from_user_id, without_password) for from_user_id in from_user_ids]
+	#else from_user_ids is already a list of (user_id, from_user_id, without_password) tuples
+	l.debug('adding from_user_ids: %s', from_user_ids)
+	await dbc.executemany('insert into user_switch_allow ("user", from_user, without_password) values (?, ?, ?)', from_user_ids)
+	await dbc.commit()
+
+async def get_switch_users(dbc, uuid):
+	return await fetchall(dbc, ('select switch_user.username, user_switch_allow.without_password from user_switch_allow join "user" on user.id = user_switch_allow.from_user join "user" as switch_user on switch_user.id = user_switch_allow.user join user_login on user_login.user = user.id where user_login.uuid = ?', (uuid,)))
+
+async def switch_user(dbc, from_uuid, to_username):
+	r = await fetchone(dbc, ('select switch_user.id as new_user_id, without_password from user_switch_allow join "user" on user.id = user_switch_allow.from_user join user_login on user.id = user_login.user join "user" as switch_user on switch_user.id = user_switch_allow.user where user_login.uuid = ? and switch_user.username = ?', (from_uuid, to_username)))
+	if r:
+		if r['without_password']:
+			await forget_login(dbc, from_uuid)
+			return await _login(dbc, r['new_user_id'])
+		else:
+			return None # to signal required login (i.e., send to login page)
+	#else:
+	raise exception.InvalidSwitch()
+
+async def get_user_settings(dbc, uuid):
+	return await fetchone(dbc, ('select * from user_settings join user on user_settings.user = user.id join user_login on user.id = user_login.user where user_login.uuid = ?', (uuid,)))
+
+# -----------------------------------------------------------------------------
+# OLD user stuff
+
+_hash = lambda password, salt: hashlib.pbkdf2_hmac('sha256', bytes(password, 'UTF-8'), salt, 100000)
+
+async def add_user_DEPRECATED(db, username, password, email):
+	salt = urandom(32)
+	c = await db.cursor() # need cursor because we need lastrowid, only available via cursor
+	r = await c.execute('insert into user (username, password, salt, email) values (?, ?, ?, ?)', (username, _hash(password, salt), salt, email))
+	user_id = c.lastrowid
+	r = await c.execute('insert into user_role (user, role) values (?, 1)', (user_id,)) #TODO: hard-coded to "role #1, student" -- parameterize!
+	return user_id
+
+_get_users_limited = lambda limit: ('select * from user limit ?', (limit,))
+async def get_users_limited_PORT(db, limit):
+	c = await db.execute(*_get_users_limited(limit))
+	return await c.fetchall()
+
+_find_users = lambda like: ('select * from user where username like ?', ('%' + like + '%',))
+async def find_users_PORT(db, like):
+	c = await db.execute(*_find_users(like))
+	return await c.fetchall()
+
+async def get_user_DEPRECATED(db, where_matches):
+	'''
+	See _prep_where_matches() for `where_matches` spec
+	'''
+	wheres, values = _prep_where_matches(where_matches)
+	c = await db.execute('select * from user where ' + wheres, values)
+	return await c.fetchall()
+
+
+async def authenticate_DEPRECATED(db, username, password):
+	c = await db.execute('select * from user where username = ?', (username,))
+	user = await c.fetchone()
+	if user and (user['password'] == _hash(password, user['salt'])):
+		c = await db.execute('select role.name as role_name from role join user_role on role.id = user_role.role join user on user.id = user_role.user where user.username = ?', (username,))
+		roles = await c.fetchall()
+		return user['id'], [role['role_name'] for role in roles]
+	#else:
+	return None, None
+
+
+# ----------------------------------------------------------
 
 def get_random_records(spec, count, exclude_ids = None):
 	'''
@@ -495,10 +689,6 @@ async def get_middle_resources(dbc, spec):
 async def get_high1_resources(dbc, spec):
 	resources = k_high1_resources if spec.grammar_supplement else k_high1_assignments
 	return await _get_resources(dbc, spec, resources)
-
-
-
-
 
 async def get_external_resource_detail(id):
 	joins = _external_resource_joins + [

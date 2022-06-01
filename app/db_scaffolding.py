@@ -68,6 +68,7 @@ class Test_Loop:
 	async def wrap(self, func, *args, **kwargs):
 		if not self.db:
 			self.db = await main.init_db('ohs-test.db')
+			await self.db.execute('pragma foreign_keys = ON')
 		return await func(self.db, *args, **kwargs)
 
 	def run(self, func, *args, **kwargs):

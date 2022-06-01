@@ -15,6 +15,7 @@ from dominate.util import raw
 
 from . import valid
 from . import settings
+from . import text
 
 k_cache_version = '?v=f1'
 
@@ -40,23 +41,21 @@ class Form:
 
 # Handlers --------------------------------------------------------------------
 
-def home():
-	d = _doc('OHS-Test Home Page')
-	with d:
-		t.p('This is the stub home-page for ohs-test.')
-	return d.render()
-
-def login(action, error = None):
-	d = _doc('OHS-Test Login')
+def login(action, flash = None, hide_username = False):
+	d = _doc('OpenHome.School Login')
 	with d:
 		with t.form(action = action, method = 'post'):
 			with t.fieldset(cls = 'small_fieldset'):
 				t.legend('Log in...')
-				_error(error)
-				t.div(_text_input('username', None, ('required', 'autofocus'), {'pattern': valid.re_username}, invalid_div = _invalid(valid.inv_username, False)), cls = 'field')
-				t.div(_text_input('password', None, ('required',), type_ = 'password'), cls = 'field')
+				_flash(flash)
+				pw_attrs = ['required',]
+				if not hide_username:
+					t.div(_text_input('username', None, ('required', 'autofocus'), {'pattern': valid.re_username}, invalid_div = _invalid(valid.inv_username, False)), cls = 'field')
+				else:
+					pw_attrs.append('autofocus')
+				t.div(_text_input('password', None, pw_attrs, type_ = 'password'), cls = 'field')
 				t.div(t.input_(type = "submit", value = "Log in!"), cls = 'field')
-		t.script(_js_util())
+		t.script(_js_basic())
 		t.script(_js_validate_login_fields())
 	return d.render()
 
@@ -94,7 +93,7 @@ def _format_cost(cost):
 def _format_cost_offset(cost_offset):
 	return ('offset (%s): ' % cost_offset['note'], _format_money(cost_offset['amount']))
 
-def invitation(form, invitation, person, family, contact, costs, cost_offsets, leader, payments, errors = None):
+def invitation(form, invitation, person, family, contact, costs, cost_offsets, leader, payments, flash = None):
 	#TODO: this is ugly long!  dice it up!!
 	
 	cl = lambda content: t.div(content, cls = 'contact_line')
@@ -102,8 +101,10 @@ def invitation(form, invitation, person, family, contact, costs, cost_offsets, l
 	
 	d = _doc('Invitation')
 	with d:
-		if not errors: # if there are errors, then we are re-presentingt his page; no need to say hello again
+		if not flash: # if there are errors, then we are re-presentingt his page; no need to say hello again
 			t.p('Hello %s %s!  Please confirm that all of the following is correct...' % (person['first_name'], person['last_name']))
+		else:
+			_flash(flash)
 			
 		with t.div(cls = 'flex-wrap'):
 			t.div('Contact', cls = 'title')
@@ -241,7 +242,7 @@ def _format_enrollment_programs(enrollments):
 		
 	return ', '.join(lines)
 	
-def student_invitation(form, invitation, person, enrollments, errors = None):
+def student_invitation(form, invitation, person, enrollments, flash = None):
 
 	# TODO: deport these!
 	cl = lambda content: t.div(content, cls = 'contact_line')
@@ -249,10 +250,10 @@ def student_invitation(form, invitation, person, enrollments, errors = None):
 	
 	d = _doc('Invitation')
 	with d:
-		if not errors: # if there are errors, then we are re-presenting this page; no need to say hello again
+		if not flash: # if there are errors, then we are re-presenting this page; no need to say hello again
 			t.p('Hello %s %s!  Please confirm that all of the following is correct...' % (person['first_name'], person['last_name']))
 		else:
-			pass # TODO: present the errors
+			_flash(flash)
 
 		with t.div(cls = 'flex-wrap'):
 			t.div('Enrollment', cls = 'title')
@@ -265,14 +266,14 @@ def student_invitation(form, invitation, person, enrollments, errors = None):
 		
 	return d.render()
 
-def new_user(form, ws_url, errors = None):
+def new_user(form, ws_url, error = None):
 	title = 'New User'
 	d = _doc(title)
 	with d:
 		with t.form(action = form.action, method = 'post'):
 			with t.fieldset():
 				t.legend(title)
-				_errors(errors)
+				_error(error)
 				with t.ol(cls = 'step_numbers'):
 					with t.li():
 						t.p('First, create a one-word username for yourself (lowercase, no spaces)...')
@@ -290,6 +291,7 @@ def new_user(form, ws_url, errors = None):
 						_text_input(*form.nv('email'), None, {'pattern': valid.re_email}, 'Type email address here', 
 							_invalid(valid.inv_email, form.invalid('email')))
 				t.input_(type = "submit", value = "Done!")
+		t.script(_js_basic())
 		t.script(_js_util())
 		t.script(_js_validate_new_user_fields())
 		t.script(_js_check_username(ws_url))
@@ -301,6 +303,7 @@ def select_user(url):
 		_text_input('search', None, ('autofocus',), {'autocomplete': 'off', 'oninput': 'search(this.value)', 'size': 12}, 'Search', type_ = 'search')
 		t.div(id = 'content') # filtered results themselves are added here, in this `content` div, via websocket, as search text is typed (see javascript)
 		# JS (intentionally at bottom of file; see https://faqs.skillcrush.com/article/176-where-should-js-script-tags-be-linked-in-html-documents and many stackexchange answers):
+		t.script(_js_basic())
 		t.script(_js_util())
 		t.script(_js_filter_list(url))
 	return d.render()
@@ -347,6 +350,7 @@ def quiz(ws_url, db_handler, html_function):
 				('Difficult', 'bogus')), 'Difficulty...')
 
 		# JS (intentionally at bottom of file; see https://faqs.skillcrush.com/article/176-where-should-js-script-tags-be-linked-in-html-documents and many stackexchange answers):
+		t.script(_js_basic())
 		t.script(_js_util())
 		t.script(_js_socket_quiz_manager(ws_url, db_handler, html_function))
 		t.script(_js_dropdown())
@@ -366,7 +370,7 @@ def grades_filter_button(key, options, show_grammar_option):
 	return t.div(r).render()
 
 
-def resources(ws_url, filters, cycles, weeks, qargs, links): # TODO: this is basically identical to select_user (and presumably other search-driven pages whose content comes via websocket); consolidate!
+def resources(ws_url, filters, cycles, weeks, qargs, links, login, user_settings): # TODO: this is basically identical to select_user (and presumably other search-driven pages whose content comes via websocket); consolidate!
 	d = _doc('Resources')
 	for_print = int(qargs.get('for_print', 0)) # 1 = no buttons, no header
 	show_search = int(qargs.get('show_search', 1)) # 1 = show, 0 = don't
@@ -377,12 +381,20 @@ def resources(ws_url, filters, cycles, weeks, qargs, links): # TODO: this is bas
 			with t.div(cls = 'flex-wrap'): # TODO: make a 'header_block' or something; different border color, perhaps
 				t.div(t.b('Go'), cls = 'title') # TODO: replace with a magnifying-glass gif!
 				with t.div(cls = 'main'):
-					for name, content, url in links:
-						onclick = f'window.open("{content}", "_self");'
-						if not url: # assume script, or other 'raw':
-							onclick = f'{content};'
-						t.button(name, title = name, onclick = onclick)
-					
+					with t.div(id = 'go'):
+						with t.div(cls = 'ib-left'):
+							for name, content, url in links:
+								onclick = f'window.open("{content}", "_self");' # assuming url=True
+								if not url: # then assume script, or other 'raw':
+									onclick = f'{content};'
+								t.button(name, title = name, onclick = onclick)
+					with t.div(id = 'login'):
+						with t.div(cls = 'ib-right'):
+							if login['type'] == 'button':
+								t.button(text.login_button_title, title = text.login_button_title, onclick = 'load_page("%s")' % _gurl('/login'))
+							else:
+								assert(login['type'] == 'menu')
+								_login_dropdown(login['username'], login['switch_users'])
 
 		if show_search and not for_print:
 			with t.div(cls = 'flex-wrap'): # TODO: make a 'header_block' or something; different border color, perhaps
@@ -399,6 +411,8 @@ def resources(ws_url, filters, cycles, weeks, qargs, links): # TODO: this is bas
 		t.div(id = 'content') # filtered results themselves are added here, in this `result` div, via websocket, as search text is typed (see javascript)
 
 		# JS (intentionally at bottom of file; see https://faqs.skillcrush.com/article/176-where-should-js-script-tags-be-linked-in-html-documents and many stackexchange answers):
+		t.script(_js_basic())
+		t.script(_js_load_bg(user_settings))
 		t.script(_js_util())
 		t.script(_js_filter_list(ws_url))
 		t.script(_js_dropdown())
@@ -416,6 +430,7 @@ def test_twixt(url):
 		t.p('This is the "TWIXT" Test page... result of main.foobar() coming soon...')
 		t.div(id = 'foobar')
 		
+		t.script(_js_basic())
 		t.script(_js_util())
 		t.script(_js_test1(url))
 		
@@ -594,7 +609,7 @@ def _add_eqality_record(table, record, left_field_name, right_field_name, yougli
 	right_text = record[right_field_name].replace('\\', '') # NOTE: NO LONGER youglishifying this!
 	if audio_base:
 		tr += t.td(
-			t.button('►', title = 'audio', onclick = '$("%s").play();' % audio_base, cls = 'mini_button'),
+			t.button('▸', title = 'audio', onclick = '$("%s").play();' % audio_base, cls = 'mini_button'),
 			t.audio(t.source(src = _aurl(audio_base + '.mp3' + k_cache_version), type = 'audio/mpeg'), controls = False, preload='none', id = audio_base),
 			right_text,
 			cls = 'right-equality-cell')
@@ -884,6 +899,7 @@ def _detail_doc(title, subject_section_title, table, record, renderer):
 
 	with d:
 		# JS (intentionally at bottom of file; see https://faqs.skillcrush.com/article/176-where-should-js-script-tags-be-linked-in-html-documents and many stackexchange answers):
+		t.script(_js_basic())
 		t.script(_js_util())
 		t.script(_js_play_pause())
 	return d.render()
@@ -1010,19 +1026,21 @@ def _doc(title, css = None, scripts = None):
 		t.link(href = settings.k_static_url + 'css/main.css', rel = 'stylesheet')
 	return d
 
+def _flash(flash):
+	if flash:
+		errors, messages = flash
+		if errors or messages:
+			with t.div(cls = 'flash'):
+				for error in errors:
+					l.error('FLASHING ERRORS: %s', errors)
+					t.div(error, cls = 'error')
+				for message in messages:
+					t.div(message, cls = 'message')
+					l.debug('FLASHING MESSAGES: %s', messages)
+
 def _error(error):
 	if error:
-		d = t.div(cls = 'errors')
-		d += t.div(error, cls = 'error')
-		return d
-
-def _errors(errors):
-	if errors:
-		d = t.div(cls = 'errors')
-		with d:
-			for error in errors:
-				t.div(error, cls = 'error')
-		return d
+		_flash(((error,), ()))
 
 def _invalid(message, visible, id = None):
 	return t.div(message, cls = 'invalid', style = 'display:block;' if visible else 'display:none;', id = id if id else '')
@@ -1062,11 +1080,19 @@ def _url_dropdown(container, id, options, title = None):
 	# TODO: new style has options[0] IS id! (i.e., we can get rid of the extra "id" arg, above
 	if not title:
 		title = options[0][1]
+	title += ' ▾'
 	with container:
 		t.button(title, cls = 'dropdown-button', onclick = 'choose_dropdown_item(%s)' % id)
 		with t.div(id = id, cls = 'dropdown-content'):
 			for option_title, option in options:
 				t.div(option_title, onclick = 'load_page("%s")' % option)
+
+def _login_dropdown(username, switch_users):
+	options = []
+	if switch_users:
+		options.extend([(user['username'], _gurl('/switch_user/' + user['username'])) for user in switch_users])
+	#TODO: add "logout", etc.(?)
+	_url_dropdown(t.div(cls = 'dropdown'), 'login_dropdown', options, username)
 
 def _dropdown(filt, qargs, cls, urls = False, title = None, button_class = None):
 	key, options = filt
@@ -1090,7 +1116,7 @@ def _dropdown(filt, qargs, cls, urls = False, title = None, button_class = None)
 	if button_class:
 		button_classes += ' ' + button_class
 	return t.div(
-		t.button(title, cls = button_classes, id = button_id, onclick = 'choose_dropdown_item(%s)' % content_id),
+		t.button(title + ' ▾', cls = button_classes, id = button_id, onclick = 'choose_dropdown_item(%s)' % content_id),
 		drop_content,
 		cls = cls,
 	)
@@ -1163,7 +1189,7 @@ def _event_formatted(record, for_print, timeline_sentences, detail_link = True):
 			final += t.span(' ' + record['primary_sentence'])
 	else:
 		filename_base = 'timeline/e%s' % record['id']
-		final += t.button('►', title = 'audio', onclick = '$("%s").play();' % filename_base, cls = 'mini_button')
+		final += t.button('▸', title = 'audio', onclick = '$("%s").play();' % filename_base, cls = 'mini_button')
 		final += t.audio(t.source(src = _aurl(filename_base + '.mp3' + k_cache_version), type = 'audio/mpeg'), controls = False, preload='none', id = filename_base)
 		if detail_link:
 			final += t.a(result, href = _gurl('/detail/event/%d' % record['id']), target = "_blank", cls = 'hover_link')
@@ -1203,13 +1229,25 @@ def _multi_choice_question(question, options, prompt_prefix, prompt_text, option
 # -----------------------------------------------------------------------------
 # Javascript:
 
-def _js_util():
+def _js_basic():
 	return raw('''
-
+	
 	function $(id) {
 		return document.getElementById(id);
 	};
-		
+	
+	''')
+
+def _js_load_bg(settings):
+	return raw('''
+		const element = document.querySelector('.main');
+		element.style.backgroundColor = "%(bg_color)s";
+		//document.getElementsByClassName("main").style.backgroundColor = "#eff7f6";
+	''' % settings)
+
+def _js_util():
+	return raw('''
+	
 	function ws_send(message) {
 		if (!ws || ws.readyState == WebSocket.CLOSING || ws.readyState == WebSocket.CLOSED) {
 			alert("Lost connection... going to reload page....");
@@ -1318,8 +1356,8 @@ def _js_filter_list(url):
 				spec = JSON.parse(payload.spec);
 				fw_button = $("first_week-button");
 				if (fw_button) { // this basically means that we're printing only
-					fw_button.innerHTML = "W-" + spec.first_week;
-					$("last_week-button").innerHTML = "W-" + spec.last_week;
+					fw_button.innerHTML = "W-" + spec.first_week + " ▾";
+					$("last_week-button").innerHTML = "W-" + spec.last_week + " ▾";
 					if (payload.grades != null)
 						$("grade-container").innerHTML = payload.grades;
 				}
@@ -1357,12 +1395,12 @@ def _js_check_username(url):
 	''' % {'url': url})
 
 def _js_check_validity():
-	return raw('''
+	return '''
 	function validate(evt) {
 		var e = evt.currentTarget;
 		e.nextElementSibling.style.display = e.checkValidity() ? "none" : "block";
 	};
-	''')
+	'''
 
 def _js_validate_login_fields():
 	return raw('''
@@ -1380,7 +1418,6 @@ def _js_validate_new_user_fields():
 		$('password_match_message').style.display = $('password_confirmation').value == "" || $('password').value == $('password_confirmation').value ? "none" : "block";
 	};
 	''' + _js_check_validity())
-
 
 def _js_dropdown():
 	return raw('''

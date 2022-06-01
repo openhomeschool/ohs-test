@@ -3,8 +3,6 @@ __copyright__ = '2020'
 __version__ = '0.1'
 __license__ = 'MIT'
 
-import hashlib
-import re
 
 from os import urandom
 from random import shuffle
@@ -17,65 +15,26 @@ from . import util
 
 k_subject_ids = sql.k_subject_ids
 
+
 # -----------------------------------------------------------------------------
-# User stuff
 
-_hash = lambda password, salt: hashlib.pbkdf2_hmac('sha256', bytes(password, 'UTF-8'), salt, 100000)
+async def login(dbc, username, password):
+	return await sql.login(dbc, username, password)
 
-async def add_user(db, username, password, email):
-	salt = urandom(32)
-	c = await db.cursor() # need cursor because we need lastrowid, only available via cursor
-	r = await c.execute('insert into user (username, password, salt, email) values (?, ?, ?, ?)', (username, _hash(password, salt), salt, email))
-	user_id = c.lastrowid
-	r = await c.execute('insert into user_role (user, role) values (?, 1)', (user_id,)) #TODO: hard-coded to "role #1, student" -- parameterize!
-	return user_id
+async def forget_login(dbc, uuid):
+	return await sql.forget_login(dbc, uuid)
 
-_get_users_limited = lambda limit: ('select * from user limit ?', (limit,))
-async def get_users_limited(db, limit):
-	c = await db.execute(*_get_users_limited(limit))
-	return await c.fetchall()
+async def get_username(dbc, uuid):
+	return await sql.get_username(dbc, uuid)
 
-_find_users = lambda like: ('select * from user where username like ?', ('%' + like + '%',))
-async def find_users(db, like):
-	c = await db.execute(*_find_users(like))
-	return await c.fetchall()
+async def get_switch_users(dbc, uuid):
+	return await sql.get_switch_users(dbc, uuid)
 
-def _prep_where_matches(where_matches):
-	'''
-	`where_matches` must be a list or tuple of 2-tuple pairs, such as:
-		(('username', 'frank'),)
-		(('first_name', 'John'), ('last_name', 'Smith'))
-		(('id', 5),)
-	The result is, for the above:
-		('username = ?', ('frank',))
-		('first_name = ? and last_name = ?', ('John', 'Smith')
-		('id = ?', (5,))
-	You could put any of these into a SQL call, like:
-		db.execute('select * from foo where %s' % wheres, values)
-	Where `wheres' and 'values' are the two returns 
-	'''
-	wheres, values = list(zip(*where_matches))
-	wheres = ' and '.join([i + ' = ?' for i in wheres])
-	return wheres, values
+async def switch_user(dbc, from_uuid, to_username):
+	return await sql.switch_user(dbc, from_uuid, to_username)
 
-async def get_user(db, where_matches):
-	'''
-	See _prep_where_matches() for `where_matches` spec
-	'''
-	wheres, values = _prep_where_matches(where_matches)
-	c = await db.execute('select * from user where ' + wheres, values)
-	return await c.fetchall()
-
-
-async def authenticate(db, username, password):
-	c = await db.execute('select * from user where username = ?', (username,))
-	user = await c.fetchone()
-	if user and (user['password'] == _hash(password, user['salt'])):
-		c = await db.execute('select role.name as role_name from role join user_role on role.id = user_role.role join user on user.id = user_role.user where user.username = ?', (username,))
-		roles = await c.fetchall()
-		return user['id'], [role['role_name'] for role in roles]
-	#else:
-	return None, None
+async def get_user_settings(dbc, uuid):
+	return await sql.get_user_settings(dbc, uuid)
 
 # -----------------------------------------------------------------------------
 # Question transactions

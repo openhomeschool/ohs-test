@@ -17,11 +17,9 @@ from random import shuffle
 from sqlite3 import PARSE_DECLTYPES
 from dataclasses import dataclass
 
-# TODO: These three may be culled once user/session stuff is complete
-import time
-import base64
-from cryptography import fernet
 from uuid import uuid4
+from cryptography import fernet
+import base64
 
 from aiohttp import web, WSMsgType, WSCloseCode
 from aiohttp_session import setup as setup_session, get_session
@@ -40,6 +38,8 @@ from . import html
 from . import db
 from . import valid
 from . import error
+from . import exception
+from . import text
 from . import settings
 from . import util
 
@@ -63,7 +63,8 @@ def hr(text): return web.Response(text = text, content_type = 'text/html')
 # "raw", and to get /static
 #r.static('/static', '/home/jmcaine/dev/ohs/ohs-test/static')
 
-def auth(roles):
+
+def auth(roles): # TODO: TEST! - updated this blindly, to match new roles design in database; untested!
 	'''
 	Checks `roles` against user's roles, if user is logged in.
 	Sends user to login page if necessary.
@@ -83,63 +84,100 @@ def auth(roles):
 			session = await get_session(request)
 			arg_roles = roles
 			if isinstance(roles, str): # then wrap the singleton:
-				arg_roles = {roles,}
+				arg_roles = (roles,)
 			if 'roles' in session and set(session['roles']).intersection(arg_roles):
 				# Process the request (handler) as requested:
 				return await func(request)
 			#else, forward to log-in page:
-			session['after_login'] = settings.k_url_prefix + request.path
+			session['after_login'] = settings.k_url_prefix + request.path # TODO: why not gurl(request, request.path)???
 			if 'roles' in session: # user is logged in, but the above role-intersection test failed, meaning that user is not permitted to access this particular page
-				session['error_flash'] = error.not_permitted
-			raise web.HTTPFound(location = gurl(request, 'login'))
+				_add_flash(session, error.not_permitted)
+			raise web.HTTPFound(gurl(request, 'login'))
 		return wrapper
 	return decorator
 
 
 # Handlers --------------------------------------------------------------------
 
+async def _logout(dbc, session, uuid = None):
+	if uuid == None:
+		uuid = session.get('uuid')
+	if uuid:
+		await db.forget_login(dbc, uuid)
+		del session['uuid']
+	
 @r.get('/login', name = 'login')
-async def login(request):
-	session = await get_session(request)
-	if 'user_id' in session:
-		del session['user_id']
-	if 'roles' in session:
-		del session['roles']
-	return hr(html.login(gurl(request, 'login'), await _flash(request)))
+async def login(r):
+	session = await get_session(r)
+	await _logout(r.app['db'], session)
+	return hr(html.login(gurl(r, 'login'), _get_flash(session), session.get('username_logging_in'))) # special "hide_username" case - during a switch_user to a user that requires a password for the switch
 
 @r.post('/login')
-async def login_(request):
-	r = request
+async def login_(r):
 	login_url = gurl(r, 'login')
 	data = await r.post()
 	session = await get_session(r)
+	unli = session.get('username_logging_in')
+	if unli: # data['username'] will be empty
+		data = {'username': unli, 'password': data['password']} # create a form of `data` that contains username (unli, in this case)
 	try:
 		# Validate:
 		invalids = []
 		_validate_regex(data, invalids, (
 				('username', valid.rec_username, True),
-				('password', valid.rec_password, True),
+				('password', valid.rec_string32, True),
 			))
 		if invalids:
-			raise Exception('login failure') # TODO: password retrieval mechanism
+			return hr(html.login(login_url, _wrap_error(error.invalid_login_input)))
 
-		user_id, roles = await db.authenticate(r.app['db'], data['username'], data['password'])
-		if not user_id:
-			return hr(html.login(login_url, error.authentication_failure))
-		else:
-			session['user_id'] = user_id
-			session['roles'] = roles
-			# raise web.HTTPFound below, after blanket exception handler...
-	except:
-		return hr(html.login(login_url, error.unknown_login_failure))
-	if 'user_id' in session:
-		raise web.HTTPFound(location = session['after_login'] if 'after_login' in session else gurl(r, 'home'))
+		uuid = await db.login(r.app['db'], data['username'], data['password'])
+		l.debug("LOGIN, uuid = %s", uuid)
+		if not uuid:
+			return hr(html.login(login_url, _wrap_error(error.login_failure))) # TODO: password retrieval mechanism
+		#else:
+		session['uuid'] = uuid # raise web.HTTPFound below, after blanket exception handler...
 
-		
+	except web.HTTPRedirection:
+		raise # move on
+	except: # everything else
+		return hr(html.login(login_url, _wrap_error(error.unknown_login_failure)))
+	if 'uuid' in session:
+		raise web.HTTPFound(session['after_login'] if 'after_login' in session else gurl(r, 'home'))
 
-@r.get('/stub-home', name = 'home')
-async def home(request):
-	return hr(html.home())
+@r.get('/logout', name = 'logout')
+async def logout(r):
+	await _logout(r.app['db'], await get_session(r))
+	raise web.HTTPFound(gurl(r, 'home'))
+
+@r.get('/switch_user/{username}')
+async def switch_user(r):
+	session = await get_session(r)
+	# Confirm that current user is authorized to switch:
+	uuid = session.get('uuid')
+	if not uuid:
+		raise web.HTTPFound(gurl(r, 'home')) # TODO - replace with a paget that indicates failure?! (or NOT, since this is probably evidence of a malicious attempt to manually /switch_user/ when not logged in as a user that is allowed to switch to the requested user!  In fact, not logged in at all!!)
+	#else:
+	dbc = r.app['db']
+	try:
+		new_username = r.match_info['username']
+		l.debug("(SWITCH_USER) LOGIN (attempt), new user = %s", new_username)
+		del session['uuid'] # clear session uuid early; log-out will occur as part of db.switch_user(), below, behind the scenes.  Note that if anything "goes wrong", it's actually good that we are logged-out and session-cleared because the "problem" is indicative of malicious attempts to force a login
+		new_uuid = await db.switch_user(dbc, uuid, new_username)
+		if new_uuid == None: # then password is required for this switch
+			session['username_logging_in'] = new_username # removes 'username' burden in login page
+			_add_flash(session, text.password_required % new_username, k_flash_messages_key)
+			raise web.HTTPFound(gurl(r, 'login'))
+		#else: (no password required; real new_uuid returned from switch_user(), so, switch was successful (including logout/forget, etc.)...
+		session['uuid'] = new_uuid # raise web.HTTPFound below, after blanket exception handler...
+		raise web.HTTPFound(gurl(r, 'home'))
+
+	except web.HTTPRedirection:
+		raise # move on
+	except: # everything else (including exception.InvalidSwitch)... 
+		l.error(error.unknown_login_failure)
+		_add_flash(session, error.unknown_login_failure)
+		raise web.HTTPFound(gurl(r, 'login'))
+
 
 @r.view('/new_user')
 class New_User(web.View):
@@ -163,7 +201,7 @@ class New_User(web.View):
 
 		if invalids:
 			# Re-present:
-			return hr(html.new_user(html.Form(settings.k_url_prefix + r.path, data, invalids), ws_url))
+			return hr(html.new_user(html.Form(settings.k_url_prefix + r.path, data, invalids), ws_url, _wrap_error(error.invalid_new_user_input)))
 		#else, go on...
 
 		# (Try to) add the user:
@@ -172,7 +210,7 @@ class New_User(web.View):
 			user_id = await db.add_user(r.app['db'], data['new_username'], data['password'], data['email'])
 		except IntegrityError: # Note that this should **almost** never happen, as we check username availability in real-time, but it's always possible that another new user with the same username is created milliseconds before the db.add_user() attempt, above; this would make the username suddenly unavailable; we could not possibly have told the user about this in advance, and need to revert to posting an error message now:
 			# Re-present with user_exists error:
-			return hr(html.new_user(html.Form(settings.k_url_prefix + r.path, data), ws_url, (error.user_exists,)))
+			return hr(html.new_user(html.Form(settings.k_url_prefix + r.path, data), ws_url, error.user_exists))
 
 		#if sess.get('trial'): # TODO!
 		#user = db.update_user(dbs, sess['username'], p.username, p.password, p.email)
@@ -288,7 +326,7 @@ async def ws_quiz_handler(request):
 			if payload['answer_id'] >= 0: # -1 indicates "skip"... for now we just allow this and log nothing... TODO: evaluate!
 				db_handler.log_user_answer(payload['answer_id'])
 		if 'db_handler' in payload: # assume that 'html_function' is there, too
-			db_handler = await db.get_handler(payload['db_handler'], dbc, session.get('user_id', None)) # TODO: add args; e.g., history might utilize date_range....
+			db_handler = await db.get_handler(payload['db_handler'], dbc, session.get('uuid', None)) # TODO: add args; e.g., history might utilize date_range....
 			await ws.send_json({
 				'call': 'content',
 				'content': html.exposed[payload['html_function']](db_handler.question, db_handler.options),
@@ -329,7 +367,7 @@ async def ws_test_twixt(request):
 g_playlists = {}
 
 
-@r.get('/')
+@r.get('/', name = 'home')
 async def default(request):
 	return await _resources(request, {})
 
@@ -368,7 +406,7 @@ async def detail(request):
 		table, record, details, signs = detail
 		return await g_detail_handlers[table](record, details, signs)
 	else:
-		raise web.HTTPNotFound(location = gurl(r, 'home')) # TODO - replace with a pagetthat indicates failure to find the 'key'
+		raise web.HTTPFound(gurl(r, 'home')) # TODO - replace with a page/message that indicates failure to find the 'key'
 
 @r.get('/detail/{table}/{id}')
 async def event_detail(request):
@@ -379,7 +417,7 @@ async def event_detail(request):
 		record, details, signs = detail
 		return await g_detail_handlers[table](record, details, signs)
 	else:
-		raise web.HTTPNotFound(location = gurl(r, 'home')) # TODO - replace with a pagetthat indicates failure to find the 'key'
+		raise web.HTTPFound(gurl(r, 'home')) # TODO - replace with a page/message that indicates failure to find the 'table/id'
 
 
 @detail_handler('event')
@@ -427,7 +465,17 @@ async def _resources(request, qargs):
 	)
 
 	links = _links(request)
-	return hr(html.resources(_ws_url(request, '/ws_resources'), filters, cycles, weeks, qargs, links))
+	login = {'type': 'button'} # default, unless we're already logged in...
+	uuid = session.get('uuid')
+	settings = {'bg_color': '#eff7f6'} # default (see main.css .flex-wrap .main background-color
+	if uuid:
+		login = {
+			'type': 'menu',
+			'username': await db.get_username(dbc, uuid),
+			'switch_users': await db.get_switch_users(dbc, uuid) }
+		settings = await db.get_user_settings(dbc, uuid)
+		
+	return hr(html.resources(_ws_url(request, '/ws_resources'), filters, cycles, weeks, qargs, links, login, settings))
 
 
 
@@ -538,6 +586,8 @@ async def ws_resources(request):
 
 # Util ------------------------------------------------------------------------
 
+_wrap_error = lambda error: ((error,), ()) # make a single error look like a normal (errors, messages) flash pair
+
 def _create_random_playlist(spec):
 	# Assemble the playlist (we build an entire playlist at once in order to avoid repetition (each song/etc. shows up only once), and because it's very easy to do one DB operation that results in a whole (randomly-ordered) set/list of "hits", rather than asking the DB every time, one song at a time):
 	path_map = {
@@ -564,11 +614,20 @@ def _create_random_playlist(spec):
 		result.extend(pair)
 	return result
 
-async def _flash(request):
-	session = await get_session(request)
-	flash = session.get('error_flash')
-	session['error_flash'] = None
-	return flash
+k_flash_errors_key = 'flash_errors'
+k_flash_messages_key = 'flash_messages'
+
+def _add_flash(session, message, key = k_flash_errors_key):
+	if key not in session:
+		session[key] = []
+	session[key].append(message)
+
+def _get_flash(session):
+	errors = session.get(k_flash_errors_key, [])
+	messages = session.get(k_flash_messages_key, [])
+	session[k_flash_errors_key] = [] # new empty list
+	session[k_flash_messages_key] = [] # new empty list
+	return (errors, messages)
 
 def _ws_url(request, name):
 	# Transform a normal URL like http://domain.tld/quiz/history/sequence into ws://domain.tld/<name>
@@ -635,6 +694,7 @@ async def init_db(filename):
 		# non-async equivalent would have been: db = sqlite3.connect('test1.db', isolation_level = None) # isolation_level: autocommit
 	db.row_factory = aiosqlite.Row
 	await db.execute('pragma journal_mode = wal') # see https://charlesleifer.com/blog/going-fast-with-sqlite-and-python/ - since we're using async/await from a wsgi stack, this is appropriate
+	await db.execute('pragma foreign_keys = ON')
 	#await db.execute('pragma case_sensitive_like = true')
 	#await db.set_trace_callback(l.debug) - not needed with aiosqlite, anyway
 	return db
