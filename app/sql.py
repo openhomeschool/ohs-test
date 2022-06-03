@@ -93,6 +93,12 @@ async def authorized(dbc, uuid, roles):
 	users_roles = await fetchall(dbc, ('select role.name from role join user_role on role.id = user_role.role join user on user.id = user_role.user join user_login on user.id = user_login.user where user_login.uuid = ?', (uuid,)))
 	return bool(set([role['name'] for role in users_roles]).intersection(roles))
 
+async def verify_password(dbc, uuid, password):
+	r = await fetchone(dbc, ('select password from "user" join user_login on user_login.user = user.id where uuid = ?', (uuid,)))
+	if r and bcrypt.checkpw(password.encode(), r['password']):
+		return True
+	return False
+
 async def create_user(dbc, username, password, person_id):
 	pwcrypt = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
 	await dbc.execute('insert into "user" (username, password, person) values (?, ?, ?)', [username, pwcrypt, person_id]) # 'verified' defaults to 0 per db setup
@@ -136,9 +142,9 @@ async def disable_user(dbc, username):
 	await dbc.execute('update "user" set password = NULL where username = ?', [username,]) # can't login with null pw
 	await dbc.commit()
 	
-async def reset_user_password(dbc, username, new_password):
+async def reset_user_password(dbc, uuid, new_password):
 	pwcrypt = bcrypt.hashpw(new_password.encode(), bcrypt.gensalt())
-	await dbc.execute('update "user" set password = ? where username = ?', [pwcrypt, username])
+	await dbc.execute('update "user" set password = ? from user_login where user.id = user_login.user and uuid = ?', (pwcrypt, uuid))
 	await dbc.commit()
 
 async def get_switch_user_ids(dbc, uuid):

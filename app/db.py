@@ -24,6 +24,15 @@ async def login(dbc, username, password):
 async def forget_login(dbc, uuid):
 	return await sql.forget_login(dbc, uuid)
 
+async def authenticated(dbc, uuid):
+	return await sql.authenticated(dbc, uuid)
+
+async def authorized(dbc, uuid, roles):
+	return await sql.authorized(dbc, uuid, roles)
+
+async def verify_password(dbc, uuid, password):
+	return await verify_password(dbc, uuid, password)
+
 async def get_username(dbc, uuid):
 	return await sql.get_username(dbc, uuid)
 

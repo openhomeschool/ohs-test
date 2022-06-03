@@ -89,9 +89,9 @@ def auth(roles): # TODO: TEST! - updated this blindly, to match new roles design
 				# Process the request (handler) as requested:
 				return await func(request)
 			#else, forward to log-in page:
-			session['after_login'] = settings.k_url_prefix + request.path # TODO: why not gurl(request, request.path)???
+			session['after_login'] = request.url
 			if 'roles' in session: # user is logged in, but the above role-intersection test failed, meaning that user is not permitted to access this particular page
-				_add_flash(session, error.not_permitted)
+				_add_flash_e(session, error.not_permitted)
 			raise web.HTTPFound(gurl(request, 'login'))
 		return wrapper
 	return decorator
@@ -165,7 +165,7 @@ async def switch_user(r):
 		new_uuid = await db.switch_user(dbc, uuid, new_username)
 		if new_uuid == None: # then password is required for this switch
 			session['username_logging_in'] = new_username # removes 'username' burden in login page
-			_add_flash(session, text.password_required % new_username, k_flash_messages_key)
+			_add_flash_m(session, text.password_required % new_username)
 			raise web.HTTPFound(gurl(r, 'login'))
 		#else: (no password required; real new_uuid returned from switch_user(), so, switch was successful (including logout/forget, etc.)...
 		session['uuid'] = new_uuid # raise web.HTTPFound below, after blanket exception handler...
@@ -175,14 +175,64 @@ async def switch_user(r):
 		raise # move on
 	except: # everything else (including exception.InvalidSwitch)... 
 		l.error(error.unknown_login_failure)
-		_add_flash(session, error.unknown_login_failure)
+		_add_flash_e(session, error.unknown_login_failure)
 		raise web.HTTPFound(gurl(r, 'login'))
+
+@r.view('/reset_password', name = 'reset_password')
+class Reset_Password(web.View):
+
+	async def _init(self):
+		self.r = self.request
+		session = await get_session(self.r)
+		self.uuid = session.get('uuid')
+		if not self.uuid:
+			_add_flash_m(session, text.login_required)
+			session['after_login'] = self.r.url # come back here after logging in
+			raise web.HTTPFound(gurl(self.r, 'login'))
+		
+	async def get(self):
+		self._init()
+		return hr(html.reset_password(html.Form(self.r.url)))
+
+	async def post(self):
+		self._init()
+		data = await self.r.post()
+		# Validate:
+		invalids = []
+		_validate_regex(data, invalids, (
+				('current_password', valid.rec_password, True),
+				('new_password', valid.rec_password, True),
+				('password_confirmation', valid.rec_password, True),
+			))
+		if str(data['new_password']) != str(data['password_confirmation']):
+			invalids.append('password_confirmation')
+		if invalids:
+			# Re-present:
+			return hr(html.reset_password(html.Form(self.r.url, data, invalids)))
+		#else, go on...
+
+		# (Try to) change the password:
+		if await db.verify_password(dbc, uuid, password):
+			
+
+		user_id = None
+		try:
+			user_id = await db.add_user(r.app['db'], data['new_username'], data['password'], data['email'])
+		except IntegrityError: # Note that this should **almost** never happen, as we check username availability in real-time, but it's always possible that another new user with the same username is created milliseconds before the db.add_user() attempt, above; this would make the username suddenly unavailable; we could not possibly have told the user about this in advance, and need to revert to posting an error message now:
+			# Re-present with user_exists error:
+			return hr(html.new_user(html.Form(r.url, data), ws_url, error.user_exists))
+
+		#if sess.get('trial'): # TODO!
+		#user = db.update_user(dbs, sess['username'], p.username, p.password, p.email)
+		#else:
+		
+		return hr(html.new_user_success(user_id)) # TODO: lame placeholder - need to redirect, anyway!
 
 
 @r.view('/new_user')
 class New_User(web.View):
 	async def get(self):
-		return hr(html.new_user(html.Form(settings.k_url_prefix + self.request.path), _ws_url(self.request, '/ws_check_username')))
+		return hr(html.new_user(html.Form(self.request.url), _ws_url(self.request, '/ws_check_username')))
 	
 	async def post(self):
 		r = self.request
@@ -201,7 +251,7 @@ class New_User(web.View):
 
 		if invalids:
 			# Re-present:
-			return hr(html.new_user(html.Form(settings.k_url_prefix + r.path, data, invalids), ws_url, _wrap_error(error.invalid_new_user_input)))
+			return hr(html.new_user(html.Form(r.url, data, invalids), ws_url, _wrap_error(error.invalid_new_user_input)))
 		#else, go on...
 
 		# (Try to) add the user:
@@ -210,7 +260,7 @@ class New_User(web.View):
 			user_id = await db.add_user(r.app['db'], data['new_username'], data['password'], data['email'])
 		except IntegrityError: # Note that this should **almost** never happen, as we check username availability in real-time, but it's always possible that another new user with the same username is created milliseconds before the db.add_user() attempt, above; this would make the username suddenly unavailable; we could not possibly have told the user about this in advance, and need to revert to posting an error message now:
 			# Re-present with user_exists error:
-			return hr(html.new_user(html.Form(settings.k_url_prefix + r.path, data), ws_url, error.user_exists))
+			return hr(html.new_user(html.Form(r.url, data), ws_url, error.user_exists))
 
 		#if sess.get('trial'): # TODO!
 		#user = db.update_user(dbs, sess['username'], p.username, p.password, p.email)
@@ -230,7 +280,7 @@ class Invitation(web.View):
 			person = await db.get_person(dbc, person_id)
 			enrollments = await db.get_enrollments(dbc, person_id)
 			if enrollments: # this is a student
-				return hr(html.student_invitation(html.Form(settings.k_url_prefix + r.path), invitation, person, enrollments))
+				return hr(html.student_invitation(html.Form(r.url), invitation, person, enrollments))
 			else: # assume this is a parent (TODO: better way todo this -- for person, add "parent" where head-of-household is kept as a record, anyway (though HOH isn't even as useful!)
 				family = await db.get_family(dbc, person_id, academic_year)
 				contact = await db.get_person_contact_info(dbc, person_id)
@@ -238,7 +288,7 @@ class Invitation(web.View):
 				cost_offsets = await db.get_cost_offset(dbc, person_id, academic_year)
 				leader = await db.get_leader(dbc, person_id, academic_year)
 				payments = await db.get_payments(dbc, [g['id'] for g in family.guardians], academic_year)
-				return hr(html.invitation(html.Form(settings.k_url_prefix + r.path), invitation, person, family, contact, costs, cost_offsets, leader, payments))
+				return hr(html.invitation(html.Form(r.url), invitation, person, family, contact, costs, cost_offsets, leader, payments))
 		else:
 			return hr(html.invalid_invitation()) # this might be an attack attempt!
 		
@@ -617,7 +667,11 @@ def _create_random_playlist(spec):
 k_flash_errors_key = 'flash_errors'
 k_flash_messages_key = 'flash_messages'
 
-def _add_flash(session, message, key = k_flash_errors_key):
+def _add_flash_m(session, message):
+	return _add_flash(session, message, k_flash_messages_key)
+def _add_flash_e(session, error):
+	return _add_flash(session, error, k_flash_errors_key)
+def _add_flash(session, message, key):
 	if key not in session:
 		session[key] = []
 	session[key].append(message)
@@ -630,13 +684,13 @@ def _get_flash(session):
 	return (errors, messages)
 
 def _ws_url(request, name):
-	# Transform a normal URL like http://domain.tld/quiz/history/sequence into ws://domain.tld/<name>
-	rurl = request.url
+	# Builds a url from `request` (host part, mainly) and `name`, as a websocket-schemed version; e.g.
+	#	http://domain.tld/quiz/history/sequence --> ws://domain.tld/<name>
 	return URL.build(scheme = settings.k_ws, host = request.host, path = settings.k_ws_url_prefix + name)
 
 def _http_url(request, name, query = None):
-	# Transform a ws URL like ws://domain.tld/... into a normal URL: http://domain.tld/<name>  - note: what about HTTPs!?TODO
-	rurl = request.url
+	# Builds a url from `request` (host part, mainly) and `name`, as a http(s)-schemed version; e.g.
+	#	ws://domain.tld/... --> http://domain.tld/<name>
 	return URL.build(scheme = settings.k_http, host = request.host, path = settings.k_url_prefix + name, query = query)
 
 def _validate_regex(data, invalids, tuple_list):

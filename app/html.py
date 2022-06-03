@@ -35,14 +35,14 @@ class Form:
 		# returns a (name, value) pair for `name`, or else None if there are no values set at all (in __init__)
 		return (name, self.values.get(name) if self.values else None)
 
-	def invalid(self, name):
+	def is_invalid(self, name):
 		# returns True if `name` is in the list of invalids set (in __init__)
 		return name in self.invalids
 
 # Handlers --------------------------------------------------------------------
 
 def login(action, flash = None, hide_username = False):
-	d = _doc('OpenHome.School Login')
+	d = _doc(text.doc_prefix + 'Login')
 	with d:
 		with t.form(action = action, method = 'post'):
 			with t.fieldset(cls = 'small_fieldset'):
@@ -50,18 +50,37 @@ def login(action, flash = None, hide_username = False):
 				_flash(flash)
 				pw_attrs = ['required',]
 				if not hide_username:
-					t.div(_text_input('username', None, ('required', 'autofocus'), {'pattern': valid.re_username}, invalid_div = _invalid(valid.inv_username, False)), cls = 'field')
+					t.div(_text_input('username', None, ('required', 'autofocus'), {'pattern': valid.re_username}, invalid_div = _invalid(text.inv_username, False)), cls = 'field')
 				else:
 					pw_attrs.append('autofocus')
 				t.div(_text_input('password', None, pw_attrs, type_ = 'password'), cls = 'field')
 				t.div(t.input_(type = "submit", value = "Log in!"), cls = 'field')
 		t.script(_js_basic())
 		t.script(_js_validate_login_fields())
+		t.script(_js_check_validity())
+	return d.render()
+
+def reset_password(action):
+	title = 'Reset Password'
+	d = _doc(text.doc_prefix + title)
+	with d:
+		with t.form(action = action, method = 'post'):
+			with t.fieldset(cls = 'small_fieldset'):
+				t.legend(title + '...')
+				t.div(_text_input('current_password', None, ('required',), type_ = 'password'), cls = 'field')
+				t.div(_text_input('new_password', None, ('required',), type_ = 'password'), cls = 'field')
+				t.div(_text_input('password_confirmation', None, ('required',), None, 'Type password again for confirmation',
+					_invalid(text.inv_password_confirmation, form.is_invalid('password_confirmation'), 'password_match_message'), type_ = 'password'))
+				t.div(t.input_(type = "submit", value = "Done"), cls = 'field')
+		t.script(_js_basic())
+		t.script(_js_validate_password_confirmation_fields())
+		t.script(_js_check_validity)
+
 	return d.render()
 
 	
 def new_user_success(id): # TODO: this is just a lame placeholder
-	d = _doc('New User!')
+	d = _doc(text.doc_prefix + 'New User')
 	with d:
 		t.p('New user (%s) successfully created! ....' % id)
 	return d.render()
@@ -99,7 +118,7 @@ def invitation(form, invitation, person, family, contact, costs, cost_offsets, l
 	cl = lambda content: t.div(content, cls = 'contact_line')
 	cli = lambda content: t.div(content, cls = 'contact_line_inset')
 	
-	d = _doc('Invitation')
+	d = _doc(text.doc_prefix + 'Invitation')
 	with d:
 		if not flash: # if there are errors, then we are re-presentingt his page; no need to say hello again
 			t.p('Hello %s %s!  Please confirm that all of the following is correct...' % (person['first_name'], person['last_name']))
@@ -248,7 +267,7 @@ def student_invitation(form, invitation, person, enrollments, flash = None):
 	cl = lambda content: t.div(content, cls = 'contact_line')
 	cli = lambda content: t.div(content, cls = 'contact_line_inset')
 	
-	d = _doc('Invitation')
+	d = _doc(text.doc_prefix + 'Invitation')
 	with d:
 		if not flash: # if there are errors, then we are re-presenting this page; no need to say hello again
 			t.p('Hello %s %s!  Please confirm that all of the following is correct...' % (person['first_name'], person['last_name']))
@@ -268,7 +287,7 @@ def student_invitation(form, invitation, person, enrollments, flash = None):
 
 def new_user(form, ws_url, error = None):
 	title = 'New User'
-	d = _doc(title)
+	d = _doc(text.doc_prefix + title)
 	with d:
 		with t.form(action = form.action, method = 'post'):
 			with t.fieldset():
@@ -278,33 +297,35 @@ def new_user(form, ws_url, error = None):
 					with t.li():
 						t.p('First, create a one-word username for yourself (lowercase, no spaces)...')
 						_text_input(*form.nv('new_username'), ('required', 'autofocus'), {'pattern': valid.re_username, 'oninput': 'check_username(this.value)'}, 'Type new username here',
-							_invalid(valid.inv_username, form.invalid('new_username')))
-						_invalid(valid.inv_username_exists, False, 'username_exists_message')
+							_invalid(text.inv_username, form.is_invalid('new_username')))
+						_invalid(text.inv_username_exists, False, 'username_exists_message')
 					with t.li():
 						t.p("Next, invent a password; type it in twice to make sure you've got it...")
 						_text_input('password', None, ('required',), {'pattern': valid.re_password}, 'Type new password here',
-							_invalid(valid.inv_password, form.invalid('password')), type_ = 'password')
+							_invalid(text.inv_password, form.is_invalid('password')), type_ = 'password')
 						_text_input('password_confirmation', None, ('required',), None, 'Type password again for confirmation',
-							_invalid(valid.inv_password_confirmation, form.invalid('password_confirmation'), 'password_match_message'), type_ = 'password')
+							_invalid(text.inv_password_confirmation, form.is_invalid('password_confirmation'), 'password_match_message'), type_ = 'password')
 					with t.li():
 						t.p("Finally, type in an email address that can be used if you ever need a password reset (optional, but this may be very useful someday!)...")
 						_text_input(*form.nv('email'), None, {'pattern': valid.re_email}, 'Type email address here', 
-							_invalid(valid.inv_email, form.invalid('email')))
+							_invalid(text.inv_email, form.is_invalid('email')))
 				t.input_(type = "submit", value = "Done!")
 		t.script(_js_basic())
-		t.script(_js_util())
+		t.script(_js_ws_util())
 		t.script(_js_validate_new_user_fields())
+		t.script(_js_validate_password_confirmation_fields())
 		t.script(_js_check_username(ws_url))
+		t.script(_js_check_validity)
 	return d.render()
 
 def select_user(url):
-	d = _doc('Select User')
+	d = _doc(text.doc_prefix + 'Select User')
 	with d:
 		_text_input('search', None, ('autofocus',), {'autocomplete': 'off', 'oninput': 'search(this.value)', 'size': 12}, 'Search', type_ = 'search')
 		t.div(id = 'content') # filtered results themselves are added here, in this `content` div, via websocket, as search text is typed (see javascript)
 		# JS (intentionally at bottom of file; see https://faqs.skillcrush.com/article/176-where-should-js-script-tags-be-linked-in-html-documents and many stackexchange answers):
 		t.script(_js_basic())
-		t.script(_js_util())
+		t.script(_js_ws_util())
 		t.script(_js_filter_list(url))
 	return d.render()
 
@@ -321,7 +342,7 @@ def filter_user_list(results, url): # TODO: GENERALIZE for other lists!
 
 
 def quiz(ws_url, db_handler, html_function):
-	d = _doc('Quiz')
+	d = _doc(text.doc_prefix + 'Quiz')
 	with d:
 		with t.fieldset(cls = 'small_fieldset'):
 			# Content container - filtered results themselves will be fed into here, via websocket (see _js_socket_quiz_manager):
@@ -351,7 +372,7 @@ def quiz(ws_url, db_handler, html_function):
 
 		# JS (intentionally at bottom of file; see https://faqs.skillcrush.com/article/176-where-should-js-script-tags-be-linked-in-html-documents and many stackexchange answers):
 		t.script(_js_basic())
-		t.script(_js_util())
+		t.script(_js_ws_util())
 		t.script(_js_socket_quiz_manager(ws_url, db_handler, html_function))
 		t.script(_js_dropdown())
 	return d.render()
@@ -371,7 +392,7 @@ def grades_filter_button(key, options, show_grammar_option):
 
 
 def resources(ws_url, filters, cycles, weeks, qargs, links, login, user_settings): # TODO: this is basically identical to select_user (and presumably other search-driven pages whose content comes via websocket); consolidate!
-	d = _doc('Resources')
+	d = _doc(text.doc_prefix + 'Resources')
 	for_print = int(qargs.get('for_print', 0)) # 1 = no buttons, no header
 	show_search = int(qargs.get('show_search', 1)) # 1 = show, 0 = don't
 	show_go = int(qargs.get('show_go', 1)) # 1 = show, 0 = don't
@@ -413,7 +434,7 @@ def resources(ws_url, filters, cycles, weeks, qargs, links, login, user_settings
 		# JS (intentionally at bottom of file; see https://faqs.skillcrush.com/article/176-where-should-js-script-tags-be-linked-in-html-documents and many stackexchange answers):
 		t.script(_js_basic())
 		t.script(_js_load_bg(user_settings))
-		t.script(_js_util())
+		t.script(_js_ws_util())
 		t.script(_js_filter_list(ws_url))
 		t.script(_js_dropdown())
 		t.script(_js_calendar_widget())
@@ -431,7 +452,7 @@ def test_twixt(url):
 		t.div(id = 'foobar')
 		
 		t.script(_js_basic())
-		t.script(_js_util())
+		t.script(_js_ws_util())
 		t.script(_js_test1(url))
 		
 	return d.render()
@@ -893,14 +914,14 @@ def _youglishify(text, rawify = True):
 	return result
 
 def _detail_doc(title, subject_section_title, table, record, renderer):
-	d = _doc(title)
+	d = _doc(text.doc_prefix + title)
 	section = _new_subject_section(d, subject_section_title)
 	_grammar_resources(section, None, (record,), True, table, renderer, True)
 
 	with d:
 		# JS (intentionally at bottom of file; see https://faqs.skillcrush.com/article/176-where-should-js-script-tags-be-linked-in-html-documents and many stackexchange answers):
 		t.script(_js_basic())
-		t.script(_js_util())
+		t.script(_js_ws_util())
 		t.script(_js_play_pause())
 	return d.render()
 
@@ -1043,6 +1064,23 @@ def _error(error):
 		_flash(((error,), ()))
 
 def _invalid(message, visible, id = None):
+	'''
+	`message` is the message to display when the input is reckoned invalid.
+	This may be specified right up front, by setting `visible` to True (e.g., if a POST
+	processed the data and found it to be invalid), but it's also common to set `attrs`
+	(e.g., in _text_input()) to include something like:
+		{'pattern': valid.re_username}
+	In this case, with the _text_input() setup, when the pattern-match fails, the invalid
+	(`message`) is set to "visible" in real-time, for the user to see, while typing.
+	NOTE that BOTH of these may be vital - they are intentionally redundant.  For instance,
+	If a user (setting up a new_user, e.g.) uses invalid symbols in his username, it's nice to
+	let that user know about the invalidity in real time, before he pushes "go".  But, if
+	a user figures out how to POST data with invalid characters anyway (e.g., attempting
+	a hack), we still must, of course, check (re-validate) server-side, to detect this, and
+	then, with this div (returned below), with the `visible` set to True right off the bat,
+	we can tell the user that the input (attempted in the POST) was invalid (if, indeed,
+	the user was trying to hack, he/she already knows this, but, nevertheless...).
+	'''
 	return t.div(message, cls = 'invalid', style = 'display:block;' if visible else 'display:none;', id = id if id else '')
 
 def _combine_attrs(attrs, bool_attrs):
@@ -1054,11 +1092,11 @@ def _combine_attrs(attrs, bool_attrs):
 
 def _text_input(name, value, bool_attrs = None, attrs = None, label = None, invalid_div = None, type_ = 'text', internal_label = True):
 	'''
-	The 'name' string is expected to be a lowercase alphanumeric
-	"variable name" without spaces.  Use underscores ('_') to
-	separate words for a mult-word name.  `label` will be calculated as
-	name.replace('_', ' ').title() unless `label` exists.
+	The 'name' string is expected to be a lowercase alphanumeric "variable name" without spaces.
+	Use underscores ('_') to separate words for a mult-word name.
+	`label` will be calculated as name.replace('_', ' ').title() unless `label` is provided.
 	Set `type_` to 'password' for a password input field.
+	`invalid_div` is usually fabricated by a call to _invalid() - see that note for special details.
 	'''
 	if not label:
 		label = name.replace('_', ' ').title()
@@ -1245,7 +1283,7 @@ def _js_load_bg(settings):
 		//document.getElementsByClassName("main").style.backgroundColor = "#eff7f6";
 	''' % settings)
 
-def _js_util():
+def _js_ws_util():
 	return raw('''
 	
 	function ws_send(message) {
@@ -1395,29 +1433,33 @@ def _js_check_username(url):
 	''' % {'url': url})
 
 def _js_check_validity():
-	return '''
+	return raw('''
 	function validate(evt) {
 		var e = evt.currentTarget;
 		e.nextElementSibling.style.display = e.checkValidity() ? "none" : "block";
 	};
-	'''
+	''')
 
 def _js_validate_login_fields():
 	return raw('''
 	$('username').addEventListener('input', validate);
-	''' + _js_check_validity())
+	''')
 
 def _js_validate_new_user_fields():
 	return raw('''
 	$('new_username').addEventListener('input', validate);
 	$('email').addEventListener('blur', validate);
+	''')
+
+def _js_validate_password_confirmation_fields():
+	return raw('''
 	$('password').addEventListener('blur', validate);
 	$('password_confirmation').addEventListener('blur', validate_passwords);
 
 	function validate_passwords(evt) {
 		$('password_match_message').style.display = $('password_confirmation').value == "" || $('password').value == $('password_confirmation').value ? "none" : "block";
 	};
-	''' + _js_check_validity())
+	''')
 
 def _js_dropdown():
 	return raw('''

@@ -74,3 +74,7 @@ class Test_Loop:
 	def run(self, func, *args, **kwargs):
 		return self.loop.run_until_complete(self.wrap(func, *args, **kwargs))
 
+	def close(self):
+		self.loop.run_until_complete(self.loop.shutdown_asyncgens())
+		self.loop.close()
+
