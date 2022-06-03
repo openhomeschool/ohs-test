@@ -67,7 +67,6 @@ def reset_password(action):
 		with t.form(action = action, method = 'post'):
 			with t.fieldset(cls = 'small_fieldset'):
 				t.legend(title + '...')
-				t.div(_text_input('current_password', None, ('required',), type_ = 'password'), cls = 'field')
 				t.div(_text_input('new_password', None, ('required',), type_ = 'password'), cls = 'field')
 				t.div(_text_input('password_confirmation', None, ('required',), None, 'Type password again for confirmation',
 					_invalid(text.inv_password_confirmation, form.is_invalid('password_confirmation'), 'password_match_message'), type_ = 'password'))

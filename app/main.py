@@ -99,6 +99,11 @@ def auth(roles): # TODO: TEST! - updated this blindly, to match new roles design
 
 # Handlers --------------------------------------------------------------------
 
+def _finish_login(session, result, redirect):
+	session['uuid'], session['login_time'] = result # result is a two-tuple: (uuid, ts)
+	del session['username_logging_in']
+	raise web.HTTPFound(redirect)
+
 async def _logout(dbc, session, uuid = None):
 	if uuid == None:
 		uuid = session.get('uuid')
@@ -130,19 +135,17 @@ async def login_(r):
 		if invalids:
 			return hr(html.login(login_url, _wrap_error(error.invalid_login_input)))
 
-		uuid = await db.login(r.app['db'], data['username'], data['password'])
-		l.debug("LOGIN, uuid = %s", uuid)
-		if not uuid:
+		result = await db.login(r.app['db'], data['username'], data['password'])
+		l.debug("LOGIN %s: (uuid, timestamp) = %s", data['username'], result)
+		if not result:
 			return hr(html.login(login_url, _wrap_error(error.login_failure))) # TODO: password retrieval mechanism
-		#else:
-		session['uuid'] = uuid # raise web.HTTPFound below, after blanket exception handler...
+		#else, success!:
+		_finish_login(session, result, session['after_login'] if 'after_login' in session else gurl(r, 'home'))
 
 	except web.HTTPRedirection:
 		raise # move on
 	except: # everything else
 		return hr(html.login(login_url, _wrap_error(error.unknown_login_failure)))
-	if 'uuid' in session:
-		raise web.HTTPFound(session['after_login'] if 'after_login' in session else gurl(r, 'home'))
 
 @r.get('/logout', name = 'logout')
 async def logout(r):
@@ -162,14 +165,14 @@ async def switch_user(r):
 		new_username = r.match_info['username']
 		l.debug("(SWITCH_USER) LOGIN (attempt), new user = %s", new_username)
 		del session['uuid'] # clear session uuid early; log-out will occur as part of db.switch_user(), below, behind the scenes.  Note that if anything "goes wrong", it's actually good that we are logged-out and session-cleared because the "problem" is indicative of malicious attempts to force a login
-		new_uuid = await db.switch_user(dbc, uuid, new_username)
-		if new_uuid == None: # then password is required for this switch
+		del session['login_time']
+		result = await db.switch_user(dbc, uuid, new_username)
+		if result == None: # then password is required for this switch
 			session['username_logging_in'] = new_username # removes 'username' burden in login page
 			_add_flash_m(session, text.password_required % new_username)
 			raise web.HTTPFound(gurl(r, 'login'))
-		#else: (no password required; real new_uuid returned from switch_user(), so, switch was successful (including logout/forget, etc.)...
-		session['uuid'] = new_uuid # raise web.HTTPFound below, after blanket exception handler...
-		raise web.HTTPFound(gurl(r, 'home'))
+		#else: (no password required; real new uuid returned from switch_user(), so, switch was successful (including logout/forget, etc.)...
+		_finish_login(session, result, gurl(r, 'home'))
 
 	except web.HTTPRedirection:
 		raise # move on
@@ -178,6 +181,7 @@ async def switch_user(r):
 		_add_flash_e(session, error.unknown_login_failure)
 		raise web.HTTPFound(gurl(r, 'login'))
 
+
 @r.view('/reset_password', name = 'reset_password')
 class Reset_Password(web.View):
 
@@ -185,10 +189,15 @@ class Reset_Password(web.View):
 		self.r = self.request
 		session = await get_session(self.r)
 		self.uuid = session.get('uuid')
-		if not self.uuid:
+		login_time = session.get('login_time')
+		if not self.uuid or not login_time:
 			_add_flash_m(session, text.login_required)
-			session['after_login'] = self.r.url # come back here after logging in
-			raise web.HTTPFound(gurl(self.r, 'login'))
+		elif time.time() - login_time > 60: # we know login_time is non-None, by now; confirm that user logged in within the last 60 seconds, else redirect to login
+			_add_flash_m(session, text.verify_login_required)
+		else:
+			return # all is good; we only want the next two lines if either of the above tests failed and we have flash_m (and have to re-present login page):
+		session['after_login'] = self.r.url # come back here after logging in
+		raise web.HTTPFound(gurl(self.r, 'login'))
 		
 	async def get(self):
 		self._init()
@@ -200,7 +209,6 @@ class Reset_Password(web.View):
 		# Validate:
 		invalids = []
 		_validate_regex(data, invalids, (
-				('current_password', valid.rec_password, True),
 				('new_password', valid.rec_password, True),
 				('password_confirmation', valid.rec_password, True),
 			))
@@ -212,9 +220,8 @@ class Reset_Password(web.View):
 		#else, go on...
 
 		# (Try to) change the password:
-		if await db.verify_password(dbc, uuid, password):
-			
-
+		db.reset_user_password(dbc, uuid, data['new_password'])
+!!!!
 		user_id = None
 		try:
 			user_id = await db.add_user(r.app['db'], data['new_username'], data['password'], data['email'])

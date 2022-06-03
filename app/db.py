@@ -30,14 +30,14 @@ async def authenticated(dbc, uuid):
 async def authorized(dbc, uuid, roles):
 	return await sql.authorized(dbc, uuid, roles)
 
-async def verify_password(dbc, uuid, password):
-	return await verify_password(dbc, uuid, password)
-
 async def get_username(dbc, uuid):
 	return await sql.get_username(dbc, uuid)
 
 async def get_switch_users(dbc, uuid):
 	return await sql.get_switch_users(dbc, uuid)
+
+async def reset_user_password(dbc, uuid, new_password):
+	return await reset_user_password(dbc, uuid, new_password)
 
 async def switch_user(dbc, from_uuid, to_username):
 	return await sql.switch_user(dbc, from_uuid, to_username)

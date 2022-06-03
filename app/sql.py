@@ -7,6 +7,8 @@ import copy
 import re
 import random
 import bcrypt # cf https://security.stackexchange.com/questions/133239/what-is-the-specific-reason-to-prefer-bcrypt-or-pbkdf2-over-sha256-crypt-in-pass
+import time
+
 from uuid import uuid4
 #OLD user stuff: import hashlib
 #OLD user stuff: import re
@@ -71,9 +73,10 @@ Expectation / pattern: these typically return 2-tuples: (sql, arg_list)
 
 async def _login(dbc, user_id):
 	uuid = str(uuid4())
-	await dbc.execute('insert into user_login ("user", uuid) values (?, ?)', (user_id, uuid))
+	ts = time.time()
+	await dbc.execute('insert into user_login ("user", uuid, timestamp) values (?, ?, ?)', (user_id, uuid, ts))
 	await dbc.commit()
-	return uuid
+	return (uuid, ts)
 
 async def login(dbc, username, password):
 	r = await fetchone(dbc, ('select id, password from "user" where username = ?', (username,)))
@@ -93,7 +96,7 @@ async def authorized(dbc, uuid, roles):
 	users_roles = await fetchall(dbc, ('select role.name from role join user_role on role.id = user_role.role join user on user.id = user_role.user join user_login on user.id = user_login.user where user_login.uuid = ?', (uuid,)))
 	return bool(set([role['name'] for role in users_roles]).intersection(roles))
 
-async def verify_password(dbc, uuid, password):
+async def verify_password__(dbc, uuid, password): # TODO: DEPRECATE; don't really need this, after all
 	r = await fetchone(dbc, ('select password from "user" join user_login on user_login.user = user.id where uuid = ?', (uuid,)))
 	if r and bcrypt.checkpw(password.encode(), r['password']):
 		return True
