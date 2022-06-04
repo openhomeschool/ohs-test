@@ -147,8 +147,10 @@ async def disable_user(dbc, username):
 	
 async def reset_user_password(dbc, uuid, new_password):
 	pwcrypt = bcrypt.hashpw(new_password.encode(), bcrypt.gensalt())
-	await dbc.execute('update "user" set password = ? from user_login where user.id = user_login.user and uuid = ?', (pwcrypt, uuid))
+	result = await dbc.execute('update "user" set password = ? from user_login where user.id = user_login.user and uuid = ?', (pwcrypt, uuid))
 	await dbc.commit()
+	assert(result.rowcount < 2)
+	return (result.rowcount == 1)
 
 async def get_switch_user_ids(dbc, uuid):
 	return await fetchall(dbc, ('select "user", without_password from user_switch_allow join "user" on user.id = user_switch_allow.from_user join user_login on user.id = user_login.user where user_login.uuid = ?', (uuid,)))

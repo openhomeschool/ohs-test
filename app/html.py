@@ -60,13 +60,14 @@ def login(action, flash = None, hide_username = False):
 		t.script(_js_check_validity())
 	return d.render()
 
-def reset_password(action):
+def reset_password(form, error = None):
 	title = 'Reset Password'
 	d = _doc(text.doc_prefix + title)
 	with d:
-		with t.form(action = action, method = 'post'):
+		with t.form(action = form.action, method = 'post'):
 			with t.fieldset(cls = 'small_fieldset'):
 				t.legend(title + '...')
+				_error(error)
 				t.div(_text_input('new_password', None, ('required',), type_ = 'password'), cls = 'field')
 				t.div(_text_input('password_confirmation', None, ('required',), None, 'Type password again for confirmation',
 					_invalid(text.inv_password_confirmation, form.is_invalid('password_confirmation'), 'password_match_message'), type_ = 'password'))
@@ -77,7 +78,18 @@ def reset_password(action):
 
 	return d.render()
 
-	
+def reset_password_success(nexts):
+	title = 'Reset Password'
+	d = _doc(text.doc_prefix + title)
+	with d:
+		t.div(text.reset_password_success)
+		_nexts(nexts)
+
+def _nexts(nexts):
+	for name, url in nexts:
+		t.div(t.a(name, href = url))
+
+
 def new_user_success(id): # TODO: this is just a lame placeholder
 	d = _doc(text.doc_prefix + 'New User')
 	with d:

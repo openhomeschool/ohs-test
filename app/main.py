@@ -220,20 +220,17 @@ class Reset_Password(web.View):
 		#else, go on...
 
 		# (Try to) change the password:
-		db.reset_user_password(dbc, uuid, data['new_password'])
-!!!!
-		user_id = None
-		try:
-			user_id = await db.add_user(r.app['db'], data['new_username'], data['password'], data['email'])
-		except IntegrityError: # Note that this should **almost** never happen, as we check username availability in real-time, but it's always possible that another new user with the same username is created milliseconds before the db.add_user() attempt, above; this would make the username suddenly unavailable; we could not possibly have told the user about this in advance, and need to revert to posting an error message now:
-			# Re-present with user_exists error:
-			return hr(html.new_user(html.Form(r.url, data), ws_url, error.user_exists))
+		if db.reset_user_password(dbc, uuid, data['new_password']):
+			return hr(html.reset_password_success((
+					('Home', gurl(self.r, 'home')),
+					('User Settings', gurl(self.r, 'user_settings')),
+				)))
+		#else, re-present:
+		return hr(html.reset_password(html.Form(self.r.url, data, invalids), error.reset_password_failure))
 
-		#if sess.get('trial'): # TODO!
-		#user = db.update_user(dbs, sess['username'], p.username, p.password, p.email)
-		#else:
-		
-		return hr(html.new_user_success(user_id)) # TODO: lame placeholder - need to redirect, anyway!
+@r.get('/user_settings', name = 'user_settings')
+async def user_settings(request):
+	pass # TODO
 
 
 @r.view('/new_user')
@@ -305,7 +302,7 @@ class Invitation(web.View):
 		data = await r.post()
 		
 
-r.view('/invitation2/{code}')
+@r.view('/invitation2/{code}')
 async def invitation2(request):
 	code = request.match_info['code']
 	if valid.rec_invitation.match(code):
@@ -752,13 +749,12 @@ async def _ws_handler(request, msg_handler, initial_send = {'call': 'start', 'da
 
 async def init_db(filename):
 	db = await aiosqlite.connect(filename, isolation_level = None, detect_types = PARSE_DECLTYPES) # isolation_level: autocommit TODO: parameterize DB ID!
-		# non-async equivalent would have been: db = sqlite3.connect('test1.db', isolation_level = None) # isolation_level: autocommit
 	db.row_factory = aiosqlite.Row
 	await db.execute('pragma journal_mode = wal') # see https://charlesleifer.com/blog/going-fast-with-sqlite-and-python/ - since we're using async/await from a wsgi stack, this is appropriate
 	await db.execute('pragma foreign_keys = ON')
 	#await db.execute('pragma case_sensitive_like = true')
 	#await db.set_trace_callback(l.debug) - not needed with aiosqlite, anyway
-	return db
+	return db # consider db.cursor(), instead, according to more "typical" use; sqlite3 has an "efficient" approach that involves just using the database directly (a temp cursor is auto-created under the hood): https://pysqlite.readthedocs.io/en/latest/sqlite3.html#using-sqlite3-efficiently
 
 async def _init(app):
 	l.debug('Initializing database...')

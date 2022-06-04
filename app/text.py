@@ -8,6 +8,7 @@ login_button_title = 'Log In'
 password_required = 'Password required for "%s"...'
 login_required = 'Log-in is required before you do this...'
 verify_login_required = 'Verified log-in is required before you do this...'
+reset_password_success = 'Your password was successfully reset.  What next?'
 
 inv_username = "Username must be a single word (no spaces) made of letters and/or numbers, 16 characters or less."
 inv_username_exists = "Sorry, this username is already in use by somebody else.  Please add more characters or try another."
