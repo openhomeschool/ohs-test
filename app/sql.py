@@ -130,7 +130,6 @@ async def add_role_ids(dbc, role_ids, user_id = None):
 	if user_id:
 		role_ids = [(user_id, role_id) for role_id in role_ids]
 	#else role_ids is already a list of (user_id, role_id) tuples
-	l.debug('adding roles: %s', role_ids)
 	await dbc.executemany('insert into user_role ("user", role) values (?, ?)', role_ids)
 	await dbc.commit()
 
@@ -147,10 +146,13 @@ async def disable_user(dbc, username):
 	
 async def reset_user_password(dbc, uuid, new_password):
 	pwcrypt = bcrypt.hashpw(new_password.encode(), bcrypt.gensalt())
-	result = await dbc.execute('update "user" set password = ? from user_login where user.id = user_login.user and uuid = ?', (pwcrypt, uuid))
-	await dbc.commit()
+	result = await dbc.execute('update "user" set user.password = ? from user_login where user.id = user_login.user and user_login.uuid = ?', (pwcrypt, uuid))
+	#r = await dbc.execute('select id from "user" join user_login on user_login.user = user.id where user_login.uuid = ?', (uuid,))
+	#result = await dbc.execute('update "user" set password = ? where id = ?', (pwcrypt, r['id']))
 	assert(result.rowcount < 2)
-	return (result.rowcount == 1)
+	result = (result.rowcount == 1)
+	await dbc.commit()
+	return result
 
 async def get_switch_user_ids(dbc, uuid):
 	return await fetchall(dbc, ('select "user", without_password from user_switch_allow join "user" on user.id = user_switch_allow.from_user join user_login on user.id = user_login.user where user_login.uuid = ?', (uuid,)))
@@ -184,7 +186,6 @@ async def add_user_switch_allows(dbc, from_user_ids, user_id = None, without_pas
 	if user_id:
 		from_user_ids = [(user_id, from_user_id, without_password) for from_user_id in from_user_ids]
 	#else from_user_ids is already a list of (user_id, from_user_id, without_password) tuples
-	l.debug('adding from_user_ids: %s', from_user_ids)
 	await dbc.executemany('insert into user_switch_allow ("user", from_user, without_password) values (?, ?, ?)', from_user_ids)
 	await dbc.commit()
 

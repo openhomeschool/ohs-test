@@ -57,7 +57,7 @@ def login(action, flash = None, hide_username = False):
 				t.div(t.input_(type = "submit", value = "Log in!"), cls = 'field')
 		t.script(_js_basic())
 		t.script(_js_validate_login_fields())
-		t.script(_js_check_validity())
+		t.script(_js_validate_password())
 	return d.render()
 
 def reset_password(form, error = None):
@@ -68,13 +68,14 @@ def reset_password(form, error = None):
 			with t.fieldset(cls = 'small_fieldset'):
 				t.legend(title + '...')
 				_error(error)
-				t.div(_text_input('new_password', None, ('required',), type_ = 'password'), cls = 'field')
-				t.div(_text_input('password_confirmation', None, ('required',), None, 'Type password again for confirmation',
-					_invalid(text.inv_password_confirmation, form.is_invalid('password_confirmation'), 'password_match_message'), type_ = 'password'))
+				_text_input('password', None, ('required', 'autofocus'), {'pattern': valid.re_password}, None,
+					_invalid(text.inv_password, form.is_invalid('password')), type_ = 'password', wrap_div_class = 'field')
+				_text_input('password_confirmation', None, ('required',), None, 'Again, for confirmation',
+					_invalid(text.inv_password_confirmation, form.is_invalid('password_confirmation'), 'password_match_message'), type_ = 'password', wrap_div_class = 'field')
 				t.div(t.input_(type = "submit", value = "Done"), cls = 'field')
 		t.script(_js_basic())
 		t.script(_js_validate_password_confirmation_fields())
-		t.script(_js_check_validity)
+		t.script(_js_validate_password())
 
 	return d.render()
 
@@ -84,6 +85,8 @@ def reset_password_success(nexts):
 	with d:
 		t.div(text.reset_password_success)
 		_nexts(nexts)
+	return d.render()
+
 
 def _nexts(nexts):
 	for name, url in nexts:
@@ -326,7 +329,7 @@ def new_user(form, ws_url, error = None):
 		t.script(_js_validate_new_user_fields())
 		t.script(_js_validate_password_confirmation_fields())
 		t.script(_js_check_username(ws_url))
-		t.script(_js_check_validity)
+		t.script(_js_validate_password)
 	return d.render()
 
 def select_user(url):
@@ -1064,11 +1067,9 @@ def _flash(flash):
 		if errors or messages:
 			with t.div(cls = 'flash'):
 				for error in errors:
-					l.error('FLASHING ERRORS: %s', errors)
 					t.div(error, cls = 'error')
 				for message in messages:
 					t.div(message, cls = 'message')
-					l.debug('FLASHING MESSAGES: %s', messages)
 
 def _error(error):
 	if error:
@@ -1101,7 +1102,7 @@ def _combine_attrs(attrs, bool_attrs):
 		attrs.update(_dress_bool_attrs(bool_attrs))
 	return attrs
 
-def _text_input(name, value, bool_attrs = None, attrs = None, label = None, invalid_div = None, type_ = 'text', internal_label = True):
+def _text_input(name, value, bool_attrs = None, attrs = None, label = None, invalid_div = None, type_ = 'text', internal_label = True, wrap_div_class = None):
 	'''
 	The 'name' string is expected to be a lowercase alphanumeric "variable name" without spaces.
 	Use underscores ('_') to separate words for a mult-word name.
@@ -1123,6 +1124,8 @@ def _text_input(name, value, bool_attrs = None, attrs = None, label = None, inva
 		result = t.label(label + ':', i)
 	if invalid_div:
 		result += invalid_div
+	if wrap_div_class:
+		result = t.div(result, cls = wrap_div_class)
 	return result
 
 def _url_dropdown(container, id, options, title = None):
@@ -1443,8 +1446,9 @@ def _js_check_username(url):
 	};
 	''' % {'url': url})
 
-def _js_check_validity():
+def _js_validate_password():
 	return raw('''
+	$('password').addEventListener('blur', validate);
 	function validate(evt) {
 		var e = evt.currentTarget;
 		e.nextElementSibling.style.display = e.checkValidity() ? "none" : "block";
@@ -1464,9 +1468,7 @@ def _js_validate_new_user_fields():
 
 def _js_validate_password_confirmation_fields():
 	return raw('''
-	$('password').addEventListener('blur', validate);
 	$('password_confirmation').addEventListener('blur', validate_passwords);
-
 	function validate_passwords(evt) {
 		$('password_match_message').style.display = $('password_confirmation').value == "" || $('password').value == $('password_confirmation').value ? "none" : "block";
 	};

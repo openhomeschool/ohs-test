@@ -9,6 +9,7 @@ import functools
 import json
 import logging
 import re
+import time
 import weakref
 
 from os.path import exists
@@ -43,12 +44,23 @@ from . import text
 from . import settings
 from . import util
 
-_debug = True # TODO: parameterize!
 
 # Logging ---------------------------------------------------------------------
 
-logging.basicConfig(format = '%(asctime)s - %(levelname)s : %(name)s:%(lineno)d -- %(message)s', level = logging.DEBUG if _debug else logging.INFO)
+logging.getLogger('aiosqlite').setLevel(logging.CRITICAL)
+logging.getLogger('aiohttp').setLevel(logging.CRITICAL)
+logging.getLogger('aiohttp_session').setLevel(logging.CRITICAL)
+logging.getLogger('asyncio').setLevel(logging.CRITICAL)
+
+logging.getLogger('adev').setLevel(logging.CRITICAL)
+#logging.getLogger('adev.server.dft').setLevel(logging.CRITICAL)
+#logging.getLogger('adev.server.aux').setLevel(logging.CRITICAL)
+#logging.getLogger('adev.tools').setLevel(logging.CRITICAL)
+#logging.getLogger('adev.main').setLevel(logging.CRITICAL)
+
+logging.basicConfig(format = '%(asctime)s - %(levelname)s : %(name)s:%(lineno)d -- %(message)s', level = logging.DEBUG if settings.debug else logging.INFO)
 l = logging.getLogger(__name__)
+
 
 # Utils -----------------------------------------------------------------------
 
@@ -61,7 +73,8 @@ def hr(text): return web.Response(text = text, content_type = 'text/html')
 # TEMP, DEBUG!!!!  (for running with:
 #   python -m aiohttp.web -H 0.0.0.0 -P 8080 app.main:init
 # "raw", and to get /static
-#r.static('/static', '/home/jmcaine/dev/ohs/ohs-test/static')
+#if settings.debug:
+#	r.static('/static', '/home/jmcaine/dev/ohs/ohs-test/static')
 
 
 def auth(roles): # TODO: TEST! - updated this blindly, to match new roles design in database; untested!
@@ -101,7 +114,7 @@ def auth(roles): # TODO: TEST! - updated this blindly, to match new roles design
 
 def _finish_login(session, result, redirect):
 	session['uuid'], session['login_time'] = result # result is a two-tuple: (uuid, ts)
-	del session['username_logging_in']
+	session.pop('username_logging_in', None)
 	raise web.HTTPFound(redirect)
 
 async def _logout(dbc, session, uuid = None):
@@ -109,7 +122,7 @@ async def _logout(dbc, session, uuid = None):
 		uuid = session.get('uuid')
 	if uuid:
 		await db.forget_login(dbc, uuid)
-		del session['uuid']
+		session.pop('uuid', None)
 	
 @r.get('/login', name = 'login')
 async def login(r):
@@ -164,8 +177,8 @@ async def switch_user(r):
 	try:
 		new_username = r.match_info['username']
 		l.debug("(SWITCH_USER) LOGIN (attempt), new user = %s", new_username)
-		del session['uuid'] # clear session uuid early; log-out will occur as part of db.switch_user(), below, behind the scenes.  Note that if anything "goes wrong", it's actually good that we are logged-out and session-cleared because the "problem" is indicative of malicious attempts to force a login
-		del session['login_time']
+		session.pop('uuid', None) # clear session uuid early; log-out will occur as part of db.switch_user(), below, behind the scenes.  Note that if anything "goes wrong", it's actually good that we are logged-out and session-cleared because the "problem" is indicative of malicious attempts to force a login
+		session.pop('login_time', None)
 		result = await db.switch_user(dbc, uuid, new_username)
 		if result == None: # then password is required for this switch
 			session['username_logging_in'] = new_username # removes 'username' burden in login page
@@ -187,32 +200,32 @@ class Reset_Password(web.View):
 
 	async def _init(self):
 		self.r = self.request
-		session = await get_session(self.r)
-		self.uuid = session.get('uuid')
-		login_time = session.get('login_time')
+		self.session = await get_session(self.r)
+		self.uuid = self.session.get('uuid')
+		login_time = self.session.get('login_time')
 		if not self.uuid or not login_time:
-			_add_flash_m(session, text.login_required)
+			_add_flash_m(self.session, text.login_required)
 		elif time.time() - login_time > 60: # we know login_time is non-None, by now; confirm that user logged in within the last 60 seconds, else redirect to login
-			_add_flash_m(session, text.verify_login_required)
+			_add_flash_m(self.session, text.verify_login_required)
 		else:
 			return # all is good; we only want the next two lines if either of the above tests failed and we have flash_m (and have to re-present login page):
-		session['after_login'] = self.r.url # come back here after logging in
+		self.session['after_login'] = str(self.r.url) # come back here after logging in
 		raise web.HTTPFound(gurl(self.r, 'login'))
 		
 	async def get(self):
-		self._init()
+		await self._init()
 		return hr(html.reset_password(html.Form(self.r.url)))
 
 	async def post(self):
-		self._init()
+		await self._init()
 		data = await self.r.post()
 		# Validate:
 		invalids = []
 		_validate_regex(data, invalids, (
-				('new_password', valid.rec_password, True),
+				('password', valid.rec_password, True),
 				('password_confirmation', valid.rec_password, True),
 			))
-		if str(data['new_password']) != str(data['password_confirmation']):
+		if str(data['password']) != str(data['password_confirmation']):
 			invalids.append('password_confirmation')
 		if invalids:
 			# Re-present:
@@ -220,13 +233,19 @@ class Reset_Password(web.View):
 		#else, go on...
 
 		# (Try to) change the password:
-		if db.reset_user_password(dbc, uuid, data['new_password']):
-			return hr(html.reset_password_success((
-					('Home', gurl(self.r, 'home')),
-					('User Settings', gurl(self.r, 'user_settings')),
-				)))
+		dbc = self.r.app['db']
+		if await db.reset_user_password(dbc, self.uuid, data['password']):
+			self.session.pop('after_login', None)
+			raise web.HTTPFound(gurl(self.r, 'reset_password_success'))
 		#else, re-present:
 		return hr(html.reset_password(html.Form(self.r.url, data, invalids), error.reset_password_failure))
+
+@r.get('/reset_password_success', name = 'reset_password_success')
+async def reset_password_success(request):
+	return hr(html.reset_password_success((
+			('Home', gurl(request, 'home')),
+			('User Settings', gurl(request, 'user_settings')),
+		)))
 
 @r.get('/user_settings', name = 'user_settings')
 async def user_settings(request):
@@ -617,7 +636,7 @@ async def ws_resources(request):
 				grades = None if payload['filter'] != 'program' else await _grades(value) # value is program_id in this case
 				# reset any existing playlist; will have to be reconstructed if play_random is attempted again after this filter establishes a new set of grammar
 				if 'playlist_id' in session:
-					del session['playlist_id']
+					session.pop('playlist_id', None)
 				# send the message:
 				await ws.send_json(_make_msg(result, spec, grades))
 
@@ -748,13 +767,13 @@ async def _ws_handler(request, msg_handler, initial_send = {'call': 'start', 'da
 # Init / Shutdown -------------------------------------------------------------
 
 async def init_db(filename):
-	db = await aiosqlite.connect(filename, isolation_level = None, detect_types = PARSE_DECLTYPES) # isolation_level: autocommit TODO: parameterize DB ID!
-	db.row_factory = aiosqlite.Row
-	await db.execute('pragma journal_mode = wal') # see https://charlesleifer.com/blog/going-fast-with-sqlite-and-python/ - since we're using async/await from a wsgi stack, this is appropriate
-	await db.execute('pragma foreign_keys = ON')
-	#await db.execute('pragma case_sensitive_like = true')
-	#await db.set_trace_callback(l.debug) - not needed with aiosqlite, anyway
-	return db # consider db.cursor(), instead, according to more "typical" use; sqlite3 has an "efficient" approach that involves just using the database directly (a temp cursor is auto-created under the hood): https://pysqlite.readthedocs.io/en/latest/sqlite3.html#using-sqlite3-efficiently
+	conn = await aiosqlite.connect(filename, isolation_level = None, detect_types = PARSE_DECLTYPES) # isolation_level: autocommit TODO: parameterize DB ID!
+	conn.row_factory = aiosqlite.Row
+	await conn.execute('pragma journal_mode = wal') # see https://charlesleifer.com/blog/going-fast-with-sqlite-and-python/ - since we're using async/await from a wsgi stack, this is appropriate
+	await conn.execute('pragma foreign_keys = ON')
+	#await conn.execute('pragma case_sensitive_like = true')
+	#await conn.set_trace_callback(l.debug) - not needed with aiosqlite, anyway
+	return conn # consider conn.cursor(), instead, according to more "typical" use; sqlite3 has an "efficient" approach that involves just using the database directly (a temp cursor is auto-created under the hood): https://pysqlite.readthedocs.io/en/latest/sqlite3.html#using-sqlite3-efficiently
 
 async def _init(app):
 	l.debug('Initializing database...')
