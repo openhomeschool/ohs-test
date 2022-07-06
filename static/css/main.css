@@ -48,6 +48,11 @@ button:hover {
 	background-color: #6061ae;
 }
 
+.flex-wrap .main .ninepin button { 
+	font-size: 170%;
+}
+
+
 a.hover_link {
 	color: black;
 	cursor: pointer;
@@ -145,6 +150,11 @@ div.login_field {
 .problem {
 	color: green;
 	font-size:150%;
+}
+.problem_response input[type="text"] {
+	color: black;
+	font-size: 150%;
+	text-align: center;
 }
 
 .quiz_content {

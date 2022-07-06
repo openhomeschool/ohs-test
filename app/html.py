@@ -515,17 +515,20 @@ def practice(ws_url, links, login, user_settings):
 		with t.div(cls = 'flex-wrap'): # TODO: make a 'header_block' or something; different border color, perhaps
 			t.div(t.b('Practice'), cls = 'title')
 			with t.div(cls = 'main'):
-				t.span('Calculating...', id = 'problem', cls = 'problem')
-				t.span(id = 'correct_answer', cls = 'problem')
-				t.input_(id = 'answer', type = 'text', size = 6, maxlength = 6, style = 'text-align:center', autofocus = 'true')
-				t.button('Go', id = 'go_button', type = 'button', title = 'Push this (or hit "Enter") to check your answer', cls = 'quiz_button', disabled = 'true', onclick = 'go()')
+				with t.table():
+					with t.tr():
+						t.td('Calculating...', id = 'problem', cls = 'problem')
+						t.td(id = 'correct_answer', cls = 'problem')
+						t.td(t.input_(id = 'answer', type = 'text', size = 3, maxlength = 4, autofocus = 'true'), cls = 'problem_response')
 
-				_ninepin_button = lambda value: t.button(value, type = 'button', value = str(value), onclick = 'add_ninepin(this)')
-				for row in (2, 1, 0):
-					with t.div():
-						for col in (1, 2, 3):
-							_ninepin_button(row * 3 + col)
-				_ninepin_button(0)
+				_ninepin_button = lambda value: t.button(value, type = 'button', value = str(value), cls = 'ninepin_button', onclick = 'add_ninepin(this)')
+				with t.div(cls = 'ninepin'):
+					for row in (2, 1, 0):
+						with t.div():
+							for col in (1, 2, 3):
+								_ninepin_button(row * 3 + col)
+					_ninepin_button(0)
+					t.button('Go!', id = 'go_button', type = 'button', title = 'Push this (or hit "Enter") to check your answer', disabled = 'true', onclick = 'go()')
 
 
 		t.script(_js_basic())
