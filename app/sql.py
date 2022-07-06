@@ -7,6 +7,7 @@ import copy
 import re
 import random
 import bcrypt # cf https://security.stackexchange.com/questions/133239/what-is-the-specific-reason-to-prefer-bcrypt-or-pbkdf2-over-sha256-crypt-in-pass
+import itertools
 import time
 
 from uuid import uuid4
@@ -14,6 +15,7 @@ from uuid import uuid4
 #OLD user stuff: import re
 from datetime import date, timedelta
 from dataclasses import dataclass
+from random import shuffle
 
 from . import util
 from . import exception
@@ -74,7 +76,7 @@ Expectation / pattern: these typically return 2-tuples: (sql, arg_list)
 async def _login(dbc, user_id):
 	uuid = str(uuid4())
 	ts = time.time()
-	await dbc.execute('insert into user_login ("user", uuid, timestamp) values (?, ?, ?)', (user_id, uuid, ts))
+	await dbc.execute('insert into user_login (user, uuid, timestamp) values (?, ?, ?)', (user_id, uuid, ts))
 	await dbc.commit()
 	return (uuid, ts)
 
@@ -102,24 +104,25 @@ async def verify_password__(dbc, uuid, password): # TODO: DEPRECATE; don't reall
 		return True
 	return False
 
-async def create_user(dbc, username, password, person_id):
+async def create_user(dbc, username, password, person_id, commit = True):
 	pwcrypt = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
-	await dbc.execute('insert into "user" (username, password, person) values (?, ?, ?)', [username, pwcrypt, person_id]) # 'verified' defaults to 0 per db setup
-	await dbc.commit()
+	r = await dbc.execute('insert into "user" (username, password, person) values (?, ?, ?)', [username, pwcrypt, person_id]) # 'verified' defaults to 0 per db setup
+	if commit:
+		await dbc.commit()
+	return r.lastrowid
 
-async def add_role(dbc, username, role):
-	await add_roles(dbc, username, (role,))
+async def add_role(dbc, uid, role, commit = True):
+	await add_roles(dbc, uid, (role,), commit)
 
-async def add_roles(dbc, username, roles):
+async def add_roles(dbc, uid, roles, commit = True):
 	all_roles = await fetchall(dbc, ('select id, name from role', ()))
-	user = await fetchone(dbc, ('select id from "user" where username = ?', (username,)))
-	roles = [(user['id'], role['id']) for role in all_roles if role['name'] in roles]
-	await add_role_ids(dbc, roles)
+	roles = [(uid, role['id']) for role in all_roles if role['name'] in roles]
+	await add_role_ids(dbc, roles, None, commit)
 
-async def add_role_id(dbc, role_id, user_id = None):
-	return add_role_ids(dbc, (role_id,), user_id)
+async def add_role_id(dbc, role_id, user_id = None, commit = True):
+	return add_role_ids(dbc, (role_id,), user_id, commit)
 
-async def add_role_ids(dbc, role_ids, user_id = None):
+async def add_role_ids(dbc, role_ids, user_id = None, commit = True):
 	'''
 	`role_ids` can either be a list of 2-tuples, each as (user_id, role_id)
 	(Note that user_id might be the same in many tuples, if you're adding many
@@ -131,7 +134,21 @@ async def add_role_ids(dbc, role_ids, user_id = None):
 		role_ids = [(user_id, role_id) for role_id in role_ids]
 	#else role_ids is already a list of (user_id, role_id) tuples
 	await dbc.executemany('insert into user_role ("user", role) values (?, ?)', role_ids)
-	await dbc.commit()
+	if commit:
+		await dbc.commit()
+
+async def set_user_bg_color(dbc, uid, avoids = None, commit = True):
+	color = None
+	if avoids:
+		color = await fetchone(dbc, ('select id from user_color where id not in ({seq}) and stock = 1 order by random() limit 1'.format(seq = ','.join(['?']*len(avoids))), avoids))
+	if not color:
+		if avoids:
+			l.warning("`avoids` appears to be as large as the number of records in user_color - a family of 20?!  So, randomly choosing a color now, even though it'll be a duplicate...")
+		color = await fetchone(dbc, ('select id from user_color order by random() limit 1', ()))
+	await dbc.execute('insert into user_settings (user, bg_color) values (?, ?)', (uid, color[0]))
+	if commit:
+		await dbc.commit()
+	return color[0] # id, to add to an `avoids` list
 
 async def verify_new_user(dbc, username):
 	await dbc.execute('update "user" set verified = 1 where username = ?', [username,])
@@ -145,20 +162,30 @@ async def disable_user(dbc, username):
 	await dbc.commit()
 	
 async def reset_user_password(dbc, uuid, new_password):
+	#this one-step technique doesn't work: result = await dbc.execute('update user set user.password = ? from user_login where user.id = user_login.user and user_login.uuid = ?', (pwcrypt, uuid))
+	r = await fetchone(dbc, ('select user from user_login where uuid = ?', (uuid,)))
+	if not r:
+		raise Exception('No such login currently exists!')
+	#else:
 	pwcrypt = bcrypt.hashpw(new_password.encode(), bcrypt.gensalt())
-	result = await dbc.execute('update "user" set user.password = ? from user_login where user.id = user_login.user and user_login.uuid = ?', (pwcrypt, uuid))
-	#r = await dbc.execute('select id from "user" join user_login on user_login.user = user.id where user_login.uuid = ?', (uuid,))
-	#result = await dbc.execute('update "user" set password = ? where id = ?', (pwcrypt, r['id']))
-	assert(result.rowcount < 2)
-	result = (result.rowcount == 1)
+	r = await dbc.execute('update user set password = ? where id = ?', (pwcrypt, r['user'],))
+	assert(r.rowcount < 2)
+	result = (r.rowcount == 1)
 	await dbc.commit()
 	return result
+
+async def forge_noun_passwords(dbc, word_count = 30):
+	words = [r['noun'] for r in await fetchall(dbc, ('select noun from password_nouns order by random() limit ?', (word_count, )))]
+	candidates = []
+	for count in range(2, 4): # 2- to 3-word combos
+		candidates += [''.join(combo) for combo in itertools.combinations(words, count) if 7 < len(''.join(combo)) < 15]
+	return candidates
 
 async def get_switch_user_ids(dbc, uuid):
 	return await fetchall(dbc, ('select "user", without_password from user_switch_allow join "user" on user.id = user_switch_allow.from_user join user_login on user.id = user_login.user where user_login.uuid = ?', (uuid,)))
 	
 async def get_usernames(dbc, user_ids):
-	return await fetchall(dbc, ('select id, username from "user" where id in (?)', (user_ids,)))
+	return await fetchall(dbc, ('select id, username from "user" where id in ({seq})'.format(seq = ','.join(['?']*len(user_ids))), (user_ids,)))
 
 async def get_username(dbc, uuid):
 	r = await fetchone(dbc, ('select username from "user" join user_login on user_login.user = user.id where user_login.uuid = ?', (uuid,)))
@@ -167,6 +194,10 @@ async def get_username(dbc, uuid):
 	#else:
 	return None
 
+async def username_exists(dbc, username):
+	r = await fetchone(dbc, ('select 1 from "user" where username = ?', (username,)))
+	return True if r else False
+
 async def get_user_id(dbc, username):
 	r = await fetchone(dbc, ('select id from "user" where username = ?', (username,)))
 	if r:
@@ -174,10 +205,20 @@ async def get_user_id(dbc, username):
 	#else:
 	return None
 
-async def add_user_switch_allows(dbc, from_user_ids, user_id = None, without_password = True):
+async def is_user_teacher(dbc, uid):
+	return True if await fetchone(dbc, ('select 1 from person join user on user.person = person.id where user.id = ? and person.teacher = 1', (uid,))) else False
+
+async def is_person_teacher(dbc, pid):
+	return True if await fetchone(dbc, ('select 1 from person where teacher = 1 and id = ?', (pid,))) else False
+
+async def is_a_guardian(dbc, pid):
+	return True if await fetchone(dbc, ('select 1 from child_guardian where guardian = ?', (pid,))) else False
+
+
+async def add_user_switch_allows(dbc, from_user_ids, user_id = None, without_password = True, commit = True):
 	'''
 	`from_user_ids` can either be a list of 2-tuples, each as
-		(user_id, from_user(id), without_password))
+		(user_id, from_user_id, without_password)
 	(Note that user_id might be the same in many tuples, if you're adding many
 	from_user_ids for the same user), or else from_user_ids can be a plain list (or tuple)
 	of user ids, and the list-of-tuples will be built for you using the provided
@@ -187,7 +228,8 @@ async def add_user_switch_allows(dbc, from_user_ids, user_id = None, without_pas
 		from_user_ids = [(user_id, from_user_id, without_password) for from_user_id in from_user_ids]
 	#else from_user_ids is already a list of (user_id, from_user_id, without_password) tuples
 	await dbc.executemany('insert into user_switch_allow ("user", from_user, without_password) values (?, ?, ?)', from_user_ids)
-	await dbc.commit()
+	if commit:
+		await dbc.commit()
 
 async def get_switch_users(dbc, uuid):
 	return await fetchall(dbc, ('select switch_user.username, user_switch_allow.without_password from user_switch_allow join "user" on user.id = user_switch_allow.from_user join "user" as switch_user on switch_user.id = user_switch_allow.user join user_login on user_login.user = user.id where user_login.uuid = ?', (uuid,)))
@@ -204,20 +246,29 @@ async def switch_user(dbc, from_uuid, to_username):
 	raise exception.InvalidSwitch()
 
 async def get_user_settings(dbc, uuid):
-	return await fetchone(dbc, ('select * from user_settings join user on user_settings.user = user.id join user_login on user.id = user_login.user where user_login.uuid = ?', (uuid,)))
+	return await fetchone(dbc, ('select user_color.color as bg_color from user_settings join user on user_settings.user = user.id join user_login on user.id = user_login.user join user_color on user_settings.bg_color = user_color.id where user_login.uuid = ?', (uuid,)))
+
+async def get_person_username(dbc, person_id):
+	result = await fetchone(dbc, ('select username from user where person = ?', (person_id,)))
+	if result:
+		result = result['username']
+	return result
+
+async def suggest_username(dbc, person):
+	username = username_base = '%s.%s' % (person['first_name'].lower(), person['last_name'].lower())
+	if await username_exists(dbc, username):
+		# First pass (first_name.last_name) didn't work, so try appending numbers...
+		for x in range(1, 100):
+			username = username_base + str(x)
+			if not await username_exists(dbc, username):
+				break
+			elif x >= 99:
+				raise Exception('Unexpected - over a hundred users with that same name?!')
+	return username
 
 # -----------------------------------------------------------------------------
 # OLD user stuff
 
-_hash = lambda password, salt: hashlib.pbkdf2_hmac('sha256', bytes(password, 'UTF-8'), salt, 100000)
-
-async def add_user_DEPRECATED(db, username, password, email):
-	salt = urandom(32)
-	c = await db.cursor() # need cursor because we need lastrowid, only available via cursor
-	r = await c.execute('insert into user (username, password, salt, email) values (?, ?, ?, ?)', (username, _hash(password, salt), salt, email))
-	user_id = c.lastrowid
-	r = await c.execute('insert into user_role (user, role) values (?, 1)', (user_id,)) #TODO: hard-coded to "role #1, student" -- parameterize!
-	return user_id
 
 _get_users_limited = lambda limit: ('select * from user limit ?', (limit,))
 async def get_users_limited_PORT(db, limit):
@@ -229,24 +280,6 @@ async def find_users_PORT(db, like):
 	c = await db.execute(*_find_users(like))
 	return await c.fetchall()
 
-async def get_user_DEPRECATED(db, where_matches):
-	'''
-	See _prep_where_matches() for `where_matches` spec
-	'''
-	wheres, values = _prep_where_matches(where_matches)
-	c = await db.execute('select * from user where ' + wheres, values)
-	return await c.fetchall()
-
-
-async def authenticate_DEPRECATED(db, username, password):
-	c = await db.execute('select * from user where username = ?', (username,))
-	user = await c.fetchone()
-	if user and (user['password'] == _hash(password, user['salt'])):
-		c = await db.execute('select role.name as role_name from role join user_role on role.id = user_role.role join user on user.id = user_role.user where user.username = ?', (username,))
-		roles = await c.fetchall()
-		return user['id'], [role['role_name'] for role in roles]
-	#else:
-	return None, None
 
 
 # ----------------------------------------------------------
@@ -330,7 +363,59 @@ async def get_surrounding_event_records(spec, count, event):
 
 
 
+async def arithmetic_new_problems(dbc, uuid, spec):
+	user = await fetchone(dbc, ('select user from user_login where uuid = ?', (uuid,)))
+	uid = user['user']
+	
+	fa_join_table = 'arithmetic_fact_assessment' # fact-assessment table
+	fact_table = 'arithmetic_fact' # fact table
+	fact_table_ids_select = (f'select id from arithmetic_fact where operator = ? order by operand1, operand2, position', (spec.arithmetic_op,))
+	# NOTE: much of the below DB interaction will work for all grammar that can follow the same pattern of the above 3 lines; all that is needed is proper definitions for the fa_join_table and fact_table tables and the fact_table_ids_select, to operate all operations below
+	
+	asql = 'select id from assessment where user = ? and category = ?'
+	asqlq = (uid, spec.arithmetic_op)
+	if not await fetchone(dbc, (asql + ' limit 1', asqlq)):
+		# If a single record doesn't exist for this user, for this category, then none of them do -- the DB needs to be populated with the entire set of assessment records:
+		fids = [r['id'] for r in await fetchall(dbc, fact_table_ids_select)]
+		r = await dbc.executemany('insert into assessment (user, category) values (?, ?)', [(uid, spec.arithmetic_op) for x in range(len(fids))]) # all other fields have intentional default values, set up in database
+		await dbc.commit()
+		aids = await fetchall(dbc, (asql, asqlq)) # there's no way to use something like lastrowid on an executemany, so we have to fetch the newly-created ids
+		r = await dbc.executemany(f'insert into {fa_join_table} (fact, assessment) values (?, ?)', zip(fids, [a['id'] for a in aids]))
+		
+	tri_join = f'join {fa_join_table} on assessment.id = {fa_join_table}.assessment join {fact_table} on {fact_table}.id = {fa_join_table}.fact'
+	where = 'where assessment.user = ? and assessment.category = ?'
+	select = f'select {fact_table}.*, assessment.id as assessment_id from assessment {tri_join} {where}'
+	# Fetch one NEW assessment (speed_ms == 0) (only) if 90% or more of existing assessments have more 'correct' answers than 'incorrect' answers:
+	# TODO: parameterize this as a "mastery_level" or something -- so, 98%, for example, would be a high "mastery level" - you couldn't get new problems until you'd really proven the old
+	new_a = None
+	percent_positive = await fetchone(dbc, ('select 100*(select count(*) from assessment where correct_count > incorrect_count and user = ? and category = ?) / (select count(*) from assessment where (correct_count > 0 or incorrect_count > 0) and user = ? and category = ?)', (uid, spec.arithmetic_op, uid, spec.arithmetic_op)))
+	if percent_positive[0] and percent_positive[0] > 90: # see "mastery level" comment, above; "mastery level" of 90 is hard-coded here
+		new_a = await fetchone(dbc, (f'{select} and assessment.speed_ms = 0 order by assessment.id limit 1', asqlq)) # order by assessment.id b/c records were added to assessment table in careful order, above, according to order established in fact_table
+	improvement_batch_size = 6 if new_a else 7 # maintain total batch size of 7; sometimes there are no records remaining with speed_ms == 0, so the whole batch (of 7) will be improvement records
+	# Fetch "improvement" records in order of greatest challenge (high incorrect_counts, low correct_counts, high speed_ms values); toughest on top:
+	order_by = f'order by assessment.incorrect_count desc, assessment.correct_count asc, assessment.speed_ms desc, assessment.id asc limit {improvement_batch_size}'
+	result = await fetchall(dbc, (f'{select} {order_by}', asqlq))
 
+	# Combine all, shuffle, and return:
+	if new_a:
+		result.append(new_a)
+	l.debug('new arithmetic problems: \n' + '\n'.join([f'{row["operand1"]} {row["operator"]} {row["operand2"]} = {row["answer"]}' for row in result]))
+	shuffle(result)
+	return result
+
+
+async def arithmetic_answer(dbc, uuid, data):
+	user = await fetchone(dbc, ('select user from user_login where uuid = ?', (uuid,)))
+	if not user:
+		raise Exception('No such login currently exists!') # TODO: change this to an exception that incurs a login-redirect!
+	#else:
+	uid = user['user']
+	ts = time.time()
+	count_to_increment = 'correct_count' if data['correct'] else 'incorrect_count'
+	sets = f'set latest_timestamp = ?, speed_ms = ?, {count_to_increment} = {count_to_increment} + 1, user = ?'
+	r = await dbc.execute(f'update assessment {sets} where id = ?', (ts, data['speed_ms'], uid, data['assessment_id']))
+	assert(r.rowcount == 1)
+	
 
 
 
@@ -842,7 +927,7 @@ _children_programs = '''select c.*, program.name as program_name, program.schedu
 
 _order_group_children = ' order by c.birthdate desc, enrollment.program'
 
-async def get_family(dbc, person_id, academic_year_id):
+async def get_family_enrollments(dbc, person_id, academic_year_id):
 	guardians = await fetchall(dbc, ('select g.* from child_guardian join person as g on child_guardian.guardian = g.id join person as c on child_guardian.child = c.id where c.id = ?', (person_id,)))
 	if guardians:
 		# person_id is a child, and we just got the guardians; now get the other children:
@@ -858,6 +943,7 @@ async def get_family(dbc, person_id, academic_year_id):
 		children = children,
 		guardians = guardians,
 	)
+
 
 async def get_heads_of_households(dbc):
 	return await fetchall(dbc, ('select * from person where head_of_household = 1', ()))

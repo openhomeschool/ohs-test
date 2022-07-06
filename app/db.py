@@ -33,17 +33,59 @@ async def authorized(dbc, uuid, roles):
 async def get_username(dbc, uuid):
 	return await sql.get_username(dbc, uuid)
 
+async def get_user_id(dbc, username):
+	return await sql.get_user_id(dbc, username)
+
+async def username_exists(dbc, username):
+	return await sql.username_exists(dbc, username)
+
+async def get_usernames(dbc, user_ids):
+	return await get_usernames(dbc, user_ids)
+
+async def suggest_username(dbc, person):
+	return await sql.suggest_username(dbc, person)
+
+async def add_user_switch_allows(dbc, from_user_ids, user_id = None, without_password = True, commit = True):
+	return await sql.add_user_switch_allows(dbc, from_user_ids, user_id, without_password, commit)
+
 async def get_switch_users(dbc, uuid):
 	return await sql.get_switch_users(dbc, uuid)
-
-async def reset_user_password(dbc, uuid, new_password):
-	return await reset_user_password(dbc, uuid, new_password)
 
 async def switch_user(dbc, from_uuid, to_username):
 	return await sql.switch_user(dbc, from_uuid, to_username)
 
+async def is_user_teacher(dbc, uid):
+	return await sql.is_user_teacher(dbc, uid)
+
+async def is_person_teacher(dbc, pid):
+	return await sql.is_person_teacher(dbc, pid)
+
+async def is_a_guardian(dbc, pid):
+	return await sql.is_a_guardian(dbc, pid)
+
+async def forge_noun_passwords(dbc):
+	return await sql.forge_noun_passwords(dbc)
+
+async def create_user(dbc, username, password, person_id, commit = True):
+	return await sql.create_user(dbc, username, password, person_id, commit)
+
+async def reset_user_password(dbc, uuid, new_password):
+	return await sql.reset_user_password(dbc, uuid, new_password)
+
 async def get_user_settings(dbc, uuid):
 	return await sql.get_user_settings(dbc, uuid)
+
+async def get_person_username(dbc, person_id):
+	return await sql.get_person_username(dbc, person_id)
+
+async def add_role(dbc, uid, role, commit = True):
+	return await sql.add_role(dbc, uid, role, commit)
+
+async def add_roles(dbc, uid, roles, commit = True):
+	return await sql.add_roles(dbc, uid, roles, commit)
+
+async def set_user_bg_color(dbc, uid, avoids = None, commit = True):
+	return await sql.set_user_bg_color(dbc, uid, avoids, commit)
 
 # -----------------------------------------------------------------------------
 # Question transactions
@@ -180,7 +222,7 @@ class History_Sequence_QT(Question_Transaction):
 # ------------------------
 # Arithmetic -- old/original idea; this is all of it - didn't take very far....
 @qt
-class Arithmetic_QT(Question_Transaction):
+class Arithmetic_QT_DEPRECATE(Question_Transaction):
 	table = 'arithmetic_fact'
 	@classmethod # need to use factory pattern creation scheme b/c can't await in __init__
 	async def create(cls, db, user_id):
@@ -203,13 +245,19 @@ class Arithmetic_QT(Question_Transaction):
 # ------------------------
 # Arithmetic -- new design....
 
-async def get_arithmetic_facts(dbc, spec):
+async def get_arithmetic_facts_DEPRECATE(dbc, spec):
 	return await sql.get_arithmetic_facts(dbc, spec)
 
-async def assess_arithmetic_fact(dbc, spec): # spec contains arithmetic_fact_id, user's answer (or, more likely, 'correct' True/False, and speed_ms
+async def assess_arithmetic_fact_DEPRECATE(dbc, spec): # spec contains arithmetic_fact_id, user's answer (or, more likely, 'correct' True/False, and speed_ms
 	return await sql.assess_arithmetic_fact(dbc, spec)
 
+# NEWER STILL....
 
+async def arithmetic_new_problems(dbc, uuid, spec):
+	return await sql.arithmetic_new_problems(dbc, uuid, spec)
+
+async def arithmetic_answer(dbc, uuid, data):
+	return await sql.arithmetic_answer(dbc, uuid, data)
 
 
 # -----------------------------------------------------------------------------
@@ -273,8 +321,8 @@ async def get_person(dbc, id):
 async def get_person_user(dbc, person_id):
 	return await sql.get_person_user(dbc, person_id)
 
-async def get_family(dbc, id, academic_year_id):
-	return await sql.get_family(dbc, id, academic_year_id)
+async def get_family_enrollments(dbc, id, academic_year_id):
+	return await sql.get_family_enrollments(dbc, id, academic_year_id)
 
 from dataclasses import dataclass
 async def get_person_contact_info(dbc, person_id):

@@ -9,7 +9,7 @@ re_string32 = r'^.{1,32}$'
 rec_string32 = re.compile(re_string32)
 re_alphanum = r'^[\w ]+$'
 rec_alphanum = re.compile(re_alphanum)
-re_username = r'^[\w\-_]{1,16}$'
+re_username = r'^[\w\-._]{1,20}$'
 rec_username = re.compile(re_username)
 re_password = r'^.{4,32}$'
 rec_password = re.compile(re_password)
@@ -17,7 +17,7 @@ re_email = r'(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)' # TODO: how can
 rec_email = re.compile(re_email)
 re_slug = r'^[\w\-_]{2,32}$'
 rec_slug = re.compile(re_slug)
-re_invitation = r'^.{12,12}$'
+re_invitation = r'^.{24,24}$'
 rec_invitation = re.compile(re_invitation)
 
 k_res_prefix = 'res-'

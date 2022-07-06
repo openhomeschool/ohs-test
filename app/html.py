@@ -4,6 +4,7 @@ __version__ = '0.1'
 __license__ = 'MIT'
 
 import functools
+import random
 import re
 
 import logging
@@ -16,6 +17,7 @@ from dominate.util import raw
 from . import valid
 from . import settings
 from . import text
+from . import util as U
 
 k_cache_version = '?v=f1'
 
@@ -50,14 +52,14 @@ def login(action, flash = None, hide_username = False):
 				_flash(flash)
 				pw_attrs = ['required',]
 				if not hide_username:
-					t.div(_text_input('username', None, ('required', 'autofocus'), {'pattern': valid.re_username}, invalid_div = _invalid(text.inv_username, False)), cls = 'field')
+					t.div(_text_input('username', None, ('required', 'autofocus'), {'pattern': valid.re_username}, None, _invalid_div(text.inv_username, False)), cls = 'login_field')
 				else:
 					pw_attrs.append('autofocus')
-				t.div(_text_input('password', None, pw_attrs, type_ = 'password'), cls = 'field')
-				t.div(t.input_(type = "submit", value = "Log in!"), cls = 'field')
+				t.div(_text_input('password', None, pw_attrs, type_ = 'password'), cls = 'login_field')
+				t.div(t.button("Log in!", type = "submit"), cls = 'login_field')
 		t.script(_js_basic())
-		t.script(_js_validate_login_fields())
-		t.script(_js_validate_password())
+		t.script(_js_validate_event())
+		t.script(_js_validate_username_fields())
 	return d.render()
 
 def reset_password(form, error = None):
@@ -68,14 +70,15 @@ def reset_password(form, error = None):
 			with t.fieldset(cls = 'small_fieldset'):
 				t.legend(title + '...')
 				_error(error)
-				_text_input('password', None, ('required', 'autofocus'), {'pattern': valid.re_password}, None,
-					_invalid(text.inv_password, form.is_invalid('password')), type_ = 'password', wrap_div_class = 'field')
-				_text_input('password_confirmation', None, ('required',), None, 'Again, for confirmation',
-					_invalid(text.inv_password_confirmation, form.is_invalid('password_confirmation'), 'password_match_message'), type_ = 'password', wrap_div_class = 'field')
-				t.div(t.input_(type = "submit", value = "Done"), cls = 'field')
+				t.div(_text_input('password', None, ('required', 'autofocus'), {'pattern': valid.re_password}, None,
+					_invalid_div(text.inv_password, form.is_invalid('password')), type_ = 'password'), cls = 'field')
+				t.div(_text_input('password_confirmation', None, ('required',), None, 'Again, for confirmation',
+					_invalid_div(text.inv_password_confirmation, form.is_invalid('password_confirmation'), 'password_match_message'), type_ = 'password'), cls = 'field')
+				t.div(t.button("Done", type = "submit"), cls = 'field')
 		t.script(_js_basic())
+		t.script(_js_validate_event())
+		t.script(_js_validate_password_fields())
 		t.script(_js_validate_password_confirmation_fields())
-		t.script(_js_validate_password())
 
 	return d.render()
 
@@ -272,8 +275,129 @@ def _format_enrollment_programs(enrollments):
 	lines = []
 	for enrollment in enrollments:
 		lines.append(enrollment['program_name'] + '(Grade %s)' % enrollment['grade'])
-		
 	return ', '.join(lines)
+
+def invalid_invitation():
+	d = _doc(text.doc_prefix + 'Family Invitation')
+	with d:
+		# TODO: improve!!!
+		t.body("That is not a valid invitation ID")
+	return d.render()
+
+
+
+def _family_user_setup(action, rows, invalids, ws_url, passwords, used_passwords, all_exist_already, flash = None):
+	cl = lambda content: t.div(content, cls = 'contact_line') # TODO: DEPORT
+
+	username_fields = []
+	password_fields = []
+	d = _doc(text.doc_prefix + 'Family Invitation')
+	with d:
+		with t.div(cls = 'flex-wrap'):
+			t.div('Logins', cls = 'title')
+			with t.div(cls = 'main'):
+				with t.form(action = action, method = 'post', id = 'save_users'):
+					with t.div(cls = 'clear_right'):
+						if flash:
+							_flash(flash)
+							t.hr()
+
+						with t.table():
+							t.tr((t.th('name: username', cls = 'ca-cell'), t.th('password (or type or try "◄ Another")', colspan = '2', cls = 'ca-cell')))
+							for (pid, name, exists, username, password) in rows:
+								if all_exist_already:
+									exists.value = True # flip this here; if it used to be False, thus incuring an INSERT during POST processing, then it's True now (user now exists in database), but we couldn't alter the .exists value because it was a part of a read-only MultiDictProxy; so, we "flag" with all_exist_already upon successful INSERTs in db, and just interpret this sloppy-seeming way here
+								if exists.value: # == True, though it may be 'True' after POST, and it's either False or '', so just this "if" test works....
+									with t.tr():
+										t.td((
+											t.b(f'{name.value}: {username.value}'),
+											_text_input(pid.key, pid.value, type_ = 'hidden'),
+											_text_input(name.key, name.value, type_ = 'hidden'),
+											_text_input(exists.key, exists.value, type_ = 'hidden'),
+											_text_input(username.key, username.value, type_ = 'hidden'),
+											_text_input(password.key, '', type_ = 'hidden'),
+										))
+										t.td(t.button('edit existing account...', type = 'button', onclick = f'go_edit_user({username.value})'))
+								else:
+									username_fields.append(username.key)
+									password_fields.append(password.key)
+									with t.tr():
+										t.td((
+											t.b(name.value + ':'),
+											_text_input(pid.key, pid.value, type_ = 'hidden'),
+											_text_input(name.key, name.value, type_ = 'hidden'),
+											_text_input(exists.key, exists.value, type_ = 'hidden'),
+										))
+									with t.tr():
+										with t.td():
+											invalid_username_div = U.tag_it('username_exists_message', pid.value)
+											t.div(
+												_text_input(username.key, username.value,
+												('required',), {'size': 12, 'style': 'text-align:left; padding: 4px;', 'pattern': valid.re_username, 'oninput': 'check_username_request("%s", this.value)' % invalid_username_div},
+												'Type username here', _invalid_div(text.inv_username, username.key in invalids)),
+												cls = 'field')
+											_invalid_div(text.inv_username_exists, False, invalid_username_div)
+										with t.td():
+											t.div(_text_input(password.key, password.value,
+												('required',), {'size': 12, 'style': 'text-align:left; padding: 4px;', 'pattern': valid.re_password},
+												'Type password here', _invalid_div(text.inv_password, password.key in invalids)),
+												cls = 'field')
+										t.td(t.button('◄ Another', type = 'button', onclick = 'another_password(%s)' % password.key))
+
+						if not all_exist_already:
+							t.button("Save!", type = "button", onclick = f'print_then_submit()')
+						else:
+							t.p(text.what_next)
+							t.div(_what_next(text.go_to_grammar, text.go_to_practice, text.go_to_settings))
+
+		t.script(_js_basic())
+		t.script(_js_ws(ws_url))
+		t.script(_js_check_username())
+		t.script(_js_validate_event())
+		t.script(_js_validate_username_fields(username_fields))
+		t.script(_js_validate_password_fields(password_fields))
+		t.script(_js_another_password(passwords, used_passwords))
+		t.script(_js_print_then_submit())
+		t.script(_js_go_to())
+	return d.render()
+
+def family_user_setup(action, users, passwords, ws_url, all_exist_already, flash = None):
+	used_passwords = []
+	rows = []
+	for u in users:
+		pid = u['id']
+		password = random.choice(passwords)
+		passwords.remove(password)
+		used_passwords.append(password)
+		rows.append([
+			U.KVPair(U.tag_it('pid', pid), u['id']), # yes, we'll be dealing with a MultiDict, but we still need uniquely identifiable fields for each row/record/user, so tagging them is the best way
+			U.KVPair(U.tag_it('name', pid), u['first_name']),
+			U.KVPair(U.tag_it('exists', pid), u['exists']),
+			U.KVPair(U.tag_it('username', pid), u['username']),
+			U.KVPair(U.tag_it('password', pid), password if not u['exists'] else ''),
+		])
+	return _family_user_setup(action, rows, [], ws_url, passwords, used_passwords, all_exist_already, flash)
+
+
+def family_user_setup_retry(action, data, passwords, ws_url, invalids, all_exist_already, flash = None):
+	rows = []
+	row = [] # contains [(pid_fn, pid_fv), (name_fn, name_fv), (exists_fn, exists_fv), (username_fn, username_fv), (password_fn, password_fv)] (see family_user_setup())
+	for key, value in data.items():
+		if key.startswith('pid'):
+			if row: # previously built row
+				rows.append(row)
+			row = [U.KVPair(key, value),]
+		else:
+			row.append(U.KVPair(key, value))
+	if row:
+		rows.append(row)
+
+	return _family_user_setup(action, rows, invalids, ws_url, passwords, [], all_exist_already, flash)
+
+
+
+
+
 	
 def student_invitation(form, invitation, person, enrollments, flash = None):
 
@@ -299,7 +423,10 @@ def student_invitation(form, invitation, person, enrollments, flash = None):
 		
 	return d.render()
 
-def new_user(form, ws_url, error = None):
+
+
+
+def new_user(form, error = None):
 	title = 'New User'
 	d = _doc(text.doc_prefix + title)
 	with d:
@@ -310,26 +437,27 @@ def new_user(form, ws_url, error = None):
 				with t.ol(cls = 'step_numbers'):
 					with t.li():
 						t.p('First, create a one-word username for yourself (lowercase, no spaces)...')
-						_text_input(*form.nv('new_username'), ('required', 'autofocus'), {'pattern': valid.re_username, 'oninput': 'check_username(this.value)'}, 'Type new username here',
-							_invalid(text.inv_username, form.is_invalid('new_username')))
-						_invalid(text.inv_username_exists, False, 'username_exists_message')
+						_text_input(*form.nv('new_username'), ('required', 'autofocus'), {'pattern': valid.re_username, 'oninput': 'check_username_request("username_exists_message", this.value)'}, 'Type new username here',
+							_invalid_div(text.inv_username, form.is_invalid('new_username')))
+						_invalid_div(text.inv_username_exists, False, 'username_exists_message')
 					with t.li():
 						t.p("Next, invent a password; type it in twice to make sure you've got it...")
 						_text_input('password', None, ('required',), {'pattern': valid.re_password}, 'Type new password here',
-							_invalid(text.inv_password, form.is_invalid('password')), type_ = 'password')
+							_invalid_div(text.inv_password, form.is_invalid('password')), type_ = 'password')
 						_text_input('password_confirmation', None, ('required',), None, 'Type password again for confirmation',
-							_invalid(text.inv_password_confirmation, form.is_invalid('password_confirmation'), 'password_match_message'), type_ = 'password')
+							_invalid_div(text.inv_password_confirmation, form.is_invalid('password_confirmation'), 'password_match_message'), type_ = 'password')
 					with t.li():
 						t.p("Finally, type in an email address that can be used if you ever need a password reset (optional, but this may be very useful someday!)...")
 						_text_input(*form.nv('email'), None, {'pattern': valid.re_email}, 'Type email address here', 
-							_invalid(text.inv_email, form.is_invalid('email')))
+							_invalid_div(text.inv_email, form.is_invalid('email')))
 				t.input_(type = "submit", value = "Done!")
 		t.script(_js_basic())
-		t.script(_js_ws_util())
-		t.script(_js_validate_new_user_fields())
+		t.script(_js_ws())
+		t.script(_js_validate_event())
+		t.script(_js_validate_username_fields())
+		t.script(_js_validate_password_fields())
 		t.script(_js_validate_password_confirmation_fields())
-		t.script(_js_check_username(ws_url))
-		t.script(_js_validate_password)
+		t.script(_js_check_username())
 	return d.render()
 
 def select_user(url):
@@ -339,7 +467,7 @@ def select_user(url):
 		t.div(id = 'content') # filtered results themselves are added here, in this `content` div, via websocket, as search text is typed (see javascript)
 		# JS (intentionally at bottom of file; see https://faqs.skillcrush.com/article/176-where-should-js-script-tags-be-linked-in-html-documents and many stackexchange answers):
 		t.script(_js_basic())
-		t.script(_js_ws_util())
+		t.script(_js_ws())
 		t.script(_js_filter_list(url))
 	return d.render()
 
@@ -353,6 +481,60 @@ def filter_user_list(results, url): # TODO: GENERALIZE for other lists!
 		if len(results) >= 9:
 			t.tr(t.td('... (type in search bar to narrow list)'))
 	return table.render()
+
+
+def practice(ws_url, links, login, user_settings):
+	d = _doc(text.doc_prefix + 'Practice')
+	with d:
+		
+		# TODO: this is copy-pasted from resources(), for now -- CONSOLIDATE/refactor!
+		with t.div(cls = 'flex-wrap'): # TODO: make a 'header_block' or something; different border color, perhaps
+			t.div(t.b('Go'), cls = 'title')
+			with t.div(cls = 'main'):
+				with t.div(id = 'go'):
+					with t.div(cls = 'ib-left'):
+						for name, hint, content, url in links:
+							onclick = f'window.open("{content}", "_self");' # assuming url=True
+							if not url: # then assume script, or other 'raw':
+								onclick = f'{content};'
+							t.button(name, type = 'button', title = hint, onclick = onclick)
+				with t.div(id = 'login'):
+					with t.div(cls = 'ib-right'):
+						if login['type'] == 'button':
+							t.button(text.login_button_title, type = 'button', title = text.login_button_title, onclick = 'load_page("%s")' % _gurl('/login'))
+						else:
+							t.button('₪', title = 'Messages', type = 'button', onclick = 'void()') #TODO: 'load_page("%s")' % _gurl('/messages'))
+							assert(login['type'] == 'menu')
+							_login_dropdown(login['username'], login['switch_users'], hint = 'Switch person')
+
+		with t.div(cls = 'flex-wrap'): # TODO: make a 'header_block' or something; different border color, perhaps
+			t.div(t.b('Filter'), cls = 'title')
+			with t.div(cls = 'main'):
+				t.div("Subject, operator, etc. choosers... coming soon")
+
+		with t.div(cls = 'flex-wrap'): # TODO: make a 'header_block' or something; different border color, perhaps
+			t.div(t.b('Practice'), cls = 'title')
+			with t.div(cls = 'main'):
+				t.span('Calculating...', id = 'problem', cls = 'problem')
+				t.span(id = 'correct_answer', cls = 'problem')
+				t.input_(id = 'answer', type = 'text', size = 6, maxlength = 6, style = 'text-align:center', autofocus = 'true')
+				t.button('Go', id = 'go_button', type = 'button', title = 'Push this (or hit "Enter") to check your answer', cls = 'quiz_button', disabled = 'true', onclick = 'go()')
+
+				_ninepin_button = lambda value: t.button(value, type = 'button', value = str(value), onclick = 'add_ninepin(this)')
+				for row in (2, 1, 0):
+					with t.div():
+						for col in (1, 2, 3):
+							_ninepin_button(row * 3 + col)
+				_ninepin_button(0)
+
+
+		t.script(_js_basic())
+		t.script(_js_ws(ws_url))
+		t.script(_js_dropdown())
+		t.script(_js_arithmetic())
+		t.script(_js_load_bg(user_settings))
+				
+	return d.render()
 
 
 def quiz(ws_url, db_handler, html_function):
@@ -386,7 +568,7 @@ def quiz(ws_url, db_handler, html_function):
 
 		# JS (intentionally at bottom of file; see https://faqs.skillcrush.com/article/176-where-should-js-script-tags-be-linked-in-html-documents and many stackexchange answers):
 		t.script(_js_basic())
-		t.script(_js_ws_util())
+		t.script(_js_ws())
 		t.script(_js_socket_quiz_manager(ws_url, db_handler, html_function))
 		t.script(_js_dropdown())
 	return d.render()
@@ -414,42 +596,44 @@ def resources(ws_url, filters, cycles, weeks, qargs, links, login, user_settings
 	with d:
 		if show_go and not for_print:
 			with t.div(cls = 'flex-wrap'): # TODO: make a 'header_block' or something; different border color, perhaps
-				t.div(t.b('Go'), cls = 'title') # TODO: replace with a magnifying-glass gif!
+				t.div(t.b('Go'), cls = 'title')
 				with t.div(cls = 'main'):
 					with t.div(id = 'go'):
 						with t.div(cls = 'ib-left'):
-							for name, content, url in links:
+							for name, hint, content, url in links:
 								onclick = f'window.open("{content}", "_self");' # assuming url=True
 								if not url: # then assume script, or other 'raw':
 									onclick = f'{content};'
-								t.button(name, title = name, onclick = onclick)
+								t.button(name, type = 'button', title = hint, onclick = onclick)
 					with t.div(id = 'login'):
 						with t.div(cls = 'ib-right'):
 							if login['type'] == 'button':
 								t.button(text.login_button_title, title = text.login_button_title, onclick = 'load_page("%s")' % _gurl('/login'))
 							else:
+								t.button('₪', title = 'Messages', onclick = 'void()') #TODO: 'load_page("%s")' % _gurl('/messages'))
 								assert(login['type'] == 'menu')
-								_login_dropdown(login['username'], login['switch_users'])
+								_login_dropdown(login['username'], login['switch_users'], hint = 'Switch person')
 
 		if show_search and not for_print:
 			with t.div(cls = 'flex-wrap'): # TODO: make a 'header_block' or something; different border color, perhaps
-				t.div(t.b('Search'), cls = 'title') # TODO: replace with a magnifying-glass gif!
+				t.div(t.b('Filter'), cls = 'title')
 				with t.div(cls = 'main'):
-					for key, options in filters:
+					for key, options, hint in filters:
 						with t.div(id = '%s-container' % key):
-							_dropdown((key, options), qargs, 'ib-left')
-					_dropdown(weeks[0], qargs, 'ib-right', button_class = 'cw-button')
-					t.div(_text_input('search', None, ('autofocus',), {'autocomplete': 'off', 'oninput': 'search(this.value)', 'class': 'search'}, 'Search', type_ = 'search'), cls = 'clear')
-					_dropdown(weeks[1], qargs, 'ib-right', button_class = 'cw-button')
+							_dropdown((key, options), qargs, 'ib-left', hint = hint)
+					_dropdown(weeks[0], qargs, 'ib-right', button_class = 'cw-button', hint = 'Select START week')
+					#TODO: bring!search!back!(it works, but isn't very useful in its current form; ist's more of a filter, and doesn't reset when blanked) --- t.div(_text_input('search', None, ('autofocus',), {'autocomplete': 'off', 'oninput': 'search(this.value)', 'class': 'search'}, 'Search', type_ = 'search'), cls = 'clear') # TODO: replace with a magnifying-glass gif!
+					t.div(cls = 'clear') # NOTE: this is just a stand-in for the above-line: "Search" field, which we're temporarily removing; this allows the next dropdown to be "below" the top one, rather than beside it
+					_dropdown(weeks[1], qargs, 'ib-right', button_class = 'cw-button', hint = 'Select END week')
 					#TODO: BRING BACK! -- _dropdown(cycles, qargs, 'ib-right', button_class = 'cw-button')
 
 		t.div(id = 'content') # filtered results themselves are added here, in this `result` div, via websocket, as search text is typed (see javascript)
 
 		# JS (intentionally at bottom of file; see https://faqs.skillcrush.com/article/176-where-should-js-script-tags-be-linked-in-html-documents and many stackexchange answers):
 		t.script(_js_basic())
+		t.script(_js_ws(ws_url))
 		t.script(_js_load_bg(user_settings))
-		t.script(_js_ws_util())
-		t.script(_js_filter_list(ws_url))
+		t.script(_js_filter_list())
 		t.script(_js_dropdown())
 		t.script(_js_calendar_widget())
 		t.script(_js_show_hide_shopping())
@@ -466,7 +650,7 @@ def test_twixt(url):
 		t.div(id = 'foobar')
 		
 		t.script(_js_basic())
-		t.script(_js_ws_util())
+		t.script(_js_ws())
 		t.script(_js_test1(url))
 		
 	return d.render()
@@ -898,7 +1082,7 @@ def _new_subject_section(container, subject_title):
 	return result
 
 
-def resource_list(spec, results, url, show_cw = True):
+def resource_list(spec, results, show_cw = True):
 	# Cycle, Week, Subject, Content (subject-specific presentation, option of "more details"), "essential" resources (e.g., song audio)
 	container = t.div(cls = 'resource_list')
 	for result in results:
@@ -935,7 +1119,7 @@ def _detail_doc(title, subject_section_title, table, record, renderer):
 	with d:
 		# JS (intentionally at bottom of file; see https://faqs.skillcrush.com/article/176-where-should-js-script-tags-be-linked-in-html-documents and many stackexchange answers):
 		t.script(_js_basic())
-		t.script(_js_ws_util())
+		t.script(_js_ws())
 		t.script(_js_play_pause())
 	return d.render()
 
@@ -1075,7 +1259,7 @@ def _error(error):
 	if error:
 		_flash(((error,), ()))
 
-def _invalid(message, visible, id = None):
+def _invalid_div(message, visible, id = None):
 	'''
 	`message` is the message to display when the input is reckoned invalid.
 	This may be specified right up front, by setting `visible` to True (e.g., if a POST
@@ -1102,13 +1286,13 @@ def _combine_attrs(attrs, bool_attrs):
 		attrs.update(_dress_bool_attrs(bool_attrs))
 	return attrs
 
-def _text_input(name, value, bool_attrs = None, attrs = None, label = None, invalid_div = None, type_ = 'text', internal_label = True, wrap_div_class = None):
+def _text_input(name, value, bool_attrs = None, attrs = None, label = None, invalid_div = None, type_ = 'text', internal_label = True):
 	'''
 	The 'name' string is expected to be a lowercase alphanumeric "variable name" without spaces.
 	Use underscores ('_') to separate words for a mult-word name.
 	`label` will be calculated as name.replace('_', ' ').title() unless `label` is provided.
 	Set `type_` to 'password' for a password input field.
-	`invalid_div` is usually fabricated by a call to _invalid() - see that note for special details.
+	`invalid_div` is usually fabricated by a call to _invalid_div() - see that note for special details.
 	'''
 	if not label:
 		label = name.replace('_', ' ').title()
@@ -1124,29 +1308,27 @@ def _text_input(name, value, bool_attrs = None, attrs = None, label = None, inva
 		result = t.label(label + ':', i)
 	if invalid_div:
 		result += invalid_div
-	if wrap_div_class:
-		result = t.div(result, cls = wrap_div_class)
 	return result
 
-def _url_dropdown(container, id, options, title = None):
+def _url_dropdown(container, id, options, title = None, hint = ''):
 	# TODO: new style has options[0] IS id! (i.e., we can get rid of the extra "id" arg, above
 	if not title:
 		title = options[0][1]
 	title += ' ▾'
 	with container:
-		t.button(title, cls = 'dropdown-button', onclick = 'choose_dropdown_item(%s)' % id)
+		t.button(title, cls = 'dropdown-button', title = hint, onclick = 'choose_dropdown_item(%s)' % id)
 		with t.div(id = id, cls = 'dropdown-content'):
 			for option_title, option in options:
 				t.div(option_title, onclick = 'load_page("%s")' % option)
 
-def _login_dropdown(username, switch_users):
+def _login_dropdown(username, switch_users, hint = ''):
 	options = []
 	if switch_users:
 		options.extend([(user['username'], _gurl('/switch_user/' + user['username'])) for user in switch_users])
 	#TODO: add "logout", etc.(?)
-	_url_dropdown(t.div(cls = 'dropdown'), 'login_dropdown', options, username)
+	_url_dropdown(t.div(cls = 'dropdown'), 'login_dropdown', options, username, hint = hint)
 
-def _dropdown(filt, qargs, cls, urls = False, title = None, button_class = None):
+def _dropdown(filt, qargs, cls, urls = False, title = None, button_class = None, hint = ''):
 	key, options = filt
 	if not options:
 		return t.div() # empty div means there's nothing there - no options from which user might choose
@@ -1168,7 +1350,7 @@ def _dropdown(filt, qargs, cls, urls = False, title = None, button_class = None)
 	if button_class:
 		button_classes += ' ' + button_class
 	return t.div(
-		t.button(title + ' ▾', cls = button_classes, id = button_id, onclick = 'choose_dropdown_item(%s)' % content_id),
+		t.button(title + ' ▾', cls = button_classes, type = 'button', id = button_id, title = hint, onclick = 'choose_dropdown_item(%s)' % content_id),
 		drop_content,
 		cls = cls,
 	)
@@ -1252,6 +1434,13 @@ def _event_formatted(record, for_print, timeline_sentences, detail_link = True):
 
 	return final
 
+def _what_next(*args):
+	result = []
+	for title, link in args:
+		result.append(t.div(t.button(title, type = "button", onclick = f'go_to("{link}")')))
+	return result
+
+
 # -----------------------------------------------------------------------------
 # Question-handler helpers:
 
@@ -1297,15 +1486,42 @@ def _js_load_bg(settings):
 		//document.getElementsByClassName("main").style.backgroundColor = "#eff7f6";
 	''' % settings)
 
-def _js_ws_util():
+def _js_ws(url):
 	return raw('''
+	var ws = new WebSocket("%(url)s");
+	console.log("CREATED ws");
+
+	ws.onmessage = function(event) {
+		var payload = JSON.parse(event.data);
+		switch(payload.task) {
+			case "check_username":
+				check_username_reply(payload.div, payload.reply);
+				break;
+			case "show_resources":
+				show_resources(payload);
+				break;
+			case "show_shopping":
+				show_shopping(payload);
+				break;
+			case "set_random_url_playlist":
+				set_random_url_playlist(payload.playlist);
+				break;
+			case "arithmetic":
+				update_arithmetic(payload);
+				break;
+			case "pong":
+				// good! TODO: do something about this(?), even though there's nothing more to do to complete the loop (we'll send the next ping according to a timer (below); no need to "send" anything now, in reply)
+				break;
+		}
+	};
 	
 	function ws_send(message) {
 		if (!ws || ws.readyState == WebSocket.CLOSING || ws.readyState == WebSocket.CLOSED) {
 			alert("Lost connection... going to reload page....");
 			location.reload();
 		} else {
-			ws.send(message);
+			console.log("SENDING ws message: " + JSON.stringify(message));
+			ws.send(JSON.stringify(message));
 		}
 	};
 	
@@ -1313,11 +1529,11 @@ def _js_ws_util():
 		if (!ws) return;
 		if (ws.readyState !== WebSocket.OPEN) return;
 		// else:
-		ws.send(JSON.stringify({call: "ping"}));
+		ws_send({task: "ping"});
 	};
-	setInterval(pingpong, 5000); // 30-second heartbeat; default timeouts (like nginx) are usually set to 60-seconds
+	setInterval(pingpong, 5000); // 5-second heartbeat; default timeouts (like nginx) are usually set to 60-seconds
 
-	''')
+	''' % {'url': url})
 
 def _js_socket_quiz_manager(url, db_handler, html_function):
 	# This js not served as a static file for two reasons: 1) it's tiny and single-purpose, and 2) its code is tightly connected to this server code; it's not a candidate for another team to maintain, in other words; it also relies on our URL (for the websocket), whereas true static files might be served by a reverse-proxy server from anywhere, and won't tend to contain any references to the wsgi urls
@@ -1341,7 +1557,7 @@ def _js_socket_quiz_manager(url, db_handler, html_function):
 		}
 	};
 	function send_answer(answer_id) {
-		ws_send(JSON.stringify({call: "answer", db_handler: "%(db_handler)s", html_function: "%(html_function)s", answer_id: parseInt(answer_id, 10)}));
+		ws_send({call: "answer", db_handler: "%(db_handler)s", html_function: "%(html_function)s", answer_id: parseInt(answer_id, 10)});
 	};
 	
 	go_button.onclick = function() {
@@ -1393,76 +1609,108 @@ def _js_test1(url):
 	return r
 	
 	
-def _js_filter_list(url):
+def _js_filter_list():
 	# This js not served as a static file for two reasons: 1) it's tiny and single-purpose, and 2) its code is tightly connected to this server code; it's not a candidate for another team to maintain, in other words; it also relies on our URL (for the websocket), whereas true static files might be served by a reverse-proxy server from anywhere, and won't tend to contain any references to the wsgi urls
 
 	# This is the websocket code for filtering, and a search() (filter) function, which is the "standard"
 	r = raw('''
-	var ws = new WebSocket("%(url)s");
 
-	ws.onmessage = function(event) {
-		var payload = JSON.parse(event.data);
-		switch(payload.call) {
-			case "show":
-				$("content").innerHTML = payload.result;
-				spec = JSON.parse(payload.spec);
-				fw_button = $("first_week-button");
-				if (fw_button) { // this basically means that we're printing only
-					fw_button.innerHTML = "W-" + spec.first_week + " ▾";
-					$("last_week-button").innerHTML = "W-" + spec.last_week + " ▾";
-					if (payload.grades != null)
-						$("grade-container").innerHTML = payload.grades;
-				}
-				// Call for string of random-audio-urls... but NOTE: this doesn't seem to be the best place for this, as this _js_filter_list() may be part of a page that does not avail the random-audio urls...  but moving it down to there ran us into trouble with the variable ws being available; not sure why, yet!
-				request_new_random_url_playlist();
-				break;
-			case "show_shopping":
-				$(payload.div_id).innerHTML = payload.result;
-				break;
-			case "set_random_url_playlist":
-				set_random_url_playlist(payload.playlist);
-				break;
+	function show_resources(payload) {
+		$("content").innerHTML = payload.content;
+		spec = JSON.parse(payload.spec);
+		fw_button = $("first_week-button");
+		if (fw_button) { // this basically means that we're printing only
+			fw_button.innerHTML = "W-" + spec.first_week + " ▾";
+			$("last_week-button").innerHTML = "W-" + spec.last_week + " ▾";
+			if (payload.grades != null)
+				$("grade-container").innerHTML = payload.grades;
 		}
+		// Call for string of random-audio-urls... but NOTE: this doesn't seem to be the best place for this, as this _js_filter_list() may be part of a page that does not avail the random-audio urls...  but moving it down to there ran us into trouble with the variable ws being available; not sure why, yet!
+		request_new_random_url_playlist();
+	};
+
+	function show_shopping(payload) {
+		$(payload.div_id).innerHTML = payload.result;
 	};
 
 	// "search" is the standard filter:
 	function search(str) {
-		ws_send(JSON.stringify({call: "filter", filter: "search", data: str}));
+		ws_send({task: "filter", filter: "search", data: str});
 	};
-	''' % {'url': url})
+	''')
 
 	return r
 
 
-def _js_check_username(url):
+def _js_check_username():
 	# This js not served as a static file for two reasons: 1) it's tiny and single-purpose, and 2) its code is tightly connected to this server code; it's not a candidate for another team to maintain, in other words; it also relies on our URL (for the websocket), whereas true static files might be served by a reverse-proxy server from anywhere, and won't tend to contain any references to the wsgi urls
 	return raw('''
-	var ws = new WebSocket("%(url)s");
-	ws.onmessage = function(event) {
-		$("username_exists_message").style.display = ((event.data == 'exists') ? 'block' : 'none');
+	function check_username_reply(div, reply) {
+		$(div).style.display = ((reply == 'exists') ? 'block' : 'none');
 	};
-	function check_username(username) {
-		ws_send(JSON.stringify({call: "check", string: username}));
+	function check_username_request(div, username) {
+		ws_send({task: "check_username", div: div, string: username});
 	};
-	''' % {'url': url})
+	''')
 
-def _js_validate_password():
+def _js_another_password(passwords, used_passwords):
+	make_array = lambda lst: ', '.join(['"%s"' % each for each in lst])
 	return raw('''
-	$('password').addEventListener('blur', validate);
+	passwords = [%(passwords)s];
+	used_passwords = [%(used_passwords)s];
+	function another_password(field_id) {
+		const r = Math.floor(Math.random() * passwords.length);
+		password = passwords[r];
+		passwords.splice(r, 1); // pop the new password from the set
+		passwords.push(field_id.value); // and return the current password to the 'available' list
+		var i = used_passwords.indexOf(field_id.value);
+		if (i > -1) { used_passwords.splice(i, 1); }
+		used_passwords.push(password);
+		field_id.value = password;
+		validate_target(field_id);
+	};
+	''' % {'passwords': make_array(passwords), 'used_passwords': make_array(used_passwords)})
+
+def _js_print_then_submit():
+	return raw('''
+	var print_warning_shown = false;
+	function print_then_submit() {
+		if (print_warning_shown) {
+			print_warning_shown = false; // reset for a future encounter
+			$("save_users").submit();
+		} else {
+			alert("%s");
+			print_warning_shown = true;
+		}
+	};
+	''' % text.print_account_info_first)
+
+def _js_go_to():
+	return raw('''
+		function go_to(url) {
+			window.location.href = url;
+		};
+	''')
+
+def _js_validate_event():
+	return raw('''
 	function validate(evt) {
 		var e = evt.currentTarget;
-		e.nextElementSibling.style.display = e.checkValidity() ? "none" : "block";
+		validate_target(e);
+	};
+	function validate_target(target) {
+		target.nextElementSibling.style.display = target.checkValidity() ? "none" : "block";
 	};
 	''')
 
-def _js_validate_login_fields():
-	return raw('''
-	$('username').addEventListener('input', validate);
-	''')
+def _js_validate_username_fields(fields = ('username',)):
+	return raw(' '.join(["$('%s').addEventListener('input', validate);" % field for field in fields]))
 
-def _js_validate_new_user_fields():
+def _js_validate_password_fields(fields = ('password',)):
+	return raw(' '.join(["$('%s').addEventListener('blur', validate);" % field for field in fields]))
+
+def _js_validate_email_field():
 	return raw('''
-	$('new_username').addEventListener('input', validate);
 	$('email').addEventListener('blur', validate);
 	''')
 
@@ -1483,12 +1731,12 @@ def _js_dropdown():
 	};
 
 	function load_page(url) {
-		this.document.location.href = url;
+		window.location.href = url;
 	};
 
 	function choose_dropdown_option(key, option_id, option_title, button_id) {
 		stop_random_play();
-		ws_send(JSON.stringify({call: "filter", filter: key, data: option_id}));
+		ws_send({task: "filter", filter: key, data: option_id});
 		$(button_id).innerHTML = option_title;
 	};
 
@@ -1521,7 +1769,7 @@ def _js_show_hide_shopping():
 			} else {
 				div.style.display = "block";
 				if (div.innerHTML == "") {
-					ws_send(JSON.stringify({call: "show_shopping", resource_id: div_id}));
+					ws_send({call: "show_shopping", resource_id: div_id});
 				}
 			}
 		};
@@ -1588,7 +1836,113 @@ def _js_play_random():
 			random_audio.load(); // reset to start
 		};
 		function request_new_random_url_playlist() {
-			ws_send(JSON.stringify({call: "get_random_url_playlist"}));
+			ws_send({task: "get_random_url_playlist"});
 		};
 		
 	''')
+
+def _js_arithmetic():
+	return raw('''
+		var id = 0;
+		var next_id = 0;
+		var problem = "";
+		var next_problem = "";
+		var answer = 0;
+		var next_answer = 0;
+		var next_ready = true; // prime this, artificially, for first time through
+		var initialized = false;
+		//var timer_counter = document.getElementById("timer_counter");
+
+		function update_arithmetic(payload) {
+			next_id = payload['assessment_id'];
+			next_problem = payload['op1'] + ' ' + payload['operator'] + ' ' + payload['op2'] + ' =';
+			next_answer = payload['answer'];
+			if (initialized) {
+				next_ready = true;
+			} else {
+				advance1(); // next_ready already primed to 'true' for first time through
+				advance2();
+				initialized = true; // only do once
+				next_ready = false;
+			}
+		};
+
+
+		function add_ninepin(button) {
+			$('answer').value = $('answer').value + button.value;
+		};
+
+		$('answer').onkeydown = function(event) {
+			if (event.keyCode == 13 && !($('go_button').disabled))
+				go();
+		};
+
+
+		function advance1() {
+			// must wait for next_ready to be true; async/await and js callbacks do not see well suited to do this conveniently on an ongoing basis,
+			// and 99% of the time, by the time advance1() gets called, next_ready will, indeed, be true already, so... just going for the poor ole' timeout-check method
+			if (next_ready == false) {
+				window.setTimeout(advance1(), 200); // check again in 200ms
+			} else {
+				id = next_id;
+				problem = next_problem;
+				answer = next_answer;
+				next_ready = false; // stays false until update_arithmetic next called, which will happen as soon as the send_message() is received by server and the server responds
+			}
+		};
+		
+		function advance2() {
+			$('problem').innerHTML = problem;
+			$('answer').disabled = false;
+			$('answer').focus();
+			$('answer').value = "";
+			$('correct_answer').innerHTML = "";
+			$('go_button').disabled = false;
+		};
+		
+		function go() {
+			$('correct_answer').innerHTML = answer;
+			// disable input until we get the next problem shown:
+			$('answer').disabled = true;
+			$('go_button').disabled = true;
+			
+			var speed_ms = 5;
+			var correct = (answer == parseInt($('answer').value, 10))
+			var message = {task: "arithmetic", assessment_id: id, speed_ms: speed_ms, correct: correct}
+			if (correct) {
+				// start the advance; load new problem:
+				advance1();
+			} // if !correct, we never call advance1(), so never advance to 'next' problem; so, user is re-presented with current problem, to try again
+			// now it's safe to send the message (which might very shortly result in an update_arithmetic which will overwrite next_problem, next_answer, and next_id
+			ws_send(message);
+
+			// pause, longer or shorter depending on whether 'correct':
+			var pause = correct ? 200 : 1500;
+			setTimeout(() => {
+					advance2(); // finally, advance the visual
+				}, pause);
+		};
+		function rest_of_go_MOVING() {
+			which = Math.floor(Math.random() * audio_count);
+			if (data.answer == answer.value) {
+				ws.send('{"message": "result", "result": "correct", "delay": "0"}');
+				audio_yeses[which].play();
+				if (counter > 0)
+					update_counter(--counter);
+			}
+			else {
+				/* Here we need to FIRST show the correct answer for fail_delay amount of time, THEN
+				send the result over the cet, along with the delay (for the server, which is
+				responsible for timing, to subtract off.  If we just send our result message on the
+				socket and then sleep, the server will push the next problem to us immediately, but
+				will unknowingly be timing this fail_delay correct-answer-display time and counting it
+				against the user's next answer time. */
+				correct_answer.innerHTML = data.answer;
+				audio_nos[which].play(); // this appears to be a non-blocking call, so even if it's very long, the user will still see the next problem and his answer will be timed accurately
+				setTimeout(finish_correct_answer_flash, fail_delay); // only clear the flash and send the correct answer to the server after fail_delay!
+			}
+		};
+
+		
+	''')
+
