@@ -1691,9 +1691,9 @@ def _js_print_then_submit():
 def _js_go_to():
 	return raw('''
 		function go_to(url) {
-			window.location.href = url;
+			window.location.href = "%s" + url;
 		};
-	''')
+	''' % settings.k_url_prefix)
 
 def _js_validate_event():
 	return raw('''

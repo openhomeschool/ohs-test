@@ -112,7 +112,7 @@ def auth(roles): # TODO: TEST! - updated this blindly, to match new roles design
 				# Process the request (handler) as requested:
 				return await func(request)
 			#else, forward to log-in page:
-			session['after_login'] = str(request.url)
+			session['after_login'] = settings.k_url_prefix + str(request.url)
 			if 'roles' in session: # user is logged in, but the above role-intersection test failed, meaning that user is not permitted to access this particular page
 				_add_flash_e(session, error.not_permitted)
 			raise web.HTTPFound(gurl(request, 'login'))
@@ -249,10 +249,10 @@ async def user_settings(request):
 	pass # TODO
 
 
-@r.view('/new_user')
+@r.view('/new_user', name = 'new_user')
 class New_User(web.View):
 	async def get(self):
-		return hr(html.new_user(html.Form(self.request.url), _check_username_url(self)))
+		return hr(html.new_user(html.Form(gurl(self.request, 'new_user')), _check_username_url(self)))
 	
 	async def post(self):
 		r = self.request
@@ -288,14 +288,14 @@ class New_User(web.View):
 		return hr(html.new_user_success(user_id)) # TODO: lame placeholder - need to redirect, anyway!
 
 
-@r.get('/practice')
+@r.get('/practice', name = 'practice')
 @auth('student')
 async def practice(request):
 	session = await get_session(request)
 	uuid = session.get('uuid')
 	dbc = request.app['db']
 
-	session['after_login'] = str(request.url) # come back here after a user-switch; this is a kludgey way of pushing this... haven't worked out how to elegantly retain current page after user-switch, or if it's even desirable.
+	session['after_login'] = gurl(request, 'practice') # come back here after a user-switch; this is a kludgey way of pushing this... haven't worked out how to elegantly retain current page after user-switch, or if it's even desirable.
 
 	# TODO: the following is hard-coded to arithmetic, instead of obeying any filters!! (still in "proof of concept)
 	_set_up_twixt(session, _arithmetic_new_problems(dbc, uuid, None, request.query)) # start the first problem-set lookup now... will be easily done by the time the page is loaded and websocket handshake occurs, when this result is passed on into the loaded page
