@@ -1316,6 +1316,7 @@ def _text_input(name, value, bool_attrs = None, attrs = None, label = None, inva
 def _url_dropdown(container, id, options, title = None, hint = ''):
 	# TODO: new style has options[0] IS id! (i.e., we can get rid of the extra "id" arg, above
 	if not title:
+		l.debug(f'!!! options: {options}')
 		title = options[0][1]
 	title += ' ▾'
 	with container:

@@ -73,57 +73,54 @@ g_playlists = {}
 
 # Utils -----------------------------------------------------------------------
 
-#_prefix_url_path = lambda url: URL.build(scheme = url.scheme, host = url.host, path = settings.k_url_prefix + url.path, port = url.port, query = url.query, query_string = url.query_string)
-gurl = lambda request, name: settings.k_url_prefix + str(request.app.router[name].url_for())
-
-r = web.RouteTableDef()
+rt = web.RouteTableDef()
 def hr(text): return web.Response(text = text, content_type = 'text/html')
 
 # TEMP, DEBUG!!!!  (for running with:
 #   python -m aiohttp.web -H 0.0.0.0 -P 8080 app.main:init
 # "raw", and to get /static
 #if settings.debug:
-#	r.static('/static', '/home/jmcaine/dev/ohs/ohs-test/static')
+#	rt.static('/static', '/home/jmcaine/dev/ohs/ohs-test/static')
 
 
-def auth(roles): # TODO: TEST! - updated this blindly, to match new roles design in database; untested!
+def auth(roles):
 	'''
 	Checks `roles` against user's roles, if user is logged in.
 	Sends user to login page if necessary.
 	`roles` may be a string, signifying a singleton role needed to access this handler,
 	or a list/tuple/set of roles that would suffice.  E.g., 
 		auth('user')
-		async def handler(request):
+		async def handler(rq):
 			...
 	or:
 		auth(('contributor', 'admin'))
-		async def handler2(request):
+		async def handler2(rq):
 			...
 	'''
 	def decorator(func):
 		@functools.wraps(func)
-		async def wrapper(request): # no need for *args, **kwargs b/c this decorator is for aiohttp handler functions only, which must accept a Request instance as its only argument
-			session = await get_session(request)
+		async def wrapper(rq): # no need for *args, **kwargs b/c this decorator is for aiohttp handler functions only, which must accept a Request instance as its only argument
+			session = await get_session(rq)
 			arg_roles = roles
 			if isinstance(roles, str): # then wrap the singleton:
 				arg_roles = (roles,)
 
-			if session.get('uuid') and await db.authorized(request.app['db'], session['uuid'], arg_roles):
+			if session.get('uuid') and await db.authorized(rq.app['db'], session['uuid'], arg_roles):
 				# Process the request (handler) as requested:
-				return await func(request)
+				return await func(rq)
 			#else, forward to log-in page:
-			session['after_login'] = settings.k_url_prefix + str(request.rel_url)
+			session['after_login'] = str(rq.rel_url)
 			if 'roles' in session: # user is logged in, but the above role-intersection test failed, meaning that user is not permitted to access this particular page
 				_add_flash_e(session, error.not_permitted)
-			raise web.HTTPFound(gurl(request, 'login'))
+			raise web.HTTPFound(_gurl(rq, 'login'))
 		return wrapper
 	return decorator
 
 
 # Handlers --------------------------------------------------------------------
 
-async def _finish_login(r, dbc, username, result, redirect):
-	session = await new_session(r) # "Always use new_session() instead of get_session() in your login views to guard against Session Fixation attacks!" - https://aiohttp-session.readthedocs.io/en/stable/reference.html
+async def _finish_login(rq, dbc, username, result, redirect):
+	session = await new_session(rq) # "Always use new_session() instead of get_session() in your login views to guard against Session Fixation attacks!" - https://aiohttp-session.readthedocs.io/en/stable/reference.html
 		# it's the next bit of information: the new uuid, that is important to not attatch to the old session, to avoid a Session Fixation attack; starting clean here is the place; prior to now, we needed stuff in the (old) session, such as username_logging_in and after_login
 	session['uuid'], session['login_time'] = result # result is a two-tuple: (uuid, ts)
 	#session.pop('username_logging_in', None) # unnecessary - we just grabbed a fresh session
@@ -136,16 +133,16 @@ async def _logout(dbc, session, uuid = None):
 		await db.forget_login(dbc, uuid)
 		session.pop('uuid', None)
 	
-@r.get('/login', name = 'login')
-async def login(r):
-	session = await get_session(r)
-	await _logout(r.app['db'], session)
-	return hr(html.login(gurl(r, 'login'), _get_flash(session), session.get('username_logging_in'))) # special "hide_username" case - during a switch_user to a user that requires a password for the switch
+@rt.get('/login', name = 'login')
+async def login(rq):
+	session = await get_session(rq)
+	await _logout(rq.app['db'], session)
+	return hr(html.login(str(rq.rel_url), _get_flash(session), session.get('username_logging_in'))) # special "hide_username" case - during a switch_user to a user that requires a password for the switch
 
-@r.post('/login')
-async def login_(r):
-	data = await r.post()
-	session = await get_session(r) # TODO: see _finish_login -- that's where we'll do new_session(), before adding in the uuid; for now, we need some things from the existing session
+@rt.post('/login')
+async def login_(rq):
+	data = await rq.post()
+	session = await get_session(rq) # TODO: see _finish_login -- that's where we'll do new_session(), before adding in the uuid; for now, we need some things from the existing session
 	unli = session.get('username_logging_in')
 	if unli: # data['username'] will be empty
 		data = {'username': unli, 'password': data['password']} # create a form of `data` that contains username (unli, in this case)
@@ -157,38 +154,38 @@ async def login_(r):
 				('password', valid.rec_string32, True),
 			))
 		if invalids:
-			return hr(html.login(r.url, _wrap_error(error.invalid_login_input)))
+			return hr(html.login(rq.rel_url, _wrap_error(error.invalid_login_input)))
 
 		username = data['username']
-		dbc = r.app['db']
+		dbc = rq.app['db']
 		result = await db.login(dbc, username, data['password'])
 		l.debug("LOGIN %s: (uuid, timestamp) = %s", username, result)
 		if not result:
-			return hr(html.login(r.url, _wrap_error(error.login_failure))) # TODO: password retrieval mechanism
+			return hr(html.login(rq.rel_url, _wrap_error(error.login_failure))) # TODO: password retrieval mechanism
 		#else, success!:
-		await _finish_login(r, dbc, username, result, session['after_login'] if 'after_login' in session else gurl(r, 'home'))
+		await _finish_login(rq, dbc, username, result, session['after_login'] if 'after_login' in session else _gurl(rq, 'home'))
 
 	except web.HTTPRedirection:
 		raise # move on
 	except: # everything else
-		return hr(html.login(r.url, _wrap_error(error.unknown_login_failure)))
+		return hr(html.login(rq.rel_url, _wrap_error(error.unknown_login_failure)))
 
-@r.get('/logout', name = 'logout')
-async def logout(r):
-	await _logout(r.app['db'], await get_session(r))
-	raise web.HTTPFound(gurl(r, 'home'))
+@rt.get('/logout', name = 'logout')
+async def logout(rq):
+	await _logout(rq.app['db'], await get_session(rq))
+	raise web.HTTPFound(_gurl(rq, 'home'))
 
-@r.get('/switch_user/{username}')
-async def switch_user(r):
-	session = await get_session(r)
+@rt.get('/switch_user/{username}')
+async def switch_user(rq):
+	session = await get_session(rq)
 	# Confirm that current user is authorized to switch:
 	uuid = session.get('uuid')
 	if not uuid:
-		raise web.HTTPFound(gurl(r, 'home')) # TODO - replace with a paget that indicates failure?! (or NOT, since this is probably evidence of a malicious attempt to manually /switch_user/ when not logged in as a user that is allowed to switch to the requested user!  In fact, not logged in at all!!)
+		raise web.HTTPFound(_gurl(rq, 'home')) # TODO - replace with a paget that indicates failure?! (or NOT, since this is probably evidence of a malicious attempt to manually /switch_user/ when not logged in as a user that is allowed to switch to the requested user!  In fact, not logged in at all!!)
 	#else:
-	dbc = r.app['db']
+	dbc = rq.app['db']
 	try:
-		new_username = r.match_info['username']
+		new_username = rq.match_info['username']
 		l.debug("(SWITCH_USER) LOGIN (attempt), new user = %s", new_username)
 		session.pop('uuid', None) # clear session uuid early; log-out will occur as part of db.switch_user(), below, behind the scenes.  Note that if anything "goes wrong", it's actually good that we are logged-out and session-cleared because the "problem" is indicative of malicious attempts to force a login
 		session.pop('login_time', None)
@@ -196,67 +193,67 @@ async def switch_user(r):
 		if result == None: # then password is required for this switch
 			session['username_logging_in'] = new_username # removes 'username' burden in login page
 			_add_flash_m(session, text.password_required % new_username)
-			raise web.HTTPFound(gurl(r, 'login'))
+			raise web.HTTPFound(_gurl(rq, 'login'))
 		#else: (no password required; real new uuid returned from switch_user(), so, switch was successful (including logout/forget, etc.)...
-		await _finish_login(r, dbc, new_username, result, session['after_login'] if 'after_login' in session else gurl(r, 'home'))
+		await _finish_login(rq, dbc, new_username, result, session['after_login'] if 'after_login' in session else _gurl(rq, 'home'))
 
 	except web.HTTPRedirection:
 		raise # move on
 	except: # everything else (including exception.InvalidSwitch)... 
 		l.error(error.unknown_login_failure)
 		_add_flash_e(session, error.unknown_login_failure)
-		raise web.HTTPFound(gurl(r, 'login'))
+		raise web.HTTPFound(_gurl(rq, 'login'))
 
 
-@r.view('/reset_password', name = 'reset_password')
+@rt.view('/reset_password', name = 'reset_password')
 class Reset_Password(web.View):
 
 	async def get(self):
-		v = await _set_up_common_view_get(self, dbc = False, re_log_in_seconds = 60) # dbc only needed in post(), so only set it up there
-		return hr(html.reset_password(html.Form(v.rq.url)))
+		vw = await _set_up_common_view_get(self, dbc = False, re_log_in_seconds = 60) # dbc only needed in post(), so only set it up there
+		return hr(html.reset_password(html.Form(vw.rq.rel_url)))
 
 	async def post(self):
-		v = await _set_up_common_view_post(self, re_log_in_seconds = 60)
+		vw = await _set_up_common_view_post(self, re_log_in_seconds = 60)
 		# Validate:
 		invalids = []
-		_validate_regex(v.data, invalids, (
+		_validate_regex(vw.data, invalids, (
 				('password', valid.rec_password, True),
 				('password_confirmation', valid.rec_password, True),
 			))
-		if str(v.data['password']) != str(v.data['password_confirmation']):
+		if str(vw.data['password']) != str(vw.data['password_confirmation']):
 			invalids.append('password_confirmation')
 		if invalids:
 			# Re-present:
-			return hr(html.reset_password(html.Form(v.rq.url, v.data, invalids)))
+			return hr(html.reset_password(html.Form(vw.rq.rel_url, vw.data, invalids)))
 		#else, go on...
 
 		# (Try to) change the password:
-		if await db.reset_user_password(v.dbc, v.uuid, v.data['password']):
-			v.session.pop('after_login', None)
-			raise web.HTTPFound(gurl(v.rq, 'reset_password_success'))
+		if await db.reset_user_password(vw.dbc, vw.uuid, vw.data['password']):
+			vw.session.pop('after_login', None)
+			raise web.HTTPFound(_gurl(vw.rq, 'reset_password_success'))
 		#else, re-present:
-		return hr(html.reset_password(html.Form(v.rq.url, v.data, invalids), error.reset_password_failure))
+		return hr(html.reset_password(html.Form(vw.rq.rel_url, vw.data, invalids), error.reset_password_failure))
 
-@r.get('/reset_password_success', name = 'reset_password_success')
-async def reset_password_success(request):
+@rt.get('/reset_password_success', name = 'reset_password_success')
+async def reset_password_success(rq):
 	return hr(html.reset_password_success((
-			('Home', gurl(request, 'home')),
-			('User Settings', gurl(request, 'user_settings')),
+			('Home', _gurl(rq, 'home')),
+			('User Settings', _gurl(rq, 'user_settings')),
 		)))
 
-@r.get('/user_settings', name = 'user_settings')
-async def user_settings(request):
+@rt.get('/user_settings', name = 'user_settings')
+async def user_settings(rq):
 	pass # TODO
 
 
-@r.view('/new_user', name = 'new_user')
+@rt.view('/new_user', name = 'new_user')
 class New_User(web.View):
 	async def get(self):
-		return hr(html.new_user(html.Form(gurl(self.request, 'new_user')), _check_username_url(self)))
+		return hr(html.new_user(html.Form(_gurl(self.request, 'new_user')), _check_username_url(self)))
 	
 	async def post(self):
-		r = self.request
-		data = await r.post()
+		rq = self.request
+		data = await rq.post()
 		ws_url = _check_username_url(self)
 		
 		# Validate:
@@ -271,16 +268,16 @@ class New_User(web.View):
 
 		if invalids:
 			# Re-present:
-			return hr(html.new_user(html.Form(r.url, data, invalids), ws_url, _wrap_error(error.invalid_new_user_input)))
+			return hr(html.new_user(html.Form(rq.rel_url, data, invalids), ws_url, _wrap_error(error.invalid_new_user_input)))
 		#else, go on...
 
 		# (Try to) add the user:
 		user_id = None
 		try:
-			user_id = await db.add_user(r.app['db'], data['new_username'], data['password'], data['email'])
+			user_id = await db.add_user(rq.app['db'], data['new_username'], data['password'], data['email'])
 		except IntegrityError: # Note that this should **almost** never happen, as we check username availability in real-time, but it's always possible that another new user with the same username is created milliseconds before the db.add_user() attempt, above; this would make the username suddenly unavailable; we could not possibly have told the user about this in advance, and need to revert to posting an error message now:
 			# Re-present with user_exists error:
-			return hr(html.new_user(html.Form(r.url, data), ws_url, text.user_exists))
+			return hr(html.new_user(html.Form(rq.rel_url, data), ws_url, text.user_exists))
 
 		#if sess.get('trial'): # TODO!
 		#user = db.update_user(dbs, sess['username'], p.username, p.password, p.email)
@@ -288,71 +285,71 @@ class New_User(web.View):
 		return hr(html.new_user_success(user_id)) # TODO: lame placeholder - need to redirect, anyway!
 
 
-@r.get('/practice', name = 'practice')
+@rt.get('/practice', name = 'practice')
 @auth('student')
-async def practice(request):
-	session = await get_session(request)
+async def practice(rq):
+	session = await get_session(rq)
 	uuid = session.get('uuid')
-	dbc = request.app['db']
+	dbc = rq.app['db']
 
-	session['after_login'] = gurl(request, 'practice') # come back here after a user-switch; this is a kludgey way of pushing this... haven't worked out how to elegantly retain current page after user-switch, or if it's even desirable.
+	session['after_login'] = str(rq.rel_url) # come back here after a user-switch; this is a kludgey way of pushing this... haven't worked out how to elegantly retain current page after user-switch, or if it's even desirable.
 
 	# TODO: the following is hard-coded to arithmetic, instead of obeying any filters!! (still in "proof of concept)
-	_set_up_twixt(session, _arithmetic_new_problems(dbc, uuid, None, request.query)) # start the first problem-set lookup now... will be easily done by the time the page is loaded and websocket handshake occurs, when this result is passed on into the loaded page
+	_set_up_twixt(session, _arithmetic_new_problems(dbc, uuid, None, rq.query)) # start the first problem-set lookup now... will be easily done by the time the page is loaded and websocket handshake occurs, when this result is passed on into the loaded page
 
 	links = (
 		#(name/title, hint, content, is-url?)
-		('⌂', "Home (RETURN to this week's GRAMMAR)", _http_url(request, '/resources', {}), True),
-		('4←', "PRACTICE last four weeks' grammar", _http_url(request, '/practice', {'program': 1, 'first_week': max(0, k_temp_this_week - 4), 'last_week': k_temp_this_week}), True),
-		('∑←', "PRACTICE ALL grammar so far this year", _http_url(request, '/practice', {'program': 1, 'first_week': 1, 'last_week': k_temp_this_week}), True),
+		('⌂', "Home (RETURN to this week's GRAMMAR)", _http_url(rq, '/resources', {}), True),
+		('4←', "PRACTICE last four weeks' grammar", _http_url(rq, '/practice', {'program': 1, 'first_week': max(0, k_temp_this_week - 4), 'last_week': k_temp_this_week}), True),
+		('∑←', "PRACTICE ALL grammar so far this year", _http_url(rq, '/practice', {'program': 1, 'first_week': 1, 'last_week': k_temp_this_week}), True),
 	)
 	login, settings = await _login_button(session, dbc)
 
-	return hr(html.practice(_ws_url(request, '/ws_messages'), links, login, settings))
+	return hr(html.practice(_ws_url(rq, '/ws_messages'), links, login, settings))
 
 
-@r.view('/family_invitation/{code}')
+@rt.view('/family_invitation/{code}', name = 'family_invitation')
 class Family_Invitation(web.View):
 	async def common(self):
 		code = self.request.match_info['code']
 		if not valid.rec_invitation.match(code):
 			return hr(html.invalid_invitation()) # this might be an attack attempt!
 		#else:
-		v = await _set_up_common_view_get(self)
-		invitation = await db.get_new_user_invitation(v.dbc, code)
+		vw = await _set_up_common_view_get(self)
+		invitation = await db.get_new_user_invitation(vw.dbc, code)
 		if not invitation:
 			return hr(html.invalid_invitation()) # this might be an attack attempt!
 		#else:
 		person_id, academic_year = invitation['person'], invitation['academic_year']
-		person = await db.get_person(v.dbc, person_id)
-		family = await db.get_family_enrollments(v.dbc, person_id, academic_year)
-		return (v, person, family.children)
+		person = await db.get_person(vw.dbc, person_id)
+		family = await db.get_family_enrollments(vw.dbc, person_id, academic_year)
+		return (vw, person, family.children)
 		
 	async def get(self):
 		commons = await self.common()
 		if isinstance(commons, web.Response):
 			return commons
 		#else:
-		v, person, children = commons
+		vw, person, children = commons
 		covered = [] # `family` may contain duplicates of a student who is enrolled in multiple programs; we only want each student once, here, so we'll track those covered as we process each of family.children
 		all_exist_already = True
 		async def _user(p):
 			nonlocal all_exist_already
 			covered.append(p['id'])
-			username = await db.get_person_username(v.dbc, p['id'])
+			username = await db.get_person_username(vw.dbc, p['id'])
 			exists = True
 			if not username:
-				username = await db.suggest_username(v.dbc, p)
+				username = await db.suggest_username(vw.dbc, p)
 				exists = False
 				all_exist_already = False
 			return {'id': p['id'], 'first_name': p['first_name'], 'last_name': p['last_name'], 'username': username, 'exists': exists}
 		users = [await _user(person)]
 		users += [await _user(child) for child in children if child['id'] not in covered]
-		passwords = await db.forge_noun_passwords(v.dbc)
+		passwords = await db.forge_noun_passwords(vw.dbc)
 		flash = _quick_flash_message(text.new_accounts_family % (person['first_name'], person['last_name']))
 		if all_exist_already:
 			flash = _quick_flash_message(text.existing_accounts_family)
-		return hr(html.family_user_setup(v.rq.url, users, passwords, _ws_url(v.rq, '/ws_messages'), all_exist_already, flash))
+		return hr(html.family_user_setup(str(vw.rq.rel_url), users, passwords, _ws_url(vw.rq, '/ws_messages'), all_exist_already, flash))
 
 
 	async def post(self):
@@ -360,7 +357,7 @@ class Family_Invitation(web.View):
 		if isinstance(commons, web.Response):
 			return commons
 		#else:
-		v, person, children = commons
+		vw, person, children = commons
 		data = await self.request.post()
 		ids, exists, usernames, passwords = [], [], [], []
 		for key, value in data.items():
@@ -382,21 +379,21 @@ class Family_Invitation(web.View):
 			
 		# Try to the database:
 		if flash == None:
-			await v.dbc.execute('begin') # apparently the only way to really do transactions like this (see https://stackoverflow.com/questions/15856976/transactions-with-python-sqlite3)
+			await vw.dbc.execute('begin') # apparently the only way to really do transactions like this (see https://stackoverflow.com/questions/15856976/transactions-with-python-sqlite3)
 			try:
 				used_colors = []
 				for x in range(len(ids)):
 					if exists[x].value not in ('true', 'True'):
 						try:
 							# Create user:
-							new_uid = await db.create_user(v.dbc, usernames[x], passwords[x], ids[x], False)
+							new_uid = await db.create_user(vw.dbc, usernames[x], passwords[x], ids[x], False)
 							# Add roles:
 							roles = ['student',]
-							if await db.is_a_guardian(v.dbc, ids[x]):
+							if await db.is_a_guardian(vw.dbc, ids[x]):
 								roles.append('parent')
-							await db.add_roles(v.dbc, new_uid, roles, False)
+							await db.add_roles(vw.dbc, new_uid, roles, False)
 							# Set default settings (bg-color, etc.)
-							used_colors.append(await db.set_user_bg_color(v.dbc, new_uid, used_colors, False))
+							used_colors.append(await db.set_user_bg_color(vw.dbc, new_uid, used_colors, False))
 							
 							# CANNOT do this:  data[each] = 'True' # now they actually do exist!
 							#    Note, we can't modify data (it's a MultiDictProxy, so not editable), we will just set all_exist_already to True, below, if all succeeds, and that will flag html.family_user_setup_retry to show all fields as "existing" users, successfully created, despite lingering .exists fields that are "false"
@@ -406,16 +403,16 @@ class Family_Invitation(web.View):
 							flash = _quick_flash_error(text.user_exists)
 							raise # break out of loop and induce rollback
 				
-				uids = [await db.get_user_id(v.dbc, username) for username in usernames]
+				uids = [await db.get_user_id(vw.dbc, username) for username in usernames]
 				for uid in uids:
 					other_uids = uids.copy()
 					other_uids.remove(uid)
-					await db.add_user_switch_allows(v.dbc, other_uids, uid, not await db.is_user_teacher(v.dbc, uid), False)
+					await db.add_user_switch_allows(vw.dbc, other_uids, uid, not await db.is_user_teacher(vw.dbc, uid), False)
 
 				# Once all have succeeded:
-				await v.dbc.execute('commit')
+				await vw.dbc.execute('commit')
 			except:
-				await v.dbc.execute('rollback')
+				await vw.dbc.execute('rollback')
 				if not flash:
 					flash = _quick_flash_error(text.unable_to_save_new_users_error)
 				l.debug(traceback.format_exc())
@@ -423,26 +420,26 @@ class Family_Invitation(web.View):
 		# If flash is unset, we succeeded!:
 		if flash == None:
 			# Reload the GET for this request, to show all complete:
-			raise web.HTTPFound(v.rq.url)
+			raise web.HTTPFound(str(vw.rq.rel_url))
 			
 		# Finally, if we need to re-present family_user_setup_retry, then generate new random_passwords for use within, and re-present:
-		random_passwords = await db.forge_noun_passwords(v.dbc) # only do this lookup if needed, at the last minute
-		return hr(html.family_user_setup_retry(v.rq.url, data, random_passwords, _ws_url(v.rq, '/ws_messages'), invalids, False, flash)) # assume all_exist_already is False if we're here, or else we would have HTTPFound-forwarded
+		random_passwords = await db.forge_noun_passwords(vw.dbc) # only do this lookup if needed, at the last minute
+		return hr(html.family_user_setup_retry(str(vw.rq.rel_url), data, random_passwords, _ws_url(vw.rq, '/ws_messages'), invalids, False, flash)) # assume all_exist_already is False if we're here, or else we would have HTTPFound-forwarded
 
 
-@r.view('/invitation/{code}')
+@rt.view('/invitation/{code}', name = 'invitation')
 class Invitation(web.View):
 	async def get(self):
-		r = self.request
-		code = r.match_info['code']
+		rq = self.request
+		code = rq.match_info['code']
 		if valid.rec_invitation.match(code):
-			dbc = r.app['db']
+			dbc = rq.app['db']
 			invitation = await db.get_new_user_invitation(dbc, code)
 			person_id, academic_year = invitation['person'], invitation['academic_year']
 			person = await db.get_person(dbc, person_id)
 			enrollments = await db.get_enrollments(dbc, person_id)
 			if enrollments: # this is a student
-				return hr(html.student_invitation(html.Form(r.url), invitation, person, enrollments))
+				return hr(html.student_invitation(html.Form(rq.rel_url), invitation, person, enrollments))
 			else: # assume this is a parent (TODO: better way todo this -- for person, add "parent" where head-of-household is kept as a record, anyway (though HOH isn't even as useful!)
 				family = await db.get_family_enrollments(dbc, person_id, academic_year)
 				contact = await db.get_person_contact_info(dbc, person_id)
@@ -450,25 +447,25 @@ class Invitation(web.View):
 				cost_offsets = await db.get_cost_offset(dbc, person_id, academic_year)
 				leader = await db.get_leader(dbc, person_id, academic_year)
 				payments = await db.get_payments(dbc, [g['id'] for g in family.guardians], academic_year)
-				return hr(html.invitation(html.Form(r.url), invitation, person, family, contact, costs, cost_offsets, leader, payments))
+				return hr(html.invitation(html.Form(rq.rel_url), invitation, person, family, contact, costs, cost_offsets, leader, payments))
 		else:
 			return hr(html.invalid_invitation()) # this might be an attack attempt!
 		
 	async def post(self):
-		r = self.request
-		data = await r.post()
+		rq = self.request
+		data = await rq.post()
 
 
-@r.get('/select_user')
+@rt.get('/select_user')
 @auth('admin')
-async def select_user(request):
-	return hr(html.select_user(_ws_url(request, '/ws_filter_list')))
+async def select_user(rq):
+	return hr(html.select_user(_ws_url(rq, '/ws_filter_list')))
 
 
-@r.get('/ws_filter_list')
-async def ws_filter_list(request):
-	edit_url = _http_url(request, '/edit_user')
-	dbc = request.app['db']
+@rt.get('/ws_filter_list')
+async def ws_filter_list(rq):
+	edit_url = _http_url(rq, '/edit_user') # don't use _gurl here - need http specifically, since we're ws/ here
+	dbc = rq.app['db']
 	
 	async def msg_handler(payload, ws):
 		assert(payload['task'] == 'search')
@@ -485,17 +482,16 @@ async def ws_filter_list(request):
 
 	return msg_handler
 
-@r.get('/ws_quiz_handler')
-async def ws_quiz_handler(request):
+@rt.get('/ws_quiz_handler')
+async def ws_quiz_handler(rq):
 	'''
 	Generic "glue" code that manages question/answer mechanics between websocket/client and database/server.
 	Specific types of questions are handled quite differently, so the actual DB handler functions are in
 	payload['db_answer_function'] and etc., and the HTML-creation code is in payload['html_function'], and
 	the payload content may be different, but will be what the particular handler function expects.
 	'''
-	r = request
-	session = await get_session(r)
-	dbc = r.app['db']
+	session = await get_session(rq)
+	dbc = rq.app['db']
 	db_handler = None # new one will be created each transaction
 
 	async def msg_handler(payload, ws):
@@ -515,30 +511,30 @@ async def ws_quiz_handler(request):
 	return msg_handler
 
 
-@r.get('/', name = 'home')
-async def default(request):
-	return await _resources(request, {})
+@rt.get('/', name = 'home')
+async def default(rq):
+	return await _resources(rq, {})
 
-@r.get('/grammar')
-async def default(request):
-	return await _resources(request, request.query)
+@rt.get('/grammar')
+async def default(rq):
+	return await _resources(rq, rq.query)
 
-@r.get('/resources')
-async def resources(request):
-	return await _resources(request, request.query)
+@rt.get('/resources')
+async def resources(rq):
+	return await _resources(rq, rq.query)
 
-@r.get('/shop3')
-async def shop_year_program3(request):
-	return await _resources(request, {'shop': 1, 'cycle': 2, 'program': 3, 'first_week': 0, 'last_week': 28, 'grammar_supplement': 0})
+@rt.get('/shop3')
+async def shop_year_program3(rq):
+	return await _resources(rq, {'shop': 1, 'cycle': 2, 'program': 3, 'first_week': 0, 'last_week': 28, 'grammar_supplement': 0})
 
-@r.get('/shop4')
-async def shop_year_program4(request):
-	return await _resources(request, {'shop': 1, 'cycle': 2, 'program': 4, 'first_week': 0, 'last_week': 28, 'grammar_supplement': 0})
+@rt.get('/shop4')
+async def shop_year_program4(rq):
+	return await _resources(rq, {'shop': 1, 'cycle': 2, 'program': 4, 'first_week': 0, 'last_week': 28, 'grammar_supplement': 0})
 
 
 
-@r.get('/quiz/arithmetic')
-async def quiz_arithmetic(request):
+@rt.get('/quiz/arithmetic')
+async def quiz_arithmetic(rq):
 	pass #calculator!
 
 
@@ -550,26 +546,26 @@ def detail_handler(handler):
 		return func
 	return decorator
 
-@r.get('/Q/{key}')
-async def detail(request):
-	dbc = request.app['db']
-	detail = await db.get_detail(dbc, request.match_info['key'])
+@rt.get('/Q/{key}')
+async def detail(rq):
+	dbc = rq.app['db']
+	detail = await db.get_detail(dbc, rq.match_info['key'])
 	if detail: # is a 4-tuple: {table, record, details, signs}
 		table, record, details, signs = detail
 		return await g_detail_handlers[table](record, details, signs)
 	else:
-		raise web.HTTPFound(gurl(r, 'home')) # TODO - replace with a page/message that indicates failure to find the 'key'
+		raise web.HTTPFound(_gurl(rq, 'home')) # TODO - replace with a page/message that indicates failure to find the 'key'
 
-@r.get('/detail/{table}/{id}')
-async def event_detail(request):
-	dbc = request.app['db']
-	table = request.match_info['table']
-	detail = await db.get_detail_by_id(dbc, table, request.match_info['id'])
+@rt.get('/detail/{table}/{id}')
+async def event_detail(rq):
+	dbc = rq.app['db']
+	table = rq.match_info['table']
+	detail = await db.get_detail_by_id(dbc, table, rq.match_info['id'])
 	if detail: # is a 3-tuple: {record, details, signs (sign-language signs)}
 		record, details, signs = detail
 		return await g_detail_handlers[table](record, details, signs)
 	else:
-		raise web.HTTPFound(gurl(r, 'home')) # TODO - replace with a page/message that indicates failure to find the 'table/id'
+		raise web.HTTPFound(_gurl(rq, 'home')) # TODO - replace with a page/message that indicates failure to find the 'table/id'
 
 
 @detail_handler('event')
@@ -584,24 +580,24 @@ k_temp_this_week = 28
 k_temp_this_cycle = 2
 
 # cool characters: ⌂♩♪♫♬▲►▼◄→ ʘΞΞΩΨΦΣΠϘЮФѺѼ׀ᴓ₪Ω⃰∞∑∆◊?¿ ᵯ«»
-_links = lambda request: (
+_links = lambda rq: (
 	#(name/title, hint, content, is-url?)
-	('⌂', "Home (THIS week's grammar)", _http_url(request, '/resources', {}), True),
-	('¿', 'Practice/quiz grammar', _http_url(request, '/practice', {}), True),
-	('→', "NEXT week's grammar", _http_url(request, '/resources', {'week': k_temp_this_week + 1}), True),
-	('4←', "REVIEW last four weeks' grammar", _http_url(request, '/resources', {'program': 1, 'first_week': max(0, k_temp_this_week - 4), 'last_week': k_temp_this_week}), True),
-	('∑←', "REVIEW ALL grammar so far this year", _http_url(request, '/resources', {'program': 1, 'first_week': 1, 'last_week': k_temp_this_week}), True),
+	('⌂', "Home (THIS week's grammar)", _http_url(rq, '/resources', {}), True),
+	('¿', 'Practice/quiz grammar', _http_url(rq, '/practice', {}), True),
+	('→', "NEXT week's grammar", _http_url(rq, '/resources', {'week': k_temp_this_week + 1}), True),
+	('4←', "REVIEW last four weeks' grammar", _http_url(rq, '/resources', {'program': 1, 'first_week': max(0, k_temp_this_week - 4), 'last_week': k_temp_this_week}), True),
+	('∑←', "REVIEW ALL grammar so far this year", _http_url(rq, '/resources', {'program': 1, 'first_week': 1, 'last_week': k_temp_this_week}), True),
 	('►♫', "PLAY random grammar showing below (filtered)", 'toggle_random_play(this)', False),
-	#('4-6 assignments': _http_url(request, '/resources?program=2'),
-	#('7th-9th', _http_url(request, '/resources', {'program': 3}), True),
-	#('10th-12th', _http_url(request, '/resources', {'program': 4}), True),
-	#('Shop', _http_url(request, '/shop'), True),
-	#('Quiz', _http_url(request, '/quiz/history/sequence'), True), # TODO!
+	#('4-6 assignments': _http_url(rq, '/resources?program=2'),
+	#('7th-9th', _http_url(rq, '/resources', {'program': 3}), True),
+	#('10th-12th', _http_url(rq, '/resources', {'program': 4}), True),
+	#('Shop', _http_url(rq, '/shop'), True),
+	#('Quiz', _http_url(rq, '/quiz/history/sequence'), True), # TODO!
 )
 
-async def _resources(request, qargs):
-	session = await get_session(request)
-	dbc = request.app['db']
+async def _resources(rq, qargs):
+	session = await get_session(rq)
+	dbc = rq.app['db']
 
 	_set_up_twixt(session, _first_resources(dbc, qargs)) # start the first lookup now... should be done by the time the page is loaded and websocket handshake occurs, when this result is passed on into the loaded skeletal page
 
@@ -616,28 +612,28 @@ async def _resources(request, qargs):
 		('last_week', [('W-%d' % week, week) for week in range(0, 29)]), # TODO: hardcode 29!
 	)
 
-	links = _links(request)
+	links = _links(rq)
 	login, settings = await _login_button(session, dbc)
 
-	return hr(html.resources(_ws_url(request, '/ws_messages'), filters, cycles, weeks, qargs, links, login, settings))
+	return hr(html.resources(_ws_url(rq, '/ws_messages'), filters, cycles, weeks, qargs, links, login, settings))
 
 
 
-@r.get('/ws_messages')
-async def ws_messages(request):
+@rt.get('/ws_messages')
+async def ws_messages(rq):
 	try:
 		ws = web.WebSocketResponse()
-		await ws.prepare(request)
+		await ws.prepare(rq)
 		
 		# Send first data if packaged in the initial-data-package called 'twixed', which was fetched from the database between the GET reply and this call to set up the web socket in the page (thus the name "twixt")
-		session = await get_session(request)
+		session = await get_session(rq)
 		uuid = session.get('uuid')
 		twixt_id = session.get('twixt_id')
 		spec = None
 		if twixt_id:
 			twixt = await g_twixt_work[twixt_id] # since session['twixt_id'] exists, then g_twixt_work[twixt_id] should definitely exist; it would be a true 500 exception if it didn't
 			spec = twixt.spec
-			dbc = request.app['db']
+			dbc = rq.app['db']
 			if twixt.task == 'resources':
 				await ws.send_json(_make_show_resources_message(spec, twixt.result, await _grades_filter(dbc, spec.program)))
 				del g_twixt_work[twixt_id] # the show_resources twixt is a 1-timer; just delete now
@@ -670,7 +666,7 @@ async def ws_messages(request):
 						await ws.ping() # because some browsers will respond to "real" pings from server, or, at *least*, some browsers will keep the connection open, upon receiving a ping, even if they don't properly PONG!
 							# in an ideal world, we wouldn't have our own 'task' 'ping' or 'pong'; rather, we'd rely on ws.ping() or msg.type == WSMsgType.PING, to which we could respond with a PONG, but it doesn't seem that many browsers do this
 					else:
-						await handlers[payload['task']](request, payload, ws, spec)
+						await handlers[payload['task']](rq, payload, ws, spec)
 				elif msg.type == WSMsgType.ERROR:
 					l.warning('websocket connection closed with exception "%s"' % ws.exception())
 				else:
@@ -690,6 +686,25 @@ async def ws_messages(request):
 
 
 # Util ------------------------------------------------------------------------
+
+_gurl = lambda rq, name: str(rq.app.router[name].url_for())
+
+def _ws_url(rq, name):
+	# Builds a url from `rq` (host part, mainly) and `name`, as a websocket-schemed version; e.g.
+	#	http://domain.tld/quiz/history/sequence --> ws://domain.tld/<name>
+	return URL.build(scheme = settings.k_ws, host = rq.host, path = settings.k_ws_url_prefix + name)
+
+def _http_url(rq, name, query = None):
+	# Builds a url from `rq` (host part, mainly) and `name`, as a http(s)-schemed version; e.g.
+	#	https://domain.tld/... --> http://domain.tld/<name>
+	return URL.build(scheme = settings.k_http, host = rq.host, path = name, query = query)
+
+def _validate_regex(data, invalids, tuple_list):
+	for field, regex, required in tuple_list:
+		value = str(data[field])
+		if (required and not value) or (value and not regex.match(value)):
+			invalids.append(field)
+
 
 _wrap_error = lambda error: ((error,), ()) # make a single error look like a normal (errors, messages) flash pair
 
@@ -718,22 +733,6 @@ def _quick_flash_error(error):
 def _quick_flash_message(message):
 	return ([], (message,))
 	
-def _ws_url(request, name):
-	# Builds a url from `request` (host part, mainly) and `name`, as a websocket-schemed version; e.g.
-	#	http://domain.tld/quiz/history/sequence --> ws://domain.tld/<name>
-	return URL.build(scheme = settings.k_ws, host = request.host, path = settings.k_ws_url_prefix + name)
-
-def _http_url(request, name, query = None):
-	# Builds a url from `request` (host part, mainly) and `name`, as a http(s)-schemed version; e.g.
-	#	ws://domain.tld/... --> http://domain.tld/<name>
-	return URL.build(scheme = settings.k_http, host = request.host, path = settings.k_url_prefix + name, query = query)
-
-def _validate_regex(data, invalids, tuple_list):
-	for field, regex, required in tuple_list:
-		value = str(data[field])
-		if (required and not value) or (value and not regex.match(value)):
-			invalids.append(field)
-
 
 # WS Handler stuff  ----------------------------------------------------------------------
 
@@ -793,10 +792,10 @@ k_filter_map = {
 }
 
 
-async def _ws_filter(request, payload, ws, spec):
+async def _ws_filter(rq, payload, ws, spec):
 	assert(payload['task'] == 'filter')
-	session = await get_session(request)
-	dbc = request.app['db']
+	session = await get_session(rq)
+	dbc = rq.app['db']
 
 	try:
 		cast, validator = k_filter_map[payload['filter']]
@@ -856,10 +855,10 @@ async def _arithmetic_answer(dbc, uuid, data):
 
 
 
-async def _ws_check_username(request, payload, ws, spec = None):
+async def _ws_check_username(rq, payload, ws, spec = None):
 	# Note: `spec` not used in this function, but required in function signature for generic calling
 	assert(payload['task'] == 'check_username')
-	dbc = request.app['db']
+	dbc = rq.app['db']
 	
 	if payload['string']:
 		value = str(payload['string'])
@@ -870,10 +869,10 @@ async def _ws_check_username(request, payload, ws, spec = None):
 			l.warning('username fragment sent to ws_check_username was not a valid string') # but do nothing else; client code already checks for validity; this must/might be an attack attempt; no need to respond
 
 
-async def _ws_arithmetic(request, payload, ws, spec): # we ignore this 'spec' unless there's no twixt; else we propagate the (possibly changing) spec in the twixt each iteration
-	session = await get_session(request)
+async def _ws_arithmetic(rq, payload, ws, spec): # we ignore this 'spec' unless there's no twixt; else we propagate the (possibly changing) spec in the twixt each iteration
+	session = await get_session(rq)
 	uuid = session.get('uuid')
-	dbc = request.app['db']
+	dbc = rq.app['db']
 	
 	await _arithmetic_answer(dbc, uuid, payload)
 
@@ -892,9 +891,9 @@ async def _ws_arithmetic(request, payload, ws, spec): # we ignore this 'spec' un
 		await ws.send_json(_make_arithmetic_message(twixt_id, twixt, dbc, uuid))
 
 
-async def _ws_show_shopping(request, payload, ws, spec = None):
+async def _ws_show_shopping(rq, payload, ws, spec = None):
 	# Note: `spec` not used in this function, but required in function signature for generic calling
-	dbc = request.app['db']
+	dbc = rq.app['db']
 	match = valid.rec_resource_id_div.match(payload['resource_id'])
 	if not match:
 		raise ValueError() # treat like a failed cast
@@ -902,7 +901,7 @@ async def _ws_show_shopping(request, payload, ws, spec = None):
 	await ws.send_json({'task': 'show_shopping', 'div_id': payload['resource_id'], 'result': html.show_shopping(result)})
 
 
-async def _get_random_url_playlist(request, payload, ws, spec):
+async def _get_random_url_playlist(rq, payload, ws, spec):
 	# Assemble the playlist (we build an entire playlist at once in order to avoid repetition (each song/etc. shows up only once), and because it's very easy to do one DB operation that results in a whole (randomly-ordered) set/list of "hits", rather than asking the DB every time, one song at a time):
 	path_map = {
 		db.k_subject_ids['History']: 'history/',
@@ -988,7 +987,7 @@ async def _set_up_common_view(view, dbc = True, uuid = True, data = True, re_log
 	else:
 		return result # all is good; we only want the next two lines if either of the above tests failed and we have flash_m (and have to re-present login page):
 	result.session['after_login'] = str(result.rq.url) # come back here after logging in
-	raise web.HTTPFound(gurl(result.rq, 'login'))
+	raise web.HTTPFound(_gurl(result.rq, 'login'))
 
 async def _set_up_common_view_get(view, dbc = True, re_log_in_seconds = None):
 	return await _set_up_common_view(view, dbc, uuid = False, data = False, re_log_in_seconds = re_log_in_seconds)
@@ -1045,12 +1044,12 @@ async def init(argv):
 
 
 	# Add standard routes:
-	app.add_routes(r)
+	app.add_routes(rt)
 	# And quiz routes:
 	def q(db_handler, html_function):
 		#@auth('student') # TODO: comment this back in when it's time to auth students who are looking to quiz
-		async def quiz(request):
-			return hr(html.quiz(_ws_url(request, '/ws_quiz_handler'), db_handler, html_function))
+		async def quiz(rq):
+			return hr(html.quiz(_ws_url(rq, '/ws_quiz_handler'), db_handler, html_function))
 		return quiz
 	g = web.get
 	app.add_routes([
