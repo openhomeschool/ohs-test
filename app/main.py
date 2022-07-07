@@ -112,7 +112,7 @@ def auth(roles): # TODO: TEST! - updated this blindly, to match new roles design
 				# Process the request (handler) as requested:
 				return await func(request)
 			#else, forward to log-in page:
-			session['after_login'] = settings.k_url_prefix + str(request.url)
+			session['after_login'] = settings.k_url_prefix + str(request.rel_url)
 			if 'roles' in session: # user is logged in, but the above role-intersection test failed, meaning that user is not permitted to access this particular page
 				_add_flash_e(session, error.not_permitted)
 			raise web.HTTPFound(gurl(request, 'login'))
