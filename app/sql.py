@@ -405,6 +405,7 @@ async def arithmetic_new_problems(dbc, uuid, spec):
 
 
 async def arithmetic_answer(dbc, uuid, data):
+	l.debug(f'ANSWER: {data}')
 	user = await fetchone(dbc, ('select user from user_login where uuid = ?', (uuid,)))
 	if not user:
 		raise Exception('No such login currently exists!') # TODO: change this to an exception that incurs a login-redirect!
@@ -412,14 +413,26 @@ async def arithmetic_answer(dbc, uuid, data):
 	uid = user['user']
 	ts = time.time()
 	count_to_increment = 'correct_count' if data['correct'] else 'incorrect_count'
-	sets = f'set latest_timestamp = ?, speed_ms = ?, {count_to_increment} = {count_to_increment} + 1, user = ?'
-	r = await dbc.execute(f'update assessment {sets} where id = ?', (ts, data['speed_ms'], uid, data['assessment_id']))
+	sets = f'set latest_timestamp = ?, speed_ms = ?, total_elapsed_ms = total_elapsed_ms + ?, {count_to_increment} = {count_to_increment} + 1, user = ?'
+	r = await dbc.execute(f'update assessment {sets} where id = ?', (ts, data['speed_ms'], data['speed_ms'], uid, data['assessment_id']))
 	assert(r.rowcount == 1)
 	
+async def arithmetic_totals(dbc, uuid, spec):
+	user = await fetchone(dbc, ('select user from user_login where uuid = ?', (uuid,)))
+	if not user:
+		raise Exception('No such login currently exists!') # TODO: change this to an exception that incurs a login-redirect!
+	#else...
+	uid = user['user']
+	calcs = ', '.join([
+			'sum(total_elapsed_ms) as total_time',
+			'sum(correct_count + incorrect_count) as total_count',
+			'sum(correct_count) as total_correct_count',
+			'100 * sum(correct_count) / sum(correct_count + incorrect_count) as total_accuracy',
+		])
+	return await fetchone(dbc, (f'select {calcs} from assessment where user = ? and category = ?', (uid, spec.arithmetic_op)))
 
 
-
-async def _fetch_new_fact(dbc, spec):
+async def _fetch_new_fact_DEPRECATED(dbc, spec):
 	joins = [f"{spec.assessment_join_table} on {spec.assessment_join_table}.fact = {spec.fact_table}.id",
 				f"assessment on {spec.assessment_join_table}.assessment = assessment.id", ]
 	order_by_desc = ', '.join([f'{field} desc' for field in spec.order_by_fields])
@@ -439,70 +452,6 @@ def _add_assessment(dbc, spec):
 	cursor.execute(f"insert into {spec.assessment_join_table} (fact, assessment) values (?, ?)", [spec.fact_id, cursor.lastrowid])
 	dbc.commit()
 	
-"""
-spec = util.Struct(
-  assessment_join_table = 'arithmetic_fact_assessments',
-  fact_table = 'arithmetic_fact',
-  wheres = [f"arithmetic_fact.operator = '+'", ],
-  order_by_fields = ['arithmetic_fact.operand1', 'arithmetic_fact.operand2']
-)
-spec.student_id = 2
-
-after sql._fetch_new_fact(dbc, spec) ...
->>> result['operand1']
-0
->>> result['operand2']
-1
->>> result['operator']
-'+'
->>> result['answer']
-1
-
-spec2 = util.Struct(
-	assessment_join_table = 'arithmetic_fact_assessments',
-	fact_id = 146, # = result['id'] from _fetch_new_fact() or like
-	speed_ms = 5,
-	correct = 1,
-	student = 2,
-)
-sql._add_assessment(dbc, spec2) # results in new records in assessment and arithmetic_fact_assessments
-
-
-async def _fetch_new(dbc, spec):
-	joins = [f"{spec.assessment_join_table} on {spec.assessment_join_table}.fact = {spec.fact_table}.id",
-				f"assessment on {spec.assessment_join_table}.assessment = assessment.id", ]
-	wheres = [f"student = {spec.student_id}", ]
-	
-	return await fetchone(dbc, (f"select {spec.fact_table}.* from {spec.fact_table} " + _join(joins) + _where(wheres) + f" order by {spec.order_by} ", args))
-
-
-spec.assessment_join_table = 'arithmetic_fact_assessments'
-spec.fact_table = 'arithmetic_fact'
-spec.wheres = ["arithmetic_fact.operator = '+'", ] # TODO: add random operator support
-# For progressive or 'new' - find the "highest" record attached to the student, so far:
-spec.order_by_fields = ['arithmetic_fact.operand1', 'arithmetic_fact.operand2']
-
-#_fetch_personal_challenger
-#_fetch_typical_challenger
-#_fetch_mastered
-
-
-async def get_arithmetic_facts(dbc, spec):
-	if spec.progressive:
-		
-	joins, wheres, args = [f"general_title on {resource_spec.table}.title = general_title.id", f"download on {resource_spec.table}.path = download.id"], [], []
-	_filter_cycle_week_range(spec, joins, wheres, args, False)
-	
-	return await fetchall(dbc, (f"select {resource_spec.table}.*, general_title.title as real_title, download.filename_suffix, download.path as download_path, cw.cycle as cycle, cw.week as week from {resource_spec.table} "
-											+ _join(joins) + _where(wheres) + f" order by cw.cycle, cw.week, general_title.seq, {resource_spec.table}.seq", args))
-
-	await fetchall(spec.db, 
-	return await sql.get_arithmetic_fact(dbc, spec)
-"""
-
-
-
-
 
 
 # ---------------------------------------------------

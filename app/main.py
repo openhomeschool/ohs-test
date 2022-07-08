@@ -301,11 +301,18 @@ async def practice(rq):
 		#(name/title, hint, content, is-url?)
 		('⌂', "Home (RETURN to this week's GRAMMAR)", _http_url(rq, '/resources', {}), True),
 		('4←', "PRACTICE last four weeks' grammar", _http_url(rq, '/practice', {'program': 1, 'first_week': max(0, k_temp_this_week - 4), 'last_week': k_temp_this_week}), True),
-		('∑←', "PRACTICE ALL grammar so far this year", _http_url(rq, '/practice', {'program': 1, 'first_week': 1, 'last_week': k_temp_this_week}), True),
+		('%s←' % k_temp_this_week, "PRACTICE ALL grammar so far this year", _http_url(rq, '/practice', {'program': 1, 'first_week': 1, 'last_week': k_temp_this_week}), True),
 	)
 	login, settings = await _login_button(session, dbc)
 
-	return hr(html.practice(_ws_url(rq, '/ws_messages'), links, login, settings))
+	filters = (
+		('subject', [(subject['name'], subject['id']) for subject in await db.get_subjects(dbc)], 'Subject'),
+		('arithmetic_op', [('+ (Addition)', '+'), ('- (Subtraction)', '-'), ('× (Multiplication)', '×'), ('÷ (Division)', '÷')], 'Operation: + - × ÷'),
+	)
+
+	fake_query = {'subject': 4, 'arithmetic_op': '×'} # TODO: this is temporary!!!
+	
+	return hr(html.practice(_ws_url(rq, '/ws_messages'), links, filters, fake_query, login, settings)) # TODO: return to rq.query!!
 
 
 @rt.view('/family_invitation/{code}', name = 'family_invitation')
@@ -583,10 +590,11 @@ k_temp_this_cycle = 2
 _links = lambda rq: (
 	#(name/title, hint, content, is-url?)
 	('⌂', "Home (THIS week's grammar)", _http_url(rq, '/resources', {}), True),
-	('¿', 'Practice/quiz grammar', _http_url(rq, '/practice', {}), True),
+	('?', 'Practice/quiz grammar', _http_url(rq, '/practice', {}), True),
+	# ¿ - ASSESS?!! (practice, but with teeth!?
 	('→', "NEXT week's grammar", _http_url(rq, '/resources', {'week': k_temp_this_week + 1}), True),
 	('4←', "REVIEW last four weeks' grammar", _http_url(rq, '/resources', {'program': 1, 'first_week': max(0, k_temp_this_week - 4), 'last_week': k_temp_this_week}), True),
-	('∑←', "REVIEW ALL grammar so far this year", _http_url(rq, '/resources', {'program': 1, 'first_week': 1, 'last_week': k_temp_this_week}), True),
+	('%s←' % k_temp_this_week, "REVIEW ALL grammar so far this year", _http_url(rq, '/resources', {'program': 1, 'first_week': 1, 'last_week': k_temp_this_week}), True),
 	('►♫', "PLAY random grammar showing below (filtered)", 'toggle_random_play(this)', False),
 	#('4-6 assignments': _http_url(rq, '/resources?program=2'),
 	#('7th-9th', _http_url(rq, '/resources', {'program': 3}), True),
@@ -648,6 +656,9 @@ async def ws_messages(rq):
 			'filter': _ws_filter,
 			'show_shopping': _ws_show_shopping,
 			'arithmetic': _ws_arithmetic,
+			'arithmetic_totals': _ws_arithmetic_totals,
+			'arithmetic_start': _ws_arithmetic_start,
+			'arithmetic_filter': _ws_arithmetic_filter,
 			'get_random_url_playlist': _get_random_url_playlist,
 		}
 	
@@ -824,8 +835,6 @@ async def _grades_filter(dbc, program_id):
 	return html.grades_filter_button('grade', grades, program['show_grammar_option'])
 
 
-
-
 async def _arithmetic_new_problems(dbc, uuid, spec, qargs = None):
 	if not spec:
 		assert(qargs != None) # should only be None if spec is provided; else, should at least be the {} that an empty request.query might be
@@ -850,10 +859,6 @@ async def _arithmetic_new_problems(dbc, uuid, spec, qargs = None):
 		index = 0, # `problems` is a list, so this index is used to track transaction-by-transaction use of the items until they're all used up and another call to _arithmetic_problems()
 	)
 	
-async def _arithmetic_answer(dbc, uuid, data):
-	await db.arithmetic_answer(dbc, uuid, data)
-
-
 
 async def _ws_check_username(rq, payload, ws, spec = None):
 	# Note: `spec` not used in this function, but required in function signature for generic calling
@@ -869,13 +874,11 @@ async def _ws_check_username(rq, payload, ws, spec = None):
 			l.warning('username fragment sent to ws_check_username was not a valid string') # but do nothing else; client code already checks for validity; this must/might be an attack attempt; no need to respond
 
 
-async def _ws_arithmetic(rq, payload, ws, spec): # we ignore this 'spec' unless there's no twixt; else we propagate the (possibly changing) spec in the twixt each iteration
-	session = await get_session(rq)
-	uuid = session.get('uuid')
-	dbc = rq.app['db']
-	
-	await _arithmetic_answer(dbc, uuid, payload)
+async def _ws_arithmetic_answer(uuid, dbc, payload):
+	await db.arithmetic_answer(dbc, uuid, payload)
 
+async def _ws_arithmetic_send_next(session, uuid, dbc, payload, ws, spec):
+	
 	twixt_id = session.get('twixt_id')
 	if not twixt_id:
 		# We'll have to fetch the _arithmetic_new_problems now, instead of relying on having been done in twixt, as it should've been...
@@ -886,10 +889,43 @@ async def _ws_arithmetic(rq, payload, ws, spec): # we ignore this 'spec' unless 
 	twixt = await g_twixt_work[twixt_id]
 	assert(twixt.task == 'arithmetic')
 
-	# send the 'next' problem to the client (only if payload['correct']; if not correct, user is re-presented with previous problem; not ready to be sent another new problem yet):
-	if payload['correct']:
-		await ws.send_json(_make_arithmetic_message(twixt_id, twixt, dbc, uuid))
+	# send the 'next' problem to the client 
+	await ws.send_json(_make_arithmetic_message(twixt_id, twixt, dbc, uuid))
 
+
+async def _ws_arithmetic(rq, payload, ws, spec): # we ignore this 'spec' unless there's no twixt; else we propagate the (possibly changing) spec in the twixt each iteration
+	session = await get_session(rq)
+	uuid = session.get('uuid')
+	dbc = rq.app['db']
+
+	await _ws_arithmetic_answer(uuid, dbc, payload)
+	if payload['correct']: # only send next if payload['correct']; if not correct, user is re-presented with previous problem; not ready to be sent another new problem yet):
+		await _ws_arithmetic_send_next(session, uuid, dbc, payload, ws, spec)
+
+
+async def _ws_arithmetic_totals(rq, payload, ws, spec): # we ignore this 'spec' unless there's no twixt; else we propagate the (possibly changing) spec in the twixt each iteration
+	session = await get_session(rq)
+	uuid = session.get('uuid')
+	dbc = rq.app['db']
+
+	result = dict(await db.arithmetic_totals(dbc, uuid, spec))
+	result['task'] = 'arithmetic_totals'
+	result['total_sizzle_score'] = result['total_correct_count'] * result['total_accuracy'] * 10 / result['total_time']
+
+	await ws.send_json(result)
+
+
+async def _ws_arithmetic_start(rq, payload, ws, spec): # we ignore this 'spec' unless there's no twixt; else we propagate the (possibly changing) spec in the twixt each iteration
+	session = await get_session(rq)
+	uuid = session.get('uuid')
+	db = rq.app['db']
+	# send TWO! - have to always be one ahead
+	await _ws_arithmetic_send_next(session, uuid, db, payload, ws, spec)
+	await _ws_arithmetic_send_next(session, uuid, db, payload, ws, spec)
+
+async def _ws_arithmetic_filter(rq, payload, ws, spec):
+	spec.arithmetic_op = payload.get('data') # operator ('+', '-', etc. sent as data: option_id)
+	await _ws_arithmetic_start(rq, payload, ws, spec)
 
 async def _ws_show_shopping(rq, payload, ws, spec = None):
 	# Note: `spec` not used in this function, but required in function signature for generic calling

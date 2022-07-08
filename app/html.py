@@ -483,7 +483,7 @@ def filter_user_list(results, url): # TODO: GENERALIZE for other lists!
 	return table.render()
 
 
-def practice(ws_url, links, login, user_settings):
+def practice(ws_url, links, filters, qargs, login, user_settings):
 	d = _doc(text.doc_prefix + 'Practice')
 	with d:
 		
@@ -510,11 +510,13 @@ def practice(ws_url, links, login, user_settings):
 		with t.div(cls = 'flex-wrap'): # TODO: make a 'header_block' or something; different border color, perhaps
 			t.div(t.b('Filter'), cls = 'title')
 			with t.div(cls = 'main'):
-				t.div("Subject, operator, etc. choosers... coming soon")
+				for key, options, hint in filters:
+					with t.div(id = '%s-container' % key):
+						_dropdown((key, options), qargs, 'ib-left', hint = hint, task = 'arithmetic_filter')
 
 		with t.div(cls = 'flex-wrap'): # TODO: make a 'header_block' or something; different border color, perhaps
 			t.div(t.b('Practice'), cls = 'title')
-			with t.div(cls = 'main'):
+			with t.div(cls = 'main', id = 'main_content'):
 				with t.table():
 					with t.tr():
 						t.td('Calculating...', id = 'problem', cls = 'problem')
@@ -528,8 +530,54 @@ def practice(ws_url, links, login, user_settings):
 							for col in (1, 2, 3):
 								_ninepin_button(row * 3 + col)
 					_ninepin_button(0)
-					t.button('Go!', id = 'go_button', type = 'button', title = 'Push this (or hit "Enter") to check your answer', disabled = 'true', onclick = 'go()')
+					t.button('Go!', id = 'go_button', type = 'button', title = 'Push this (or hit "Enter") to check your answer', disabled = 'true', onclick = 'go();')
+					t.hr()
+					t.div(t.button('Done! (for now)', onclick = 'done();'))
 
+			with t.div(cls = 'main', id = 'all_stats_content', style = 'display:none;'): # shown later...
+				with t.table():
+					with t.tr():
+						t.th('All Time', colspan = 2)
+					with t.tr():
+						t.td('Elapsed Time:')
+						t.td(id = 'stat_all_time')
+					with t.tr():
+						t.td('Count:')
+						t.td(id = 'stat_all_count')
+					with t.tr():
+						t.td('Accuracy:')
+						t.td(id = 'stat_all_accuracy')
+					with t.tr():
+						t.td('Sizzle Score:')
+						t.td(id = 'stat_all_sizzle_score')
+				t.div(t.button('Restart', onclick = 'reset();'))
+
+
+		with t.div(cls = 'flex-wrap'): # TODO: make a 'header_block' or something; different border color, perhaps
+			t.div(t.b('Stats'), cls = 'title')
+			with t.div(cls = 'main'):
+				t.button("Hide ▲", id = 'show_hide_stats_button', type = 'button', title = 'Show / Hide this "Stats" panel', onclick = 'show_hide_stats()') # show: "Show ▼"
+				with t.div(id = 'stats_content'):
+					t.hr()
+					with t.table():
+						with t.tr():
+							t.th('This Session', colspan = 2)
+						with t.tr():
+							t.td('Elapsed Time:')
+							t.td(id = 'stat_session_time')
+						with t.tr():
+							t.td('Count:')
+							t.td(id = 'stat_session_count')
+						with t.tr():
+							t.td('Accuracy:')
+							t.td(id = 'stat_session_accuracy')
+						with t.tr():
+							t.td('Sizzle Score:')
+							t.td(id = 'stat_session_sizzle_score')
+						with t.tr():
+							t.td('"Sizzle Score" is a combo', colspan = 2)
+						with t.tr():
+							t.td('of speed and accuracy', colspan = 2)
 
 		t.script(_js_basic())
 		t.script(_js_ws(ws_url))
@@ -1316,7 +1364,6 @@ def _text_input(name, value, bool_attrs = None, attrs = None, label = None, inva
 def _url_dropdown(container, id, options, title = None, hint = ''):
 	# TODO: new style has options[0] IS id! (i.e., we can get rid of the extra "id" arg, above
 	if not title:
-		l.debug(f'!!! options: {options}')
 		title = options[0][1]
 	title += ' ▾'
 	with container:
@@ -1332,7 +1379,7 @@ def _login_dropdown(username, switch_users, hint = ''):
 	#TODO: add "logout", etc.(?)
 	_url_dropdown(t.div(cls = 'dropdown'), 'login_dropdown', options, username, hint = hint)
 
-def _dropdown(filt, qargs, cls, urls = False, title = None, button_class = None, hint = ''):
+def _dropdown(filt, qargs, cls, urls = False, title = None, button_class = None, hint = '', task = 'filter'):
 	key, options = filt
 	if not options:
 		return t.div() # empty div means there's nothing there - no options from which user might choose
@@ -1344,8 +1391,8 @@ def _dropdown(filt, qargs, cls, urls = False, title = None, button_class = None,
 	drop_content = t.div(id = content_id, cls = 'dropdown-content')
 	with drop_content:
 		for option_title, option_id in options:
-			t.div(option_title, onclick = 'choose_dropdown_option("%s", "%s", "%s", "%s")' % (key, option_id, option_title, button_id))
-			if start_option_id and int(start_option_id) == int(option_id):
+			t.div(option_title, onclick = 'choose_dropdown_option("%s", "%s", "%s", "%s", "%s")' % (key, option_id, option_title, button_id, task))
+			if start_option_id and str(start_option_id) == str(option_id):
 				title = option_title # override title with selected option
 	if not title:
 		title = options[0][0]
@@ -1512,6 +1559,9 @@ def _js_ws(url):
 				break;
 			case "arithmetic":
 				update_arithmetic(payload);
+				break;
+			case "arithmetic_totals":
+				arithmetic_totals(payload);
 				break;
 			case "pong":
 				// good! TODO: do something about this(?), even though there's nothing more to do to complete the loop (we'll send the next ping according to a timer (below); no need to "send" anything now, in reply)
@@ -1738,9 +1788,9 @@ def _js_dropdown():
 		window.location.href = url;
 	};
 
-	function choose_dropdown_option(key, option_id, option_title, button_id) {
+	function choose_dropdown_option(key, option_id, option_title, button_id, task) {
 		stop_random_play();
-		ws_send({task: "filter", filter: key, data: option_id});
+		ws_send({task: task, filter: key, data: option_id});
 		$(button_id).innerHTML = option_title;
 	};
 
@@ -1855,7 +1905,13 @@ def _js_arithmetic():
 		var next_answer = 0;
 		var next_ready = true; // prime this, artificially, for first time through
 		var initialized = false;
-		//var timer_counter = document.getElementById("timer_counter");
+		var session_count = 0;
+		var session_correct = 0;
+		var running_sizzle = 0;
+		var start_time;
+		var timer_paused = false;
+		var problem_start_time;
+		var interval;
 
 		function update_arithmetic(payload) {
 			next_id = payload['assessment_id'];
@@ -1864,10 +1920,54 @@ def _js_arithmetic():
 			if (initialized) {
 				next_ready = true;
 			} else {
-				advance1(); // next_ready already primed to 'true' for first time through
-				advance2();
-				initialized = true; // only do once
+				advance(); // next_ready already primed to 'true' for first time through
+				clear();
+				$('problem').innerHTML = problem;
+				initialized = true;
 				next_ready = false;
+				interval = setInterval(update_timer, 500);
+				start_time = Date.now();
+			}
+		};
+
+		function arithmetic_totals(payload) {
+			$('stat_all_time').innerHTML = ms_to_time(payload['total_time']);
+			$('stat_all_count').innerHTML = payload['total_count'];
+			$('stat_all_accuracy').innerHTML = payload['total_accuracy'] + '%';
+			$('stat_all_sizzle_score').innerHTML = Math.floor(payload['total_sizzle_score']);
+			// the following should already be done, but just in case....
+			$('all_stats_content').style.display = 'block';
+			$('main_content').style.display = 'none';
+		};
+		
+		function show_hide_stats() {
+			if ($('show_hide_stats_button').innerHTML == "Show ▼") {
+				$('show_hide_stats_button').innerHTML = "Hide ▲";
+				$('stats_content').style.display = 'block';
+			} else {
+				$('show_hide_stats_button').innerHTML = "Show ▼";
+				$('stats_content').style.display = 'none';
+			}
+		};
+
+		function ms_to_time(milliseconds) {
+			var ms = milliseconds % 1000;
+			var s = (milliseconds - ms) / 1000;
+			var secs = s % 60;
+			s = (s - secs) / 60;
+			var mins = s % 60;
+			var hrs = (s - mins) / 60;
+
+			function pad(n) {
+				return ('00' + n).slice(-2);
+			};
+			return hrs + ':' + pad(mins) + ':' + pad(secs);
+		}
+
+		function update_timer() {
+			if (!timer_paused) {
+				var now = Date.now();
+				$('stat_session_time').innerHTML = ms_to_time(now - start_time);
 			}
 		};
 
@@ -1882,11 +1982,11 @@ def _js_arithmetic():
 		};
 
 
-		function advance1() {
-			// must wait for next_ready to be true; async/await and js callbacks do not see well suited to do this conveniently on an ongoing basis,
-			// and 99% of the time, by the time advance1() gets called, next_ready will, indeed, be true already, so... just going for the poor ole' timeout-check method
+		function advance() {
+			// must wait for next_ready to be true; async/await and js callbacks do not seem well suited to do this conveniently on an ongoing basis,
+			// and 99% of the time, by the time advance() gets called, next_ready will, indeed, be true already, so... just going for the poor ole' timeout-check method
 			if (next_ready == false) {
-				window.setTimeout(advance1(), 200); // check again in 200ms
+				window.setTimeout(advance, 200); // check again in 200ms
 			} else {
 				id = next_id;
 				problem = next_problem;
@@ -1895,13 +1995,14 @@ def _js_arithmetic():
 			}
 		};
 		
-		function advance2() {
-			$('problem').innerHTML = problem;
+		function clear() {
+			$('problem').innerHTML = "";
 			$('answer').disabled = false;
 			$('answer').focus();
 			$('answer').value = "";
 			$('correct_answer').innerHTML = "";
 			$('go_button').disabled = false;
+			problem_start_time = Date.now();
 		};
 		
 		function go() {
@@ -1910,22 +2011,70 @@ def _js_arithmetic():
 			$('answer').disabled = true;
 			$('go_button').disabled = true;
 			
-			var speed_ms = 5;
+			// update counts and times:
+			session_count += 1;
+			$('stat_session_count').innerHTML = session_count;
+			problem_end_time = Date.now();
+			const max_time_ms = 7000; // consider 7-second delays "outliers" - student walked away or something; top its speed_ms at max_time_ms in this case
+			var speed_ms = problem_end_time - problem_start_time;
+			if (speed_ms > max_time_ms) {
+				speed_ms = max_time_ms;
+			}
 			var correct = (answer == parseInt($('answer').value, 10))
-			var message = {task: "arithmetic", assessment_id: id, speed_ms: speed_ms, correct: correct}
 			if (correct) {
+				session_correct += 1;
+			}
+			var accuracy = Math.floor(100 * session_correct / session_count);
+			$('stat_session_accuracy').innerHTML = accuracy.toString() + "%";
+			if (correct) {
+				running_sizzle += (accuracy * 10 / speed_ms);
+				$('stat_session_sizzle_score').innerHTML = Math.floor(running_sizzle);
 				// start the advance; load new problem:
-				advance1();
-			} // if !correct, we never call advance1(), so never advance to 'next' problem; so, user is re-presented with current problem, to try again
-			// now it's safe to send the message (which might very shortly result in an update_arithmetic which will overwrite next_problem, next_answer, and next_id
+				advance(); // Note: this should be done BEFORE the ws_send(), below, to make it impossible for a subsequent update_arithmetic() to preceed this call to advance()
+			} // if !correct, we never call advance(), so never advance to 'next' problem; so, user is re-presented with current problem, to try again
+			
+			// now send the message (which might very shortly result in an update_arithmetic which will overwrite next_problem, next_answer, and next_id
+			var message = {task: "arithmetic", assessment_id: id, speed_ms: speed_ms, correct: correct}
 			ws_send(message);
 
 			// pause, longer or shorter depending on whether 'correct':
 			var pause = correct ? 200 : 1500;
 			setTimeout(() => {
-					advance2(); // finally, advance the visual
+					clear(); // finally, clear the space and paint the next problem:
+					$('problem').innerHTML = problem;
 				}, pause);
 		};
+
+		function done() {
+			// the following should already be done, but just in case....
+			$('main_content').style.display = 'none';
+			$('all_stats_content').style.display = 'block';
+
+			$('stat_all_time').innerHTML = "Calculating...";
+			$('stat_all_count').innerHTML = "Calculating...";
+			$('stat_all_accuracy').innerHTML = "Calculating...";
+			$('stat_all_sizzle_score').innerHTML = "Calculating...";
+
+			timer_paused = true;
+			ws_send({task: "arithmetic_totals"});
+		};
+
+		function reset() {
+			$('all_stats_content').style.display = 'none';
+			$('main_content').style.display = 'block';
+			session_count = 0;
+			session_correct = 0;
+			running_sizzle = 0;
+			initialized = false;
+			clear();
+			timer_paused = false;
+			ws_send({task: "arithmetic_start"});
+		};
+
+		function stop_random_play() {
+			// bogus - just a filler b/c choose_dropdown_option calls this (we hijacked it from resources()
+		};
+				
 		function rest_of_go_MOVING() {
 			which = Math.floor(Math.random() * audio_count);
 			if (data.answer == answer.value) {

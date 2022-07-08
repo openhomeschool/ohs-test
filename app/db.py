@@ -259,6 +259,9 @@ async def arithmetic_new_problems(dbc, uuid, spec):
 async def arithmetic_answer(dbc, uuid, data):
 	return await sql.arithmetic_answer(dbc, uuid, data)
 
+async def arithmetic_totals(dbc, uuid, spec):
+	return await sql.arithmetic_totals(dbc, uuid, spec)
+
 
 # -----------------------------------------------------------------------------
 # Resource handlers
