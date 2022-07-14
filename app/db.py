@@ -277,11 +277,14 @@ async def get_high1_resources(dbc, spec):
 
 
 
-async def get_external_resource_detail(id):
-	return await sql.get_external_resource_detail(id)
+async def get_external_resource_detail_DEPRECATE(id):
+	return await sql.get_external_resource_detail_DEPRECATE(id)
 
 async def get_shopping_links(dbc, resource_id):
 	return await sql.get_shopping_links(dbc, resource_id)
+
+async def get_shopping(dbc, spec):
+	return await sql.get_shopping(dbc, spec)
 
 	
 #DEPRECATE: async def get_external_resources(spec):

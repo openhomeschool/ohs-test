@@ -530,13 +530,21 @@ async def default(rq):
 async def resources(rq):
 	return await _resources(rq, rq.query)
 
+@rt.get('/shop1')
+async def shop_year_program1(rq):
+	return await _resources(rq, {'shop': 1, 'cycle': 3, 'program': 1, 'first_week': 0, 'last_week': 0, 'grammar_supplement': 0})
+
+@rt.get('/shop2')
+async def shop_year_program2(rq):
+	return await _resources(rq, {'shop': 1, 'cycle': 3, 'program': 2, 'first_week': 0, 'last_week': 0, 'grammar_supplement': 0})
+
 @rt.get('/shop3')
 async def shop_year_program3(rq):
-	return await _resources(rq, {'shop': 1, 'cycle': 2, 'program': 3, 'first_week': 0, 'last_week': 28, 'grammar_supplement': 0})
+	return await _resources(rq, {'shop': 1, 'cycle': 3, 'program': 3, 'first_week': 0, 'last_week': 0, 'grammar_supplement': 0})
 
 @rt.get('/shop4')
 async def shop_year_program4(rq):
-	return await _resources(rq, {'shop': 1, 'cycle': 2, 'program': 4, 'first_week': 0, 'last_week': 28, 'grammar_supplement': 0})
+	return await _resources(rq, {'shop': 1, 'cycle': 3, 'program': 4, 'first_week': 0, 'last_week': 0, 'grammar_supplement': 0})
 
 
 
@@ -592,7 +600,7 @@ _links = lambda rq: (
 	('⌂', "Home (THIS week's grammar)", _http_url(rq, '/resources', {}), True),
 	('?', 'Practice/quiz grammar', _http_url(rq, '/practice', {}), True),
 	# ¿ - ASSESS?!! (practice, but with teeth!?
-	('→', "NEXT week's grammar", _http_url(rq, '/resources', {'week': k_temp_this_week + 1}), True),
+	('→1', "NEXT week's grammar", _http_url(rq, '/resources', {'week': k_temp_this_week + 1}), True),
 	('4←', "REVIEW last four weeks' grammar", _http_url(rq, '/resources', {'program': 1, 'first_week': max(0, k_temp_this_week - 4), 'last_week': k_temp_this_week}), True),
 	('%s←' % k_temp_this_week, "REVIEW ALL grammar so far this year", _http_url(rq, '/resources', {'program': 1, 'first_week': 1, 'last_week': k_temp_this_week}), True),
 	('►♫', "PLAY random grammar showing below (filtered)", 'toggle_random_play(this)', False),
@@ -633,7 +641,7 @@ async def ws_messages(rq):
 		ws = web.WebSocketResponse()
 		await ws.prepare(rq)
 		
-		# Send first data if packaged in the initial-data-package called 'twixed', which was fetched from the database between the GET reply and this call to set up the web socket in the page (thus the name "twixt")
+		# Send first data if packaged in the initial-data-package called 'twixt', which was fetched from the database between the GET reply and this call to set up the web socket in the page (thus the name "twixt")
 		session = await get_session(rq)
 		uuid = session.get('uuid')
 		twixt_id = session.get('twixt_id')
@@ -767,7 +775,7 @@ async def _first_resources(dbc, qargs):
 		program = int(qargs.get('program', 1)), # hardcode default to "grammar school" program if program choice not made (TODO: set this, instead, to logged-in-user's attached program
 		grade = int(qargs.get('grade', 0)), # 0 = "unspecified" or "all"; common, when a program is treated all the same, and there's no need to differentiate grade
 		solo = int(qargs.get('solo', 0)), # 0 = show the designed content for the program; 1 = show *only* the content unique to the program -- TODO: DEPRECATED? I think 'grammar_supplement' now takes care of this, and can't find references to solo elsewhere.....
-		shop = int(qargs.get('shop', 0)), # 1 = show shopping links
+		shop = int(qargs.get('shop', 0)), # 1 = show shopping links (all opened up); only pertains to "resources" views, not "grammar" views, which don't show any purchasable resources
 		subject = qargs.get('subject', 0), # 0 = "all" indicator
 		cycles = (4, int(qargs.get('cycle', k_temp_this_cycle))), # default: k_temp_this_cycle ("4" refers to grammar that belongs to "all cycles" (like timeline grammar) - this is hardcode! TODO:FIX!)
 		first_week = int(qargs.get('first_week', k_temp_this_week)), # TODO: hardcode default to week 0! replace with lookup for user's "current week"
@@ -910,7 +918,7 @@ async def _ws_arithmetic_totals(rq, payload, ws, spec): # we ignore this 'spec' 
 
 	result = dict(await db.arithmetic_totals(dbc, uuid, spec))
 	result['task'] = 'arithmetic_totals'
-	result['total_sizzle_score'] = result['total_correct_count'] * result['total_accuracy'] * 10 / result['total_time']
+	result['total_sizzle_score'] = result['total_correct_count'] * result['total_accuracy'] / (100 * result['total_time'] ** 0.04) # TODO: somewhat arbitrary, and doesn't work especially well!
 
 	await ws.send_json(result)
 

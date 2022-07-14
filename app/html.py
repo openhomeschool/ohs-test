@@ -548,8 +548,12 @@ def practice(ws_url, links, filters, qargs, login, user_settings):
 						t.td('Accuracy:')
 						t.td(id = 'stat_all_accuracy')
 					with t.tr():
-						t.td('Sizzle Score:')
+						t.td('Sazzle Score:')
 						t.td(id = 'stat_all_sizzle_score')
+					with t.tr():
+						t.td('"Sazzle Score" is a cumulative', colspan = 2)
+					with t.tr():
+						t.td('combo of speed and accuracy', colspan = 2)
 				t.div(t.button('Restart', onclick = 'reset();'))
 
 
@@ -765,7 +769,8 @@ def _grammar_resources(container, spec, records, show_cw, subject_directory, ren
 
 
 # TODO: DEPRECATE - we no longer use this... only _assignments is used now, even for shopping
-def _external_resources(container, spec, records, show_cw):
+def _external_resources_DEPRECATED(container, spec, records, show_cw):
+	raise Exception('DEPRECATED')
 	first = True
 	week = None
 	for record in records:
@@ -806,7 +811,7 @@ def _external_resources(container, spec, records, show_cw):
 		#TODO: ADD "more..." button/link to unfold drop-content loaded via ws  (no, just make the main text itself clickable to drop down more!)
 
 
-def show_shopping(records):
+def _show_shopping(records):
 	result = t.div()
 	if not records:
 		result += 'Sorry, there are no shopping links for this resource at present... try back again soon?'
@@ -814,15 +819,19 @@ def show_shopping(records):
 		with result:
 			resource_note = records[0]['resource_note'] # records[0] because they're all the same; all shopping link records provided reference this same resource
 			if resource_note:
-				t.div('Note: %s' % resource_note)
+				t.div('Note: %s' % resource_note, cls = 'shopping_note')
 			t.div('Click to shop...')
 			for record in records:
 				title = '%s (%s)' % (record['source_name'], record['type_name'])
-				if record['note']:
+				if record['note']: # resource_acquisition.note (in addition to the resource.note, already gleaned, above
 					title += ' -- ' + record['note']
 				t.div(t.a(t.img(src = _lurl(record['source_logo'])), title, href = record['url'], target = '_blank'), cls = 'shopping_link')
 
-	return result.render()
+	return result
+
+def show_shopping(records):
+	return _show_shopping(records).render()
+
 
 @subject_resources('general')
 def general(container, spec, records, show_cw):
@@ -1030,6 +1039,10 @@ def timeline(container, spec, records, show_cw):
 def history_assignments(container, spec, records, show_cw):
 	_assignments(container, spec, records, show_cw)
 
+@subject_resources('geography_assignments')
+def geography_assignments(container, spec, records, show_cw):
+	_assignments(container, spec, records, show_cw)
+
 @subject_resources('computer_assignments')
 def computer_assignments(container, spec, records, show_cw):
 	_assignments(container, spec, records, show_cw)
@@ -1092,13 +1105,17 @@ def _assignments(container, spec, records, show_cw):
 				title += t.input_(type = 'checkbox')
 				if not record['required'] > 0:
 					title += '[optional] '
+					
 			title += resource_name
 			if not spec.for_print:
 				#TODO: hook up the "details" to work! --  title += t.button('...', onclick = 'show_hide_details("%s");' % div_id, cls = 'chaser'),
 				title += t.button('$', onclick = 'show_hide_shopping("%s");' % div_id, cls = 'chaser'),
 			container += title
-			if not spec.for_print:
-				container += t.div(cls = 'shopping_links', id = div_id) # contents filled in via websocket upon '$' click to show_hide_shopping()
+			shopping = ''
+			if spec.shop:
+				shopping = _show_shopping(record['shop'])
+			container += t.div(shopping, cls = 'shopping_links', style = 'display:block;' if shopping else 'display:none;', id = div_id) # if no 'shopping', then contents will be filled in, as needed, via websocket upon '$' click to (any given) show_hide_shopping()
+
 			new_list = True
 
 		if new_list and not spec.shop:
@@ -1151,7 +1168,9 @@ def resource_list(spec, results, show_cw = True):
 					subject_container += t.hr(cls = 'bighr')
 				else:
 					first = False
-				g_subject_resource_handlers[subresult.handler](subject_container, spec, subresult.records, show_cw)
+				handler = g_subject_resource_handlers.get(subresult.handler)
+				if handler:
+					handler(subject_container, spec, subresult.records, show_cw)
 	return container.render()
 
 
@@ -1823,7 +1842,7 @@ def _js_show_hide_shopping():
 			} else {
 				div.style.display = "block";
 				if (div.innerHTML == "") {
-					ws_send({call: "show_shopping", resource_id: div_id});
+					ws_send({task: "show_shopping", resource_id: div_id});
 				}
 			}
 		};

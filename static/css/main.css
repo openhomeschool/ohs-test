@@ -302,27 +302,6 @@ label.answer_option_label {
 	width: 90%;
 }
 
-.subject_content .resource_name { /* TODO: DEPRECATE? now use .flex-wrap .main .resource_name (in /resources) - check 'shopping', but perhaps this .subject_content .resource_name is unused, or should be */
-	margin: 5px;
-}
-
-.subject_content .resource_details {
-	margin: 5px;
-	margin-left: 20px;
-	vertical-align: middle;
-}
-
-.subject_content .shopping_links {
-	display: inline-block;
-	height: 16px;
-	line-height: 16px;
-	text-align: center;
-}
-
-.subject_content .shopping_links  img {
-	max-height: 100%;
-}
-
 .celled {
 	border-collapse: collapse;
 	border-spacing: 0px;
@@ -334,57 +313,6 @@ label.answer_option_label {
 	width: 1.4em;
 }
 
-/*
-.resource_block table {
-	width: 90%;
-	border-left: 2px solid blue;
-}
-
-.resource_block table td.resource_namee {
-	font-weight: bold;
-	text-align: right;
-	width: 30%;
-	vertical-align: bottom;
-}
-
-.resource_block table td.resource_detaile {
-	text-align: left;
-	vertical-align: bottom;
-}
-
-
-.resource_block .subject_title {
-	margin: 5px;
-	float: left;
-	clear: left;
-	display: inline-block;
-	-webkit-writing-mode: vertical-lr;
-	-ms-writing-mode: tb-lr;
-	writing-mode: vertical-lr;
-}
-
-.resource_block .subject_content {
-  float: right;
-  display: inline-block;
-  border-left: 2px solid blue;
-  width: 95%;
-}
-
-.subject_content .resource_name {
-	margin: 5px;
-	float: left;
-	text-align: right;
-	font-weight: bold;
-	display: inline-block;
-}
-
-.subject_content .resource_detail {
-  float: right;
-  width: 60%;
-  display: inline-block;
-}
-
-*/
 
 .clear {
 	clear: both;
@@ -418,20 +346,6 @@ label.answer_option_label {
 .resource_list {
 }
 
-/*
-.resource_main_cell {
-	width: 75%;
-}
-
-.resource_cycle_week_cell {
-	width: 10%;
-}
-*/
-/*
-.resource_block table {
-	table-layout: fixed;
-	width: 100%;
-}*/
 
 .clear_right {
 	clear: right;
@@ -635,10 +549,13 @@ label.answer_option_label {
 }
 
 .flex-wrap .main .shopping_links {
-	display: none;
 	margin: 5px;
 	margin-left: 40px;
 	vertical-align: middle;
+}
+
+.shopping_links img {
+	max-height: 100%;
 }
 
 .flex-wrap .main .resource_details {
@@ -651,6 +568,7 @@ label.answer_option_label {
 	height: 16px;
 	line-height: 16px;
 	vertical-align: bottom;
+	padding: 2px;
 }
 /* DEPRECATE - now we're always inline, with details in hover-hint only (we used to show an annotated link on a line of its own, with the note, and all others in sequential (inline) spans
 .shopping_link_block {
@@ -665,10 +583,11 @@ label.answer_option_label {
   text-decoration: none;
 }
 
-
-.shopping_links img {
-	max-height: 100%;
+.shopping_note {
+	font-weight: bold;
+	color: red;
 }
+
 
 td.left-equality-cell {
 	text-align: right;

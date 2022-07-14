@@ -399,13 +399,12 @@ async def arithmetic_new_problems(dbc, uuid, spec):
 	# Combine all, shuffle, and return:
 	if new_a:
 		result.append(new_a)
-	l.debug('new arithmetic problems: \n' + '\n'.join([f'{row["operand1"]} {row["operator"]} {row["operand2"]} = {row["answer"]}' for row in result]))
+	#l.debug('new arithmetic problems: \n' + '\n'.join([f'{row["operand1"]} {row["operator"]} {row["operand2"]} = {row["answer"]}' for row in result]))
 	shuffle(result)
 	return result
 
 
 async def arithmetic_answer(dbc, uuid, data):
-	l.debug(f'ANSWER: {data}')
 	user = await fetchone(dbc, ('select user from user_login where uuid = ?', (uuid,)))
 	if not user:
 		raise Exception('No such login currently exists!') # TODO: change this to an exception that incurs a login-redirect!
@@ -547,7 +546,9 @@ async def _get_grammar_resources(dbc, spec, resource_spec):
 
 	return await fetchall(dbc, (f"select * from {resource_spec.table} " + _join(joins) + _where(wheres) + f" order by {resource_spec.order_by}", args))
 
+
 async def _get_exre_resources(dbc, spec, resource_spec):
+	raise Exception() # TODO: deprecate this function?!!!
 	spec.table = resource_spec.table # i.e., resource_use... not really a "subject"-specific table like in grammar, but, none-the-less, serves as the defined pivot table for the likes of _filter_cycle_week
 	joins = [
 		f'resource on {spec.table}.resource = resource.id',
@@ -593,9 +594,19 @@ async def _get_assignments(dbc, spec, resource_spec):
 		joins.append(f'instructions on {spec.table}.instruction = instructions.id')
 		detail_fields = 'instructions.text as instruction, program.grade_first as program_grade_first, program.grade_last as program_grade_last, assignment.grade_first, assignment.grade_last, pages, chapters, items, skips, optional, "order"'
 
-	return await fetchall(dbc, (f'select resource.id as resource_id, resource.name as resource_name, cw.cycle as cycle, cw.week as week, {detail_fields} from {spec.table}' \
-		+ _join(joins) + _where(wheres) + group_by + f' order by {resource_spec.order_by}', args))
-	
+	result = await fetchall(dbc, (f'select resource.id as resource_id, resource.name as resource_name, cw.cycle as cycle, cw.week as week, {detail_fields} from {spec.table}' + _join(joins) + _where(wheres) + group_by + f' order by {resource_spec.order_by}', args))
+
+	if spec.shop:
+		augmented_result = []
+		for row in result:
+			d = dict(row)
+			d['shop'] = await get_shopping_links(dbc, row['resource_id'])
+			augmented_result.append(d)
+		result = augmented_result # re-identify
+
+	return result
+
+
 async def _get_assignments_DEPRECATE(dbc, spec, resource_spec):
 	if spec.shop:
 		return [] # We don't want assignments while shopping
@@ -638,16 +649,6 @@ k_latin_vocabulary_rs = RS(_get_grammar_resources, 'Latin', 'latin_vocabulary', 
 #k_latin_grammar_rs = RS(_get_grammar_resources, 'Latin', 'latin_grammar', 'latin', ('name', 'pattern'), ('example',))
 k_latin_grammar_rs = RS(_get_grammar_resources, 'Latin', 'latin_grammar', 'latin_grammar_example', ('name', 'pattern'), ('worked', 'translated'), ('latin_grammar_reference on latin_grammar_example.latin_grammar_reference = latin_grammar_reference.id',))
 
-k_grammar_resources = [
-	SS('Timeline', (k_timeline_grammar_rs, )),
-	SS('History', (k_history_grammar_rs, )),
-	SS('Geography', (k_geography_grammar_rs, )),
-	SS('Math', (k_multiplication_fact_grammar_rs, k_math_vocabulary_rs )),
-	SS('Science', (k_science_grammar_rs, )),
-	SS('English', (k_english_grammar_rs, k_english_vocabulary_rs, )),
-	SS('Latin', (k_latin_grammar_rs, k_latin_vocabulary_rs, )),
-	SS('Extra', (k_general_grammar_rs, )),
-]
 
 
 _make_exre_resource_spec = lambda subject_title, handler: RS(_get_exre_resources, subject_title, handler, 'resource_use', ('resource.name',), ('resource.note',), order_by = 'cw.cycle, cw.week, resource_use.optional, resource_name')
@@ -669,6 +670,7 @@ k_latin_exre_rs = _make_exre_resource_spec('Latin', 'latin_resources')
 _make_assignment_spec = lambda subject_title, handler: RS(_get_assignments, subject_title, handler, 'assignment', ('instruction', ), order_by = 'cw.cycle, cw.week, "order", resource, assignment.grade_first')
 
 k_history_assignment_rs = _make_assignment_spec('History', 'history_assignments')
+k_geography_assignment_rs = _make_assignment_spec('Geography', 'geography_assignments')
 k_literature_assignment_rs = _make_assignment_spec('Literature', 'literature_assignments')
 k_english_assignment_rs = _make_assignment_spec('English', 'english_assignments')
 k_science_assignment_rs = _make_assignment_spec('Science', 'science_assignments')
@@ -680,19 +682,33 @@ k_shakespeare_assignment_rs = _make_assignment_spec('Shakespeare', 'shakespeare_
 k_math_assignment_rs = _make_assignment_spec('Math', 'math_assignments')
 k_latin_assignment_rs = _make_assignment_spec('Latin', 'latin_assignments')
 
+k_grammar_resources = [
+	SS('Timeline', (k_timeline_grammar_rs, )),
+	SS('History', (k_history_assignment_rs, k_history_grammar_rs, )),
+	SS('Geography', (k_geography_assignment_rs, k_geography_grammar_rs, )),
+	SS('Math', (k_multiplication_fact_grammar_rs, k_math_vocabulary_rs )),
+	SS('Science', (k_science_assignment_rs, k_science_grammar_rs, )),
+	SS('English', (k_english_grammar_rs, k_english_vocabulary_rs, )),
+	SS('Latin', (k_latin_grammar_rs, k_latin_vocabulary_rs, )),
+	SS('Extra', (k_general_grammar_rs, )),
+]
+
 k_middle_resources = [
 	SS('Timeline', (k_timeline_grammar_rs, )),
 	SS('History', (k_history_assignment_rs, k_history_grammar_rs, )),
-	SS('Geography', (k_geography_grammar_rs, )),
+	SS('Geography', (k_geography_assignment_rs, k_geography_grammar_rs, )),
 	SS('Math', (k_multiplication_fact_grammar_rs, k_math_vocabulary_rs )),
-	SS('Science', (k_science_grammar_rs, )),
+	SS('Science', (k_science_assignment_rs, k_science_grammar_rs, )),
 	SS('English', (k_english_vocabulary_rs, k_english_grammar_rs, )),
 	SS('Latin', (k_latin_vocabulary_rs, k_latin_grammar_rs, )),
+	SS('Logic', (k_logic_assignment_rs, )),
 	SS('Extra', (k_general_grammar_rs, )),
 ]
 
 k_middle_assignments = [
 	SS('History', (k_history_assignment_rs, )),
+	SS('Geography', (k_geography_assignment_rs, )),
+	SS('Science', (k_science_assignment_rs, )),
 	SS('Logic', (k_logic_assignment_rs, )),
 	SS('Literature', (k_literature_assignment_rs, )),
 	SS('English', (k_english_assignment_rs, )),
@@ -736,7 +752,8 @@ async def get_high1_resources(dbc, spec):
 	resources = k_high1_resources if spec.grammar_supplement else k_high1_assignments
 	return await _get_resources(dbc, spec, resources)
 
-async def get_external_resource_detail(id):
+async def get_external_resource_detail_DEPRECATE(id):
+	raise Exception("DEPRECATE?!!!")
 	joins = _external_resource_joins + [
 		'resource_acquisition on resource_acquisition.resource = resource.id',
 		'resource_type on resource_acquisition.type = resource_type.id',
@@ -745,8 +762,16 @@ async def get_external_resource_detail(id):
 	return await fetchone(spec.db, ('select resource.note, resource_acquisition.note as acquisition_note, resource_type.name as resource_type_name, resource_source.name as resource_source_name, resource_source.logo as resource_source_logo, resource_acquisition.url, from resource_use' \
 		+ _join(joins) + ' where resource_use.id = ? order by subject_name, optional, resource_name, acquisition_note, resource.note', (id,)))
 
+
 async def get_shopping_links(dbc, resource_id):
-	return await fetchall(dbc, ('select *, resource_type.name as type_name, resource_source.name as source_name, resource_source.logo as source_logo, resource.note as resource_note from resource_acquisition join resource_type on resource_acquisition.type = resource_type.id join resource_source on resource_acquisition.source = resource_source.id join resource on resource_acquisition.resource = resource.id where resource.id = ? order by resource_acquisition.source', (resource_id, )))
+	fields = 'resource_acquisition.*, resource_type.name as type_name, resource_source.name as source_name, resource_source.logo as source_logo, resource.note as resource_note '
+	joins = (
+		'resource on resource_acquisition.resource = resource.id',
+		'resource_type on resource_acquisition.type = resource_type.id',
+		'resource_source on resource_acquisition.source = resource_source.id',
+	)
+	return await fetchall(dbc, (f'select {fields} from resource_acquisition {_join(joins)} where resource.id = ? order by resource_acquisition.source', (resource_id,)))
+
 
 async def get_detail(dbc, key):
 	for table in ('event', 'science', ): # TODO: the rest of the tables with a qr_code field...
