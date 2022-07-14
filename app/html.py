@@ -19,7 +19,7 @@ from . import settings
 from . import text
 from . import util as U
 
-k_cache_version = '?v=f1'
+k_cache_version = '?v=g1'
 
 # Classes ---------------------------------------------------------------------
 
@@ -1312,7 +1312,7 @@ def _doc(title, css = None, scripts = None):
 	d = document(title = title)
 	with d.head:
 		t.meta(name = 'viewport', content = 'width=device-width, initial-scale=1')
-		t.link(href = settings.k_static_url + 'css/main.css', rel = 'stylesheet')
+		t.link(href = settings.k_static_url + 'css/main.css' + k_cache_version, rel = 'stylesheet')
 	return d
 
 def _flash(flash):
