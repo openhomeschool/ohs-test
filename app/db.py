@@ -286,7 +286,9 @@ async def get_shopping_links(dbc, resource_id):
 async def get_shopping(dbc, spec):
 	return await sql.get_shopping(dbc, spec)
 
-	
+async def mark_assignment(dbc, uuid, instruction_id, checked):
+	return await sql.mark_assignment(dbc, uuid, instruction_id, checked)
+
 #DEPRECATE: async def get_external_resources(spec):
 #DEPRECATE: 	return await sql.get_external_resources(spec)
 

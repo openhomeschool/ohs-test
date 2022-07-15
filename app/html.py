@@ -694,6 +694,7 @@ def resources(ws_url, filters, cycles, weeks, qargs, links, login, user_settings
 		t.script(_js_show_hide_shopping())
 		t.script(_js_play_pause())
 		t.script(_js_play_random())
+		t.script(_js_mark_assignment())
 			
 	return d.render()
 
@@ -1091,56 +1092,50 @@ def _assignments(container, spec, records, show_cw):
 		new_cw = record['cycle'], record['week'] if record['week'] > spec.first_week else spec.first_week # that is, if the actual first week on record predates the first week that we're looking at, just show the first week we're looking at
 		new_resource_name = record['resource_name']
 		if new_cw != cw:
+			new_list = True
 			cw = new_cw
 			if hr:
 				container += t.hr(cls = 'clear')
 			hr = cw[1] >= spec.first_week # don't draw a line next time 'round if our current record's week number preceeds what we're spec'd to look at (this can happen for records that whose first_week is earlier than spec.first_week because the record's last_week may be well within spec's range).  For instance, in Literature, a prefix assignment item might apply to two weeks; if the user is looking at the latter, they want to see the prefix, but don't want a line separating it from the rest of the assignment, which would seem like a meaningless line
 			_add_cw(record, container, spec)
-			new_list = True
 		if resource_name != new_resource_name:
+			new_list = True
 			resource_name = new_resource_name
-			div_id = '%s%s' % (valid.k_res_prefix, record['resource_id'])
-			title = t.div(cls = 'resource_name')
-			if spec.shop:
-				title += t.input_(type = 'checkbox')
-				if not record['required'] > 0:
-					title += '[optional] '
-					
-			title += resource_name
+			res_id = record['resource_id']
+			div_id = '%s%s' % (valid.k_res_prefix, res_id)
+			title = t.div(resource_name, cls = 'resource_name')
+			container += title
+
+			# Set up "shopping" div -- visible and filled if spec.shop; invisible but poised for ws-fetch, to fill, on resource-by-resource basis, if not spec.shop
 			if not spec.for_print:
 				#TODO: hook up the "details" to work! --  title += t.button('...', onclick = 'show_hide_details("%s");' % div_id, cls = 'chaser'),
 				title += t.button('$', onclick = 'show_hide_shopping("%s");' % div_id, cls = 'chaser'),
-			container += title
-			shopping = ''
-			if spec.shop:
-				shopping = _show_shopping(record['shop'])
-			container += t.div(shopping, cls = 'shopping_links', style = 'display:block;' if shopping else 'display:none;', id = div_id) # if no 'shopping', then contents will be filled in, as needed, via websocket upon '$' click to (any given) show_hide_shopping()
+				shopping = ''
+				if spec.shop:
+					shopping = _show_shopping(record['shop'])
+				container += t.div(shopping, cls = 'shopping_links', style = 'display:block;' if shopping else 'display:none;', id = div_id) # if no 'shopping', then contents will be filled in, as needed, via websocket upon '$' click to (any given) show_hide_shopping()
 
-			new_list = True
-
-		if new_list and not spec.shop:
+		if new_list:
 			new_list = False
 			ul = t.ul(cls = 'bulletless')
 			container += ul
 
-		if not spec.shop:
-			# Assignments:
-			instruction = record['instruction']
-			instruction = instruction.replace('{chapters}', str(record['chapters']))
-			instruction = instruction.replace('{pages}', str(record['pages']))
-			instruction = instruction.replace('{items}', str(record['items']))
-			instruction = instruction.replace('{skips}', str(record['skips']) if record['skips'] else '')
-			if record['optional']:
-				instruction = '[optional] ' + instruction
-			grade_first = record['grade_first']
-			grade_last = record['grade_last']
-			if not ((not grade_first and not grade_last) or (record['program_grade_first'] == grade_first and record['program_grade_last'] == grade_last)) and spec.grade == 0: # i.e., if this record does **not** apply to everybody AND the spec isn't set to show only one grade anyway, then...
-				if grade_first != grade_last:
-					instruction = f'[Grades {grade_first}-{grade_last}] ' + instruction
-				else:
-					instruction = f'[Grade {grade_first}] ' + instruction
-
-			ul += t.li(t.input_(type = 'checkbox'), raw(instruction))
+		# Assignments:
+		instruction = record['instruction']
+		instruction = instruction.replace('{chapters}', str(record['chapters']))
+		instruction = instruction.replace('{pages}', str(record['pages']))
+		instruction = instruction.replace('{items}', str(record['items']))
+		instruction = instruction.replace('{skips}', str(record['skips']) if record['skips'] else '')
+		if record['optional']:
+			instruction = '[optional] ' + instruction
+		grade_first = record['grade_first']
+		grade_last = record['grade_last']
+		if not ((not grade_first and not grade_last) or (record['program_grade_first'] == grade_first and record['program_grade_last'] == grade_last)) and spec.grade == 0: # i.e., if this record does **not** apply to everybody AND the spec isn't set to show only one grade anyway, then...
+			if grade_first != grade_last:
+				instruction = f'[Grades {grade_first}-{grade_last}] ' + instruction
+			else:
+				instruction = f'[Grade {grade_first}] ' + instruction
+		ul += t.li(t.input_(type = 'checkbox', onclick = f"mark_assignment({record['assignment_id']}, this);"), raw(instruction))
 
 
 
@@ -2118,3 +2113,9 @@ def _js_arithmetic():
 		
 	''')
 
+def _js_mark_assignment():
+	return raw('''
+		function mark_assignment(assignment_id, checkbox) {
+			ws_send({task: "mark_assignment", assignment_id: assignment_id, checked: (checkbox.checked == true)});
+		};
+	''')

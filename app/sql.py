@@ -163,12 +163,9 @@ async def disable_user(dbc, username):
 	
 async def reset_user_password(dbc, uuid, new_password):
 	#this one-step technique doesn't work: result = await dbc.execute('update user set user.password = ? from user_login where user.id = user_login.user and user_login.uuid = ?', (pwcrypt, uuid))
-	r = await fetchone(dbc, ('select user from user_login where uuid = ?', (uuid,)))
-	if not r:
-		raise Exception('No such login currently exists!')
-	#else:
+	uid = _get_user_id(uuid)
 	pwcrypt = bcrypt.hashpw(new_password.encode(), bcrypt.gensalt())
-	r = await dbc.execute('update user set password = ? where id = ?', (pwcrypt, r['user'],))
+	r = await dbc.execute('update user set password = ? where id = ?', (pwcrypt, uid,))
 	assert(r.rowcount < 2)
 	result = (r.rowcount == 1)
 	await dbc.commit()
@@ -364,9 +361,9 @@ async def get_surrounding_event_records(spec, count, event):
 
 
 async def arithmetic_new_problems(dbc, uuid, spec):
-	user = await fetchone(dbc, ('select user from user_login where uuid = ?', (uuid,)))
+	uid = _get_user_id(uuid)
 	uid = user['user']
-	
+
 	fa_join_table = 'arithmetic_fact_assessment' # fact-assessment table
 	fact_table = 'arithmetic_fact' # fact table
 	fact_table_ids_select = (f'select id from arithmetic_fact where operator = ? order by operand1, operand2, position', (spec.arithmetic_op,))
@@ -405,11 +402,7 @@ async def arithmetic_new_problems(dbc, uuid, spec):
 
 
 async def arithmetic_answer(dbc, uuid, data):
-	user = await fetchone(dbc, ('select user from user_login where uuid = ?', (uuid,)))
-	if not user:
-		raise Exception('No such login currently exists!') # TODO: change this to an exception that incurs a login-redirect!
-	#else:
-	uid = user['user']
+	uid = _get_user_id(dbc, uuid)
 	ts = time.time()
 	count_to_increment = 'correct_count' if data['correct'] else 'incorrect_count'
 	sets = f'set latest_timestamp = ?, speed_ms = ?, total_elapsed_ms = total_elapsed_ms + ?, {count_to_increment} = {count_to_increment} + 1, user = ?'
@@ -417,11 +410,7 @@ async def arithmetic_answer(dbc, uuid, data):
 	assert(r.rowcount == 1)
 	
 async def arithmetic_totals(dbc, uuid, spec):
-	user = await fetchone(dbc, ('select user from user_login where uuid = ?', (uuid,)))
-	if not user:
-		raise Exception('No such login currently exists!') # TODO: change this to an exception that incurs a login-redirect!
-	#else...
-	uid = user['user']
+	uid = _get_user_id(dbc, uuid)
 	calcs = ', '.join([
 			'sum(total_elapsed_ms) as total_time',
 			'sum(correct_count + incorrect_count) as total_count',
@@ -451,6 +440,16 @@ def _add_assessment(dbc, spec):
 	cursor.execute(f"insert into {spec.assessment_join_table} (fact, assessment) values (?, ?)", [spec.fact_id, cursor.lastrowid])
 	dbc.commit()
 	
+async def _get_user_id(dbc, uuid, raise_exception = True):
+	user = await fetchone(dbc, ('select user from user_login where uuid = ?', (uuid,)))
+	if not user:
+		if raise_exception:
+			raise Exception('No such login currently exists!') # TODO: change this to an exception that incurs a login-redirect!
+		#else:
+		return None
+	#else:
+	return user['user']
+
 
 
 # ---------------------------------------------------
@@ -584,15 +583,17 @@ async def _get_assignments(dbc, spec, resource_spec):
 		wheres.append('(assignment.grade_first is NULL or assignment.grade_first <= ?) and (assignment.grade_last is NULL or assignment.grade_last >= ?)')
 		args.extend((spec.grade, spec.grade))
 
-	if spec.shop:
-		# If shopping, we don't actually want all the assignment records, we only want the collection of resources to which those assignments collectively refer.  We still need to query the assignment records, to get this information, as there's no better way to know that a resource needs to be bought than to know that an assignment has referenced it.
-		group_by = f' group by {spec.table}.resource' # separate records spanning several weeks are not useful for shopping - just want the fact that there is a resource_use record, indicating that a resource is needed, so that a shopper can shop for the resource
-		detail_fields = f' sum(case when {spec.table}.optional = 0 then 1 else 0 end) as required, sum({spec.table}.grade_first) as grade_first, sum({spec.table}.grade_last) as grade_last'
-	else:
-		# Get the motherload...
-		group_by = ''
-		joins.append(f'instructions on {spec.table}.instruction = instructions.id')
-		detail_fields = 'instructions.text as instruction, program.grade_first as program_grade_first, program.grade_last as program_grade_last, assignment.grade_first, assignment.grade_last, pages, chapters, items, skips, optional, "order"'
+	#if spec.shop:
+	#	# If shopping, we don't actually want all the assignment records, we only want the collection of resources to which those assignments collectively refer.  We still need to query the assignment records, to get this information, as there's no better way to know that a resource needs to be bought than to know that an assignment has referenced it.
+	#	# TODO: this seems deprecated... at least when we lock shopping to week 0, where the 'instruction' record is just "buy"....
+	#	group_by = f' group by {spec.table}.resource' # separate records spanning several weeks are not useful for shopping - just want the fact that there is a resource_use record, indicating that a resource is needed, so that a shopper can shop for the resource
+	#	detail_fields = f' sum(case when {spec.table}.optional = 0 then 1 else 0 end) as required, sum({spec.table}.grade_first) as grade_first, sum({spec.table}.grade_last) as grade_last'
+	#else:
+	# Get the motherload...
+	# TODO: finish removing the above, earlier scheme; now, to "shop", use spec.shop to show all vendor links (already visible), but otherwise, don't treat this SQL any different; rather, just set week to 0 so that the only instruction is "purchase" (actually, there may be more, near the end of the summer!)
+	group_by = ''
+	joins.append(f'instructions on {spec.table}.instruction = instructions.id')
+	detail_fields = 'assignment.id as assignment_id, instructions.text as instruction, program.grade_first as program_grade_first, program.grade_last as program_grade_last, assignment.grade_first, assignment.grade_last, pages, chapters, items, skips, optional, "order"'
 
 	result = await fetchall(dbc, (f'select resource.id as resource_id, resource.name as resource_name, cw.cycle as cycle, cw.week as week, {detail_fields} from {spec.table}' + _join(joins) + _where(wheres) + group_by + f' order by {resource_spec.order_by}', args))
 
@@ -772,6 +773,15 @@ async def get_shopping_links(dbc, resource_id):
 	)
 	return await fetchall(dbc, (f'select {fields} from resource_acquisition {_join(joins)} where resource.id = ? order by resource_acquisition.source', (resource_id,)))
 
+
+async def mark_assignment(dbc, uuid, assignment_id, checked):
+	uid = await _get_user_id(dbc, uuid, False)
+	if not uuid:
+		l.warning('mark_assignment() attempted by user not logged in!')
+		return #TODO!  but, we can't store this assignment... we know that much!
+	#else:
+	l.debug(f'!!! mark_assignment: {uuid}, {assignment_id}, {checked}')
+	await dbc.execute('insert into assignment_completion (assignment, user, complete) values (?, ?, ?)', (assignment_id, uid, 1 if checked else 0))
 
 async def get_detail(dbc, key):
 	for table in ('event', 'science', ): # TODO: the rest of the tables with a qr_code field...

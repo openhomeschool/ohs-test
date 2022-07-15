@@ -668,6 +668,7 @@ async def ws_messages(rq):
 			'arithmetic_start': _ws_arithmetic_start,
 			'arithmetic_filter': _ws_arithmetic_filter,
 			'get_random_url_playlist': _get_random_url_playlist,
+			'mark_assignment': _ws_mark_assignment,
 		}
 	
 		l.info('Websocket prepared, listening for messages...')
@@ -694,8 +695,6 @@ async def ws_messages(rq):
 			except Exception as e: # per-message exceptions:
 				l.error(traceback.format_exc())
 				l.error('Exception during WS message processing (detail above); continuing on...')
-				if settings.debug:
-					raise # force attention...
 
 	except Exception as e:
 		l.error(traceback.format_exc())
@@ -944,6 +943,13 @@ async def _ws_show_shopping(rq, payload, ws, spec = None):
 	result = await db.get_shopping_links(dbc, match.group(1)) # group(1) is the actual id matched, after the prefix
 	await ws.send_json({'task': 'show_shopping', 'div_id': payload['resource_id'], 'result': html.show_shopping(result)})
 
+async def _ws_mark_assignment(rq, payload, ws, spec):
+	session = await get_session(rq)
+	uuid = session.get('uuid')
+	dbc = rq.app['db']
+	l.debug("!!! payload['assignment_id']: %s" % payload['assignment_id'])
+	result = await db.mark_assignment(dbc, uuid, int(payload['assignment_id']), bool(payload['checked'])) # group(1) is the actual id matched, after the prefix
+	#TODO: return something useful from mark_assignment() and use this to indicate any trouble to user
 
 async def _get_random_url_playlist(rq, payload, ws, spec):
 	# Assemble the playlist (we build an entire playlist at once in order to avoid repetition (each song/etc. shows up only once), and because it's very easy to do one DB operation that results in a whole (randomly-ordered) set/list of "hits", rather than asking the DB every time, one song at a time):
