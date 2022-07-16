@@ -614,8 +614,9 @@ _links = lambda rq: (
 async def _resources(rq, qargs):
 	session = await get_session(rq)
 	dbc = rq.app['db']
+	uuid = session.get('uuid')
 
-	_set_up_twixt(session, _first_resources(dbc, qargs)) # start the first lookup now... should be done by the time the page is loaded and websocket handshake occurs, when this result is passed on into the loaded skeletal page
+	_set_up_twixt(session, _first_resources(dbc, qargs, uuid)) # start the first lookup now... should be done by the time the page is loaded and websocket handshake occurs, when this result is passed on into the loaded skeletal page
 
 	filters = (
 		('program', [(program['name'], program['id']) for program in await db.get_programs(dbc)], 'Program'),
@@ -766,7 +767,7 @@ k_db_handlers = { # 'id' keys must coincide with DB 'program' table
 	9: db.get_high1_resources, # TODO: placeholder
 }
 
-async def _first_resources(dbc, qargs):
+async def _first_resources(dbc, qargs, uuid):
 	spec = U.Struct(
 		#user_id = session['user_id'],
 		search = qargs.get('search'),
@@ -794,7 +795,7 @@ async def _first_resources(dbc, qargs):
 	return U.Struct(
 		task = 'resources',
 		spec = spec, # need to send spec, itself, as there's no other way for retrieving end (ws_messages function) to get spec hereafter!
-		result = await k_db_handlers[spec.program](dbc, spec),
+		result = await k_db_handlers[spec.program](dbc, spec, uuid),
 	)
 
 
@@ -821,7 +822,7 @@ async def _ws_filter(rq, payload, ws, spec):
 		if validator and not validator(value):
 			raise ValueError() # treat like failed cast, above; either way - invalid filter input was tried
 		setattr(spec, payload['filter'], value) # note that payload calls must match field names in `spec`; but this is only so by declaration
-		result = await k_db_handlers[spec.program](dbc, spec)
+		result = await k_db_handlers[spec.program](dbc, spec, uuid)
 		# program changes require special treatment of the "grade" filter/button -- grab the grades that are appropriate for this (new) program selected:
 		grades = None if payload['filter'] != 'program' else await _grades_filter(dbc, value) # value is program_id in this case
 		# reset any existing playlist; will have to be reconstructed if play_random is attempted again after this filter establishes a new set of grammar
@@ -947,7 +948,6 @@ async def _ws_mark_assignment(rq, payload, ws, spec):
 	session = await get_session(rq)
 	uuid = session.get('uuid')
 	dbc = rq.app['db']
-	l.debug("!!! payload['assignment_id']: %s" % payload['assignment_id'])
 	result = await db.mark_assignment(dbc, uuid, int(payload['assignment_id']), bool(payload['checked'])) # group(1) is the actual id matched, after the prefix
 	#TODO: return something useful from mark_assignment() and use this to indicate any trouble to user
 

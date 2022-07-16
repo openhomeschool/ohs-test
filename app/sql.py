@@ -175,7 +175,7 @@ async def forge_noun_passwords(dbc, word_count = 30):
 	words = [r['noun'] for r in await fetchall(dbc, ('select noun from password_nouns order by random() limit ?', (word_count, )))]
 	candidates = []
 	for count in range(2, 4): # 2- to 3-word combos
-		candidates += [''.join(combo) for combo in itertools.combinations(words, count) if 7 < len(''.join(combo)) < 15]
+		candidates += [''.join(combo) for combo in itertools.combinations(words, count) if 7 < len(''.join(combo)) < 11]
 	return candidates
 
 async def get_switch_user_ids(dbc, uuid):
@@ -505,7 +505,7 @@ class RR: # Resource Result
 	records: list = None
 
 
-async def _get_general_grammar(dbc, spec, resource_spec):
+async def _get_general_grammar(dbc, spec, resource_spec, uid):
 	if spec.shop:
 		pass # TODO: put top-level comments here!
 	spec.table = resource_spec.table # some of the following functions want table in spec (they don't get passed resource_spec)
@@ -516,7 +516,7 @@ async def _get_general_grammar(dbc, spec, resource_spec):
 											+ _join(joins) + _where(wheres) + f" order by cw.cycle, cw.week, general_title.seq, {resource_spec.table}.seq", args))
 
 
-async def _get_geography_grammar(dbc, spec, resource_spec):
+async def _get_geography_grammar(dbc, spec, resource_spec, uid):
 	if spec.shop:
 		pass # TODO: put top-level comments here!
 	spec.table = resource_spec.table # some of the following functions want table in spec (they don't get passed resource_spec)
@@ -526,7 +526,7 @@ async def _get_geography_grammar(dbc, spec, resource_spec):
 	return await fetchall(dbc, (f"select * from {resource_spec.table} " + _join(joins) + _where(wheres) + f" order by cw.cycle, cw.week, seq", args))
 
 
-async def _get_grammar_resources(dbc, spec, resource_spec):
+async def _get_grammar_resources(dbc, spec, resource_spec, uid):
 	if spec.shop:
 		return [] # We don't want grammar while shopping
 	#else...
@@ -545,7 +545,7 @@ async def _get_grammar_resources(dbc, spec, resource_spec):
 	return await fetchall(dbc, (f"select * from {resource_spec.table} " + _join(joins) + _where(wheres) + f" order by {resource_spec.order_by}", args))
 
 
-async def _get_exre_resources(dbc, spec, resource_spec):
+async def _get_exre_resources(dbc, spec, resource_spec, uid):
 	raise Exception() # TODO: deprecate this function?!!!
 	spec.table = resource_spec.table # i.e., resource_use... not really a "subject"-specific table like in grammar, but, none-the-less, serves as the defined pivot table for the likes of _filter_cycle_week
 	joins = [
@@ -570,7 +570,7 @@ async def _get_exre_resources(dbc, spec, resource_spec):
 	return await fetchall(dbc, (f'select resource.id as resource_id, resource.name as resource_name, cw.cycle as cycle, cw.week as week, grade_resource_use.grade_first, grade_resource_use.grade_last, {detail_fields} from {spec.table}' \
 		+ _join(joins) + _where(wheres) + group_by + f' order by {resource_spec.order_by}', args))
 
-async def _get_assignments(dbc, spec, resource_spec):
+async def _get_assignments(dbc, spec, resource_spec, uid):
 	spec.table = resource_spec.table # i.e., assignment... not really a "subject"-specific table like in grammar, but, none-the-less, serves as the defined pivot table for the likes of _filter_cycle_week
 	joins = [f'resource on {spec.table}.resource = resource.id', ]
 	if resource_spec.extra_joins:
@@ -590,11 +590,15 @@ async def _get_assignments(dbc, spec, resource_spec):
 	#else:
 	# Get the motherload...
 	# TODO: finish removing the above, earlier scheme; now, to "shop", use spec.shop to show all vendor links (already visible), but otherwise, don't treat this SQL any different; rather, just set week to 0 so that the only instruction is "purchase" (actually, there may be more, near the end of the summer!)
-	group_by = ''
-	joins.append(f'instructions on {spec.table}.instruction = instructions.id')
 	detail_fields = 'assignment.id as assignment_id, instructions.text as instruction, program.grade_first as program_grade_first, program.grade_last as program_grade_last, assignment.grade_first, assignment.grade_last, pages, chapters, items, skips, optional, "order"'
+	joins.append(f'instructions on {spec.table}.instruction = instructions.id')
+	assignment_join = ''
+	if uid:
+		detail_fields += ', (select complete from assignment_completion where assignment_completion.assignment = assignment.id and assignment_completion.user = %s) complete' % uid # this is safe from sql-injection possibilities -- we provide it entirely within code
+		#assignment_join = ' join assignment_completion on assignment.id = assignment_completion.assignment '
+		#wheres.append('assignment_completion.user = %s' % uid) # this is safe from sql-injection possibilities -- we provide it entirely within code
 
-	result = await fetchall(dbc, (f'select resource.id as resource_id, resource.name as resource_name, cw.cycle as cycle, cw.week as week, {detail_fields} from {spec.table}' + _join(joins) + _where(wheres) + group_by + f' order by {resource_spec.order_by}', args))
+	result = await fetchall(dbc, (f'select resource.id as resource_id, resource.name as resource_name, cw.cycle as cycle, cw.week as week, {detail_fields} from {spec.table}' + _join(joins) + assignment_join + _where(wheres) + f' order by {resource_spec.order_by}', args))
 
 	if spec.shop:
 		augmented_result = []
@@ -619,8 +623,11 @@ async def _get_assignments_DEPRECATE(dbc, spec, resource_spec):
 	return await fetchall(dbc, (f'select * from {spec.table}' + _join(joins) + _where(wheres) + ' order by subject, cw.cycle, cw.week, "order"', args))
 
 
-async def _get_resources(dbc, spec, resource_specs):
+async def _get_resources(dbc, spec, resource_specs, uuid):
 	# Returns list of Resource_Result objects; one per subject, in the order specified in resource_specs
+	uid = await _get_user_id(dbc, uuid, False)
+	if not uid:
+		l.warning('_get_resources() attempted by user not logged in! (Probably fine!)')
 	result = []
 	try: split_spec_subject_ids = [int(x) for x in str(spec.subject).split(',')]
 	except: split_spec_subject_ids = ()
@@ -629,7 +636,7 @@ async def _get_resources(dbc, spec, resource_specs):
 		if spec.subject == 0 or spec.subject == subject_id or subject_id in split_spec_subject_ids:
 			rrs = []
 			for rs in ss.resource_specs:
-				rr = RR(rs.handler, await rs.getter(dbc, spec, rs))
+				rr = RR(rs.handler, await rs.getter(dbc, spec, rs, uid))
 				if rr.records:
 					rrs.append(rr)
 			result.append(SR(ss.subject_title, rrs))
@@ -664,7 +671,6 @@ k_logic_exre_rs = _make_exre_resource_spec('Logic', 'logic_resources')
 k_shakespeare_exre_rs = _make_exre_resource_spec('Shakespeare', 'shakespeare_resources')
 k_math_exre_rs = _make_exre_resource_spec('Math', 'math_resources')
 k_latin_exre_rs = _make_exre_resource_spec('Latin', 'latin_resources')
-
 
 
 _make_assignment_spec = lambda subject_title, handler: RS(_get_assignments, subject_title, handler, 'assignment', ('instruction', ), order_by = 'cw.cycle, cw.week, "order", resource, assignment.grade_first')
@@ -741,16 +747,16 @@ k_high1_assignments = [
 ]
 
 
-async def get_grammar_resources(dbc, spec):
-	return await _get_resources(dbc, spec, k_grammar_resources)
+async def get_grammar_resources(dbc, spec, uuid):
+	return await _get_resources(dbc, spec, k_grammar_resources, uuid)
 
-async def get_middle_resources(dbc, spec):
+async def get_middle_resources(dbc, spec, uuid):
 	resources = k_middle_resources if spec.grammar_supplement else k_middle_assignments
-	return await _get_resources(dbc, spec, resources)
+	return await _get_resources(dbc, spec, resources, uuid)
 
-async def get_high1_resources(dbc, spec):
+async def get_high1_resources(dbc, spec, uuid):
 	resources = k_high1_resources if spec.grammar_supplement else k_high1_assignments
-	return await _get_resources(dbc, spec, resources)
+	return await _get_resources(dbc, spec, resources, uuid)
 
 async def get_external_resource_detail_DEPRECATE(id):
 	raise Exception("DEPRECATE?!!!")
@@ -775,11 +781,10 @@ async def get_shopping_links(dbc, resource_id):
 
 async def mark_assignment(dbc, uuid, assignment_id, checked):
 	uid = await _get_user_id(dbc, uuid, False)
-	if not uuid:
+	if not uid:
 		l.warning('mark_assignment() attempted by user not logged in!')
 		return #TODO!  but, we can't store this assignment... we know that much!
 	#else:
-	l.debug(f'!!! mark_assignment: {uuid}, {assignment_id}, {checked}')
 	await dbc.execute('insert into assignment_completion (assignment, user, complete) values (?, ?, ?)', (assignment_id, uid, 1 if checked else 0))
 
 async def get_detail(dbc, key):

@@ -532,9 +532,9 @@ def practice(ws_url, links, filters, qargs, login, user_settings):
 								_ninepin_button(row * 3 + col)
 					_ninepin_button(0)
 					t.button('Go!', id = 'go_button', type = 'button', title = 'Push this (or hit "Enter") to check your answer', disabled = 'true', onclick = 'go();')
-					t.button('←', id = 'backspace_button', type = 'button', title = 'Push this to backspace/delete the last number you entered', onclick = 'backspace();')
+					t.button('←', id = 'backspace_button', type = 'button', title = 'Push this to erase/backspace/delete the last number you entered', onclick = 'backspace();')
 					t.hr()
-					t.div(t.button('Done! (for now)', onclick = 'done();'))
+					t.div(t.button('Done!', onclick = 'done();'), '(for now)')
 
 			with t.div(cls = 'main', id = 'all_stats_content', style = 'display:none;'): # shown later...
 				with t.table():
@@ -1137,7 +1137,10 @@ def _assignments(container, spec, records, show_cw):
 				instruction = f'[Grades {grade_first}-{grade_last}] ' + instruction
 			else:
 				instruction = f'[Grade {grade_first}] ' + instruction
-		ul += t.li(t.input_(type = 'checkbox', onclick = f"mark_assignment({record['assignment_id']}, this);"), raw(instruction))
+		more_attrs = {}
+		if record.get('complete'):
+			more_attrs['checked'] = 'true' # 'true' can be anything at all; with 'checked' attr present at all, we're checked
+		ul += t.li(t.input_(type = 'checkbox', onclick = f"mark_assignment({record['assignment_id']}, this);", **more_attrs), raw(instruction))
 
 
 
@@ -1925,7 +1928,7 @@ def _js_arithmetic():
 		var session_correct = 0;
 		var running_sizzle = 0;
 		var start_time;
-		var timer_paused = false;
+		var timer_paused = true;
 		var problem_start_time;
 		var interval;
 
@@ -2019,7 +2022,6 @@ def _js_arithmetic():
 		
 		function clear() {
 			$('problem').innerHTML = "";
-			$('answer').disabled = false;
 			$('answer').focus();
 			$('answer').innerHTML = "";
 			$('answer').style.textDecoration = "none";
@@ -2034,9 +2036,16 @@ def _js_arithmetic():
 		};
 
 		function go() {
+			// timer started out paused; setting timer_paused=false here will normally be a no-op, but on occasion, if it's paused, this will start it.
+			timer_paused = false;
+
 			// disable input until we get the next problem shown:
-			$('answer').disabled = true;
 			$('go_button').disabled = true;
+			//TODO: all 9-pin buttons, too?
+			//var ninepin_buttons = document.getElementsByClassName('ninepin_button');
+			//for (var i = 0, ii = myElements.length; i < ii; i++) {
+ 			//	ninepin_buttons[i].disabled = true;
+			//};
 			
 			// update counts and times:
 			session_count += 1;

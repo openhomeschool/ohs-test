@@ -266,14 +266,14 @@ async def arithmetic_totals(dbc, uuid, spec):
 # -----------------------------------------------------------------------------
 # Resource handlers
 
-async def get_grammar_resources(dbc, spec):
-	return await sql.get_grammar_resources(dbc, spec)
+async def get_grammar_resources(dbc, spec, uuid):
+	return await sql.get_grammar_resources(dbc, spec, uuid)
 
-async def get_middle_resources(dbc, spec):
-	return await sql.get_middle_resources(dbc, spec)
+async def get_middle_resources(dbc, spec, uuid):
+	return await sql.get_middle_resources(dbc, spec, uuid)
 
-async def get_high1_resources(dbc, spec):
-	return await sql.get_high1_resources(dbc, spec)
+async def get_high1_resources(dbc, spec, uuid):
+	return await sql.get_high1_resources(dbc, spec, uuid)
 
 
 
