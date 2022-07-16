@@ -521,7 +521,8 @@ def practice(ws_url, links, filters, qargs, login, user_settings):
 					with t.tr():
 						t.td('Calculating...', id = 'problem', cls = 'problem')
 						t.td(id = 'correct_answer', cls = 'problem')
-						t.td(t.input_(id = 'answer', type = 'text', size = 3, maxlength = 4, autofocus = 'true'), cls = 'problem_response')
+						#t.td(t.input_(id = 'answer', type = 'text', size = 3, maxlength = 4, autofocus = 'true'), cls = 'problem_response')
+						t.td(id = 'answer', tabindex = '-1', cls = 'problem')
 
 				_ninepin_button = lambda value: t.button(value, type = 'button', value = str(value), cls = 'ninepin_button', onclick = 'add_ninepin(this)')
 				with t.div(cls = 'ninepin'):
@@ -531,6 +532,7 @@ def practice(ws_url, links, filters, qargs, login, user_settings):
 								_ninepin_button(row * 3 + col)
 					_ninepin_button(0)
 					t.button('Go!', id = 'go_button', type = 'button', title = 'Push this (or hit "Enter") to check your answer', disabled = 'true', onclick = 'go();')
+					t.button('←', id = 'backspace_button', type = 'button', title = 'Push this to backspace/delete the last number you entered', disabled = 'true', onclick = 'backspace();')
 					t.hr()
 					t.div(t.button('Done! (for now)', onclick = 'done();'))
 
@@ -1987,12 +1989,19 @@ def _js_arithmetic():
 
 
 		function add_ninepin(button) {
-			$('answer').value = $('answer').value + button.value;
+			$('answer').innerHTML = $('answer').innerHTML + button.value;
+			$('answer').focus();
 		};
 
 		$('answer').onkeydown = function(event) {
-			if (event.keyCode == 13 && !($('go_button').disabled))
+			console.log(event.key);
+			if (event.key == 'Enter' && !($('go_button').disabled)) {
 				go();
+			} else if (event.key == 'Backspace') {
+
+			} else if (event.key >= '0' && event.key <= '9' && !($('go_button').disabled)) {
+				$('answer').innerHTML = $('answer').innerHTML + (event.key - '0').toString();
+			}
 		};
 
 
@@ -2013,12 +2022,16 @@ def _js_arithmetic():
 			$('problem').innerHTML = "";
 			$('answer').disabled = false;
 			$('answer').focus();
-			$('answer').value = "";
+			$('answer').innerHTML = "";
 			$('correct_answer').innerHTML = "";
 			$('go_button').disabled = false;
 			problem_start_time = Date.now();
 		};
-		
+
+		function backspace() {
+			$('answer').innerHTML = $('answer').innerHTML; // TODO!!!!
+		};
+
 		function go() {
 			$('correct_answer').innerHTML = answer;
 			// disable input until we get the next problem shown:
@@ -2034,7 +2047,7 @@ def _js_arithmetic():
 			if (speed_ms > max_time_ms) {
 				speed_ms = max_time_ms;
 			}
-			var correct = (answer == parseInt($('answer').value, 10))
+			var correct = (answer == parseInt($('answer').innerHTML, 10))
 			if (correct) {
 				session_correct += 1;
 			}

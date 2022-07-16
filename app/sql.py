@@ -163,7 +163,7 @@ async def disable_user(dbc, username):
 	
 async def reset_user_password(dbc, uuid, new_password):
 	#this one-step technique doesn't work: result = await dbc.execute('update user set user.password = ? from user_login where user.id = user_login.user and user_login.uuid = ?', (pwcrypt, uuid))
-	uid = _get_user_id(uuid)
+	uid = await _get_user_id(dbc, uuid)
 	pwcrypt = bcrypt.hashpw(new_password.encode(), bcrypt.gensalt())
 	r = await dbc.execute('update user set password = ? where id = ?', (pwcrypt, uid,))
 	assert(r.rowcount < 2)
@@ -361,8 +361,7 @@ async def get_surrounding_event_records(spec, count, event):
 
 
 async def arithmetic_new_problems(dbc, uuid, spec):
-	uid = _get_user_id(uuid)
-	uid = user['user']
+	uid = await _get_user_id(dbc, uuid)
 
 	fa_join_table = 'arithmetic_fact_assessment' # fact-assessment table
 	fact_table = 'arithmetic_fact' # fact table
@@ -402,7 +401,7 @@ async def arithmetic_new_problems(dbc, uuid, spec):
 
 
 async def arithmetic_answer(dbc, uuid, data):
-	uid = _get_user_id(dbc, uuid)
+	uid = await _get_user_id(dbc, uuid)
 	ts = time.time()
 	count_to_increment = 'correct_count' if data['correct'] else 'incorrect_count'
 	sets = f'set latest_timestamp = ?, speed_ms = ?, total_elapsed_ms = total_elapsed_ms + ?, {count_to_increment} = {count_to_increment} + 1, user = ?'
@@ -410,7 +409,7 @@ async def arithmetic_answer(dbc, uuid, data):
 	assert(r.rowcount == 1)
 	
 async def arithmetic_totals(dbc, uuid, spec):
-	uid = _get_user_id(dbc, uuid)
+	uid = await _get_user_id(dbc, uuid)
 	calcs = ', '.join([
 			'sum(total_elapsed_ms) as total_time',
 			'sum(correct_count + incorrect_count) as total_count',
