@@ -156,6 +156,11 @@ div.login_field {
 	font-size: 150%;
 	text-align: center;
 }
+.correct_answer {
+	color: green;
+	font-size:150%;
+	font-weight: bold;
+}
 
 .quiz_content {
 	margin: 0em;

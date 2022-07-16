@@ -520,7 +520,7 @@ def practice(ws_url, links, filters, qargs, login, user_settings):
 				with t.table():
 					with t.tr():
 						t.td('Calculating...', id = 'problem', cls = 'problem')
-						t.td(id = 'correct_answer', cls = 'problem')
+						t.td(id = 'correct_answer', cls = 'correct_answer')
 						#t.td(t.input_(id = 'answer', type = 'text', size = 3, maxlength = 4, autofocus = 'true'), cls = 'problem_response')
 						t.td(id = 'answer', tabindex = '-1', cls = 'problem')
 
@@ -532,7 +532,7 @@ def practice(ws_url, links, filters, qargs, login, user_settings):
 								_ninepin_button(row * 3 + col)
 					_ninepin_button(0)
 					t.button('Go!', id = 'go_button', type = 'button', title = 'Push this (or hit "Enter") to check your answer', disabled = 'true', onclick = 'go();')
-					t.button('←', id = 'backspace_button', type = 'button', title = 'Push this to backspace/delete the last number you entered', disabled = 'true', onclick = 'backspace();')
+					t.button('←', id = 'backspace_button', type = 'button', title = 'Push this to backspace/delete the last number you entered', onclick = 'backspace();')
 					t.hr()
 					t.div(t.button('Done! (for now)', onclick = 'done();'))
 
@@ -1994,11 +1994,10 @@ def _js_arithmetic():
 		};
 
 		$('answer').onkeydown = function(event) {
-			console.log(event.key);
 			if (event.key == 'Enter' && !($('go_button').disabled)) {
 				go();
 			} else if (event.key == 'Backspace') {
-
+				$('answer').innerHTML = $('answer').innerHTML.slice(0, -1);
 			} else if (event.key >= '0' && event.key <= '9' && !($('go_button').disabled)) {
 				$('answer').innerHTML = $('answer').innerHTML + (event.key - '0').toString();
 			}
@@ -2023,17 +2022,18 @@ def _js_arithmetic():
 			$('answer').disabled = false;
 			$('answer').focus();
 			$('answer').innerHTML = "";
+			$('answer').style.textDecoration = "none";
+			$('answer').style.fontWeight = "normal";
 			$('correct_answer').innerHTML = "";
 			$('go_button').disabled = false;
 			problem_start_time = Date.now();
 		};
 
 		function backspace() {
-			$('answer').innerHTML = $('answer').innerHTML; // TODO!!!!
+			$('answer').innerHTML = $('answer').innerHTML.slice(0, -1);
 		};
 
 		function go() {
-			$('correct_answer').innerHTML = answer;
 			// disable input until we get the next problem shown:
 			$('answer').disabled = true;
 			$('go_button').disabled = true;
@@ -2058,7 +2058,11 @@ def _js_arithmetic():
 				$('stat_session_sizzle_score').innerHTML = Math.floor(running_sizzle);
 				// start the advance; load new problem:
 				advance(); // Note: this should be done BEFORE the ws_send(), below, to make it impossible for a subsequent update_arithmetic() to preceed this call to advance()
-			} // if !correct, we never call advance(), so never advance to 'next' problem; so, user is re-presented with current problem, to try again
+				$('answer').style.fontWeight = "bold";
+			} else { // if !correct, we never call advance(), so never advance to 'next' problem; so, user is re-presented with current problem, to try again
+				$('correct_answer').innerHTML = answer;
+				$('answer').style.textDecoration = "line-through";
+			}
 			
 			// now send the message (which might very shortly result in an update_arithmetic which will overwrite next_problem, next_answer, and next_id
 			var message = {task: "arithmetic", assessment_id: id, speed_ms: speed_ms, correct: correct}
