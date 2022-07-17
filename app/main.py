@@ -139,6 +139,14 @@ async def login(rq):
 	await _logout(rq.app['db'], session)
 	return hr(html.login(str(rq.rel_url), _get_flash(session), session.get('username_logging_in'))) # special "hide_username" case - during a switch_user to a user that requires a password for the switch
 
+@rt.get('/login/{after_login}')
+async def login_then(rq):
+	session = await get_session(rq)
+	await _logout(rq.app['db'], session)
+	session['after_login'] = _gurl(rq, rq.match_info['after_login'])
+	return hr(html.login(_gurl(rq, 'login')))
+
+
 @rt.post('/login')
 async def login_(rq):
 	data = await rq.post()
@@ -530,19 +538,19 @@ async def default(rq):
 async def resources(rq):
 	return await _resources(rq, rq.query)
 
-@rt.get('/shop1')
+@rt.get('/shop1', name = 'shop1')
 async def shop_year_program1(rq):
 	return await _resources(rq, {'shop': 1, 'cycle': 3, 'program': 1, 'first_week': 0, 'last_week': 0, 'grammar_supplement': 0})
 
-@rt.get('/shop2')
+@rt.get('/shop2', name = 'shop2')
 async def shop_year_program2(rq):
 	return await _resources(rq, {'shop': 1, 'cycle': 3, 'program': 2, 'first_week': 0, 'last_week': 0, 'grammar_supplement': 0})
 
-@rt.get('/shop3')
+@rt.get('/shop3', name = 'shop3')
 async def shop_year_program3(rq):
 	return await _resources(rq, {'shop': 1, 'cycle': 3, 'program': 3, 'first_week': 0, 'last_week': 0, 'grammar_supplement': 0})
 
-@rt.get('/shop4')
+@rt.get('/shop4', name = 'shop4')
 async def shop_year_program4(rq):
 	return await _resources(rq, {'shop': 1, 'cycle': 3, 'program': 4, 'first_week': 0, 'last_week': 0, 'grammar_supplement': 0})
 
