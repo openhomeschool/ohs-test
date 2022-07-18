@@ -132,6 +132,8 @@ async def _logout(dbc, session, uuid = None):
 	if uuid:
 		await db.forget_login(dbc, uuid)
 		session.pop('uuid', None)
+		if session.get('username_logging_in'): # just to be on the safe side
+			session.pop('username_logging_in')
 	
 @rt.get('/login', name = 'login')
 async def login(rq):

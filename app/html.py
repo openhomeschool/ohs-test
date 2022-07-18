@@ -1400,7 +1400,8 @@ def _login_dropdown(username, switch_users, hint = ''):
 	options = []
 	if switch_users:
 		options.extend([(user['username'], _gurl('/switch_user/' + user['username'])) for user in switch_users])
-	#TODO: add "logout", etc.(?)
+	options.append(('Log out', _gurl('/logout')))
+	#TODO: add "settings" (?)
 	_url_dropdown(t.div(cls = 'dropdown'), 'login_dropdown', options, username, hint = hint)
 
 def _dropdown(filt, qargs, cls, urls = False, title = None, button_class = None, hint = '', task = 'filter'):
