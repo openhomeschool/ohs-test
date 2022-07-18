@@ -630,23 +630,37 @@ hr.smallhr {
 }
 
 
-
 ul {
+	list-style-type: disc;
+	margin: 2px;
+	padding-left: 10px;
+}
+
+ul li {
+	vertical-align: middle;
+	margin-left: 20px;
+}
+
+ul input {
+	vertical-align: bottom;
+}
+
+ul.signs {
 	margin: 2px;
 	padding-left: 30px;
 }
 
+ul.timeline {
+	margin: 2px;
+	padding-left: 30px;
+}
 
 ul.bulletless {
 	list-style-type: none;
-	margin: 2px;
-	padding-left: 10px;
 }
+
 ul.bulletless li {
-	vertical-align: middle;
+	margin-left: 0px;
 	padding-left: 25px;
 	text-indent: -24px;
-}
-ul.bulletless input {
-	vertical-align: bottom;
 }

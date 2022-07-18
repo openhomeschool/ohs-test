@@ -323,6 +323,17 @@ async def practice(rq):
 	return hr(html.practice(_ws_url(rq, '/ws_messages'), links, filters, fake_query, login, settings)) # TODO: return to rq.query!!
 
 
+@rt.view('/enroll', name = 'enroll')
+@auth('coordinator')
+class Enroll(web.View):
+	async def get(self):
+		vw = await _set_up_common_view_get(self)
+		# TODO: Plan: list of users w/ filter-field on top, to instantly filter via WS, then spot for grade, program, and academic-year (translated to name like "Cycle 3")
+		return hr(html.enroll())
+	async def set(self):
+		return hr(html.enroll())
+
+
 @rt.view('/family_invitation/{code}', name = 'family_invitation')
 class Family_Invitation(web.View):
 	async def common(self):
@@ -777,7 +788,6 @@ k_db_handlers = { # 'id' keys must coincide with DB 'program' table
 
 async def _first_resources(dbc, qargs, uuid):
 	spec = U.Struct(
-		#user_id = session['user_id'],
 		search = qargs.get('search'),
 		deep_search = False,
 		program = int(qargs.get('program', 1)), # hardcode default to "grammar school" program if program choice not made (TODO: set this, instead, to logged-in-user's attached program

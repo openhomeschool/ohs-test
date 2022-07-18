@@ -628,6 +628,9 @@ async def _get_resources(dbc, spec, resource_specs, uuid):
 	uid = await _get_user_id(dbc, uuid, False)
 	if not uid:
 		l.warning('_get_resources() attempted by user not logged in! (Probably fine!)')
+		spec.logged_in = False
+	else:
+		spec.logged_in = True
 	result = []
 	try: split_spec_subject_ids = [int(x) for x in str(spec.subject).split(',')]
 	except: split_spec_subject_ids = ()
@@ -785,7 +788,12 @@ async def mark_assignment(dbc, uuid, assignment_id, checked):
 		l.warning('mark_assignment() attempted by user not logged in!')
 		return #TODO!  but, we can't store this assignment... we know that much!
 	#else:
-	await dbc.execute('insert into assignment_completion (assignment, user, complete) values (?, ?, ?)', (assignment_id, uid, 1 if checked else 0))
+	complete = 1 if checked else 0
+	r = await dbc.execute('update assignment_completion set complete = ? where user = ? and assignment = ?', (complete, uid, assignment_id))
+	assert(r.rowcount < 2)
+	if r.rowcount == 0:
+		await dbc.execute('insert into assignment_completion (assignment, user, complete) values (?, ?, ?)', (assignment_id, uid, complete))
+	dbc.commit()
 
 async def get_detail(dbc, key):
 	for table in ('event', 'science', ): # TODO: the rest of the tables with a qr_code field...

@@ -1113,13 +1113,15 @@ def _assignments(container, spec, records, show_cw):
 				#TODO: hook up the "details" to work! --  title += t.button('...', onclick = 'show_hide_details("%s");' % div_id, cls = 'chaser'),
 				title += t.button('$', onclick = 'show_hide_shopping("%s");' % div_id, cls = 'chaser'),
 				shopping = ''
-				if spec.shop:
+				if spec.shop and (not spec.logged_in or (spec.logged_in and not record.get('complete'))):
 					shopping = _show_shopping(record['shop'])
 				container += t.div(shopping, cls = 'shopping_links', style = 'display:block;' if shopping else 'display:none;', id = div_id) # if no 'shopping', then contents will be filled in, as needed, via websocket upon '$' click to (any given) show_hide_shopping()
 
 		if new_list:
 			new_list = False
-			ul = t.ul(cls = 'bulletless')
+			ul = t.ul()
+			if spec.logged_in:
+				ul = t.ul(cls = 'bulletless') # because we'll be using checkboxes
 			container += ul
 
 		# Assignments:
@@ -1138,9 +1140,12 @@ def _assignments(container, spec, records, show_cw):
 			else:
 				instruction = f'[Grade {grade_first}] ' + instruction
 		more_attrs = {}
-		if record.get('complete'):
+		if spec.logged_in and record.get('complete'):
 			more_attrs['checked'] = 'true' # 'true' can be anything at all; with 'checked' attr present at all, we're checked
-		ul += t.li(t.input_(type = 'checkbox', onclick = f"mark_assignment({record['assignment_id']}, this);", **more_attrs), raw(instruction))
+		if spec.logged_in:
+			ul += t.li(t.input_(type = 'checkbox', onclick = f"mark_assignment({record['assignment_id']}, this);", **more_attrs), raw(instruction))
+		else:
+			ul += t.li(raw(instruction))
 
 
 
@@ -1195,7 +1200,7 @@ def _detail_doc(title, subject_section_title, table, record, renderer):
 
 def _add_signs(signs, container):
 	if signs:
-		ull = t.ul()
+		ull = t.ul(cls = 'signs')
 		container += t.div((t.b('Signs: '), t.span(('(provided by ', t.a('signingsavvy.com', href = 'https://www.signingsavvy.com/', target = "_blank"), ')')), ull))
 		for sign in signs:
 			#ull += t.li(t.a(sign['word'], href = sign['url'], target = "_blank", cls = 'hover_link'))
@@ -1247,7 +1252,7 @@ def timeline_event_detail(record, details, signs):
 						title = None # reset
 					else:
 						container += t.div((t.b(title)))
-						ul = t.ul()
+						ul = t.ul(cls = 'timeline')
 						container += ul
 						ul += t.li(detail_detail)
 				else: # assert(ul != None)
