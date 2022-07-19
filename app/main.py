@@ -126,6 +126,7 @@ async def _finish_login(rq, dbc, username, result, redirect):
 	#session.pop('username_logging_in', None) # unnecessary - we just grabbed a fresh session
 	raise web.HTTPFound(redirect)
 
+
 async def _logout(dbc, session, uuid = None):
 	if uuid == None:
 		uuid = session.get('uuid')
@@ -173,7 +174,7 @@ async def login_(rq):
 		if not result:
 			return hr(html.login(rq.rel_url, _wrap_error(error.login_failure))) # TODO: password retrieval mechanism
 		#else, success!:
-		await _finish_login(rq, dbc, username, result, session['after_login'] if 'after_login' in session else _gurl(rq, 'home'))
+		await _finish_login(rq, dbc, username, result, session.get('after_login', _gurl(rq, 'home')))
 
 	except web.HTTPRedirection:
 		raise # move on
@@ -205,7 +206,7 @@ async def switch_user(rq):
 			_add_flash_m(session, text.password_required % new_username)
 			raise web.HTTPFound(_gurl(rq, 'login'))
 		#else: (no password required; real new uuid returned from switch_user(), so, switch was successful (including logout/forget, etc.)...
-		await _finish_login(rq, dbc, new_username, result, session['after_login'] if 'after_login' in session else _gurl(rq, 'home'))
+		await _finish_login(rq, dbc, new_username, result, session.get('after_login', _gurl(rq, 'home')))
 
 	except web.HTTPRedirection:
 		raise # move on
@@ -431,7 +432,7 @@ class Family_Invitation(web.View):
 							flash = _quick_flash_error(text.user_exists)
 							raise # break out of loop and induce rollback
 				
-				uids = [await db.get_user_id(vw.dbc, username) for username in usernames]
+				uids = [await db.get_user_id(vw.dbc, username) for username in usernames] # don't worry about exists[x]; in fact, we need ALL users in order to establish switch-allows between existing and new users.  db.add_user_switch_allows() resists duplications
 				for uid in uids:
 					other_uids = uids.copy()
 					other_uids.remove(uid)
