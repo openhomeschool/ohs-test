@@ -224,7 +224,7 @@ async def add_user_switch_allows(dbc, from_user_ids, user_id = None, without_pas
 	if user_id:
 		from_user_ids = [(user_id, from_user_id, without_password) for from_user_id in from_user_ids]
 	#else from_user_ids is already a list of (user_id, from_user_id, without_password) tuples
-	await dbc.executemany('insert into user_switch_allow ("user", from_user, without_password) values (?, ?, ?)', from_user_ids)
+	await dbc.executemany('insert or ignore into user_switch_allow ("user", from_user, without_password) values (?, ?, ?)', from_user_ids) # "or ignore" silently ignores attempts to duplicate a relationship; this is handy when a family member is added/enrolled and the processing calls this add_switch_allows() for all relationships; it would be more complicated to figure out which already exist
 	if commit:
 		await dbc.commit()
 
