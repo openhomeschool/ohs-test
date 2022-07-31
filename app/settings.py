@@ -8,6 +8,7 @@ k_url_prefix = ''
 k_ws_url_prefix = ''
 k_static_url = 'http://localhost:8001/static/' # for use with adev
 #k_static_url = 'http://localhost:8080/static/' # for use with stright python -m aiohttp.web
+k_host = 'localhost:8000'
 
 # deploy:
 #k_http = 'https'
@@ -15,7 +16,7 @@ k_static_url = 'http://localhost:8001/static/' # for use with adev
 #k_url_prefix = '' # '/A'
 #k_ws_url_prefix = '/ws' # '/a_ws'
 #k_static_url = 'https://openhome.school' + k_url_prefix + '/static/'
-
+#k_host = 'openhome.school'
 
 # Quiz URLs:
 k_history_sequence = '/quiz/history/sequence'
