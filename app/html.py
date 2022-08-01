@@ -14,6 +14,8 @@ from dominate import document
 from dominate import tags as t
 from dominate.util import raw
 
+from yarl import URL
+
 from . import valid
 from . import settings
 from . import text
@@ -1311,6 +1313,7 @@ _murl = lambda url: settings.k_static_url + 'maps/' + url
 _aurl = lambda url: settings.k_static_url + 'audio/' + url # audio
 _iurl = lambda url: settings.k_static_url + 'images/' + url # images
 _lurl = lambda url: settings.k_static_url + 'images/logos/' + url # logos
+_ws_url = URL.build(scheme = settings.k_ws, host = settings.k_host, path = settings.k_ws_url_prefix + '/ws_messages')
 
 
 def _doc(title, css = None, scripts = None):
@@ -1562,7 +1565,9 @@ def _js_load_bg(settings):
 		//document.getElementsByClassName("main").style.backgroundColor = "#eff7f6";
 	''' % settings)
 
-def _js_ws(url):
+def _js_ws(url = None):
+	if not url:
+		url = _ws_url # backup plan
 	return raw('''
 	var ws = new WebSocket("%(url)s");
 	console.log("CREATED ws");

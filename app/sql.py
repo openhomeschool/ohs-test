@@ -706,7 +706,7 @@ k_middle_resources = [
 	SS('Timeline', (k_timeline_grammar_rs, )),
 	SS('History', (k_history_assignment_rs, k_history_grammar_rs, )),
 	SS('Geography', (k_geography_assignment_rs, k_geography_grammar_rs, )),
-	SS('Math', (k_multiplication_fact_grammar_rs, k_math_vocabulary_rs )),
+	SS('Math', (k_math_assignment_rs, k_multiplication_fact_grammar_rs, k_math_vocabulary_rs )),
 	SS('Science', (k_science_assignment_rs, k_science_grammar_rs, )),
 	SS('English', (k_english_vocabulary_rs, k_english_grammar_rs, )),
 	SS('Latin', (k_latin_vocabulary_rs, k_latin_grammar_rs, )),
@@ -717,6 +717,7 @@ k_middle_resources = [
 k_middle_assignments = [
 	SS('History', (k_history_assignment_rs, )),
 	SS('Geography', (k_geography_assignment_rs, )),
+	SS('Math', (k_math_assignment_rs, )),
 	SS('Science', (k_science_assignment_rs, )),
 	SS('Logic', (k_logic_assignment_rs, )),
 	SS('Literature', (k_literature_assignment_rs, )),
