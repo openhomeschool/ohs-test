@@ -508,10 +508,11 @@ def practice(ws_url, links, filters, qargs, login, user_settings):
 							_login_dropdown(login['username'], login['switch_users'], hint = 'Switch person')
 
 		with t.div(cls = 'flex-wrap'): # TODO: make a 'header_block' or something; different border color, perhaps
-			t.div(t.b('Filter'), cls = 'title')
+			t.div(t.b('Focus'), cls = 'title')
 			with t.div(cls = 'main'):
 				for key, options, hint in filters:
 					with t.div(id = '%s-container' % key):
+						_url_dropdown()
 						_dropdown((key, options), qargs, 'ib-left', hint = hint, task = 'arithmetic_filter')
 
 		with t.div(cls = 'flex-wrap'): # TODO: make a 'header_block' or something; different border color, perhaps
@@ -521,8 +522,7 @@ def practice(ws_url, links, filters, qargs, login, user_settings):
 					with t.tr():
 						t.td('Calculating...', id = 'problem', cls = 'problem')
 						t.td(id = 'correct_answer', cls = 'correct_answer')
-						#t.td(t.input_(id = 'answer', type = 'text', size = 3, maxlength = 4, autofocus = 'true'), cls = 'problem_response')
-						t.td(id = 'answer', tabindex = '-1', cls = 'problem')
+						t.td(id = 'answer', tabindex = '-1', cls = 'problem') # instead of t.td(t.input_(id = 'answer', type = 'text', size = 3, maxlength = 4, autofocus = 'true'), cls = 'problem_response')
 
 				_ninepin_button = lambda value: t.button(value, type = 'button', value = str(value), cls = 'ninepin_button', onclick = 'add_ninepin(this)')
 				with t.div(cls = 'ninepin'):
@@ -555,7 +555,7 @@ def practice(ws_url, links, filters, qargs, login, user_settings):
 					with t.tr():
 						t.td('"Sazzle Score" is a cumulative', colspan = 2)
 					with t.tr():
-						t.td('combo of speed and accuracy', colspan = 2)
+						t.td('combo of accuracy and practice time', colspan = 2)
 				t.div(t.button('Restart', onclick = 'reset();'))
 
 
@@ -1404,7 +1404,7 @@ def _login_dropdown(username, switch_users, hint = ''):
 	#TODO: add "settings" (?)
 	_url_dropdown(t.div(cls = 'dropdown'), 'login_dropdown', options, username, hint = hint)
 
-def _dropdown(filt, qargs, cls, urls = False, title = None, button_class = None, hint = '', task = 'filter'):
+def _dropdown(filt, qargs, cls, title = None, button_class = None, hint = '', task = 'filter'):
 	key, options = filt
 	if not options:
 		return t.div() # empty div means there's nothing there - no options from which user might choose
@@ -1939,20 +1939,24 @@ def _js_arithmetic():
 		var interval;
 
 		function update_arithmetic(payload) {
-			next_id = payload['assessment_id'];
-			next_problem = payload['op1'] + ' ' + payload['operator'] + ' ' + payload['op2'] + ' =';
-			next_answer = payload['answer'];
-			if (initialized) {
-				next_ready = true;
-			} else {
-				advance(); // next_ready already primed to 'true' for first time through
-				clear();
-				$('problem').innerHTML = problem;
-				initialized = true;
-				next_ready = false;
-				interval = setInterval(update_timer, 500);
-				start_time = Date.now();
-			}
+			//if (payload['operator'] != ) {
+			//	ws_send({task: "arithmetic_start"}); // effectively "skip" - throw away this message, and request more... with the operator change that should have taken effect (this is a little kludgey, and is tied to the "one or two more in the waiting" design
+			//} else {
+				next_id = payload['assessment_id'];
+				next_problem = payload['op1'] + ' ' + payload['operator'] + ' ' + payload['op2'] + ' =';
+				next_answer = payload['answer'];
+				if (initialized) {
+					next_ready = true;
+				} else {
+					advance(); // next_ready already primed to 'true' for first time through
+					clear();
+					$('problem').innerHTML = problem;
+					initialized = true;
+					next_ready = false;
+					interval = setInterval(update_timer, 500);
+					start_time = Date.now();
+				}
+			//}
 		};
 
 		function arithmetic_totals(payload) {
@@ -1996,7 +2000,6 @@ def _js_arithmetic():
 			}
 		};
 
-
 		function add_ninepin(button) {
 			$('answer').innerHTML = $('answer').innerHTML + button.value;
 			$('answer').focus();
@@ -2011,7 +2014,6 @@ def _js_arithmetic():
 				$('answer').innerHTML = $('answer').innerHTML + (event.key - '0').toString();
 			}
 		};
-
 
 		function advance() {
 			// must wait for next_ready to be true; async/await and js callbacks do not seem well suited to do this conveniently on an ongoing basis,
