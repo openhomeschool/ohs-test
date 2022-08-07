@@ -360,7 +360,7 @@ async def get_surrounding_event_records(spec, count, event):
 
 
 
-async def arithmetic_new_problems(dbc, uuid, spec):
+async def fetch_new_arithmetic_problems(dbc, uuid, spec):
 	uid = await _get_user_id(dbc, uuid)
 
 	fa_join_table = 'arithmetic_fact_assessment' # fact-assessment table
@@ -884,8 +884,11 @@ async def get_programs(dbc):
 async def get_program(dbc, id):
 	return await fetchone(dbc, ('select * from program where id = ? order by grade_first', (id,)))
 
-async def get_subjects(dbc):
-	return await fetchall(dbc, ('select * from subject', []))
+async def get_subjects(dbc, flag = None):
+	q = 'select * from subject'
+	if flag:
+		q += ' where %s = 1' % flag
+	return await fetchall(dbc, (q, []))
 
 async def get_cycles(dbc):
 	return await fetchall(dbc, ('select * from cycle', []))
