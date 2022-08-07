@@ -49,11 +49,11 @@ from . import util as U
 # Logging ---------------------------------------------------------------------
 
 logging.getLogger('aiosqlite').setLevel(logging.WARN)
-logging.getLogger('aiohttp').setLevel(logging.WARN)
+logging.getLogger('aiohttp').setLevel(logging.CRITICAL)
 logging.getLogger('aiohttp_session').setLevel(logging.WARN)
 logging.getLogger('asyncio').setLevel(logging.WARN)
 
-logging.getLogger('adev').setLevel(logging.WARN)
+logging.getLogger('adev').setLevel(logging.CRITICAL)
 #logging.getLogger('adev.server.dft').setLevel(logging.CRITICAL)
 #logging.getLogger('adev.server.aux').setLevel(logging.CRITICAL)
 #logging.getLogger('adev.tools').setLevel(logging.CRITICAL)
@@ -939,7 +939,8 @@ async def _ws_arithmetic_totals(rq, payload, ws, spec): # we ignore this 'spec' 
 
 	result = dict(await db.arithmetic_totals(dbc, uuid, spec))
 	result['task'] = 'arithmetic_totals'
-	result['total_sizzle_score'] = result['total_correct_count'] * result['total_accuracy'] / (100 * result['total_time'] ** 0.04) # TODO: somewhat arbitrary, and doesn't work especially well!
+	result['total_sizzle_score'] = result['total_correct_count'] * result['total_accuracy'] / 100
+	#result['total_sizzle_score'] = result['total_correct_count'] * result['total_accuracy'] / (100 * result['total_time'] ** 0.04) # TODO: somewhat arbitrary, and doesn't work especially well!
 
 	await ws.send_json(result)
 
