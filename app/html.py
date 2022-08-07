@@ -485,7 +485,80 @@ def filter_user_list(results, url): # TODO: GENERALIZE for other lists!
 	return table.render()
 
 
-def practice(ws_url, links, filters, qargs, login, user_settings):
+def arithmetic_practice(key, options, hint, selected_id):
+	container = t.div()
+	with container:
+		_dropdown((key, options, selected_id), 'ib-left', hint = hint, task = 'arithmetic_filter')
+		t.div(cls = 'clear')
+
+		with t.table():
+			with t.tr():
+				t.td('Calculating...', id = 'problem', cls = 'problem') # should be immediately injected with real problem (see javascript update_arithmetic(payload))
+				t.td(id = 'correct_answer', cls = 'correct_answer')
+				t.td(id = 'answer', tabindex = '-1', cls = 'problem', onkeydown = 'answer_key_down(event);') # instead of t.td(t.input_(id = 'answer', type = 'text', size = 3, maxlength = 4, autofocus = 'true'), cls = 'problem_response')
+
+		_ninepin_button = lambda value: t.button(value, type = 'button', value = str(value), cls = 'ninepin_button', onclick = 'add_ninepin(this)')
+		with t.div(cls = 'ninepin'):
+			for row in (2, 1, 0):
+				with t.div():
+					for col in (1, 2, 3):
+						_ninepin_button(row * 3 + col)
+			_ninepin_button(0)
+			t.button('Go!', id = 'go_button', type = 'button', title = 'Push this (or hit "Enter") to check your answer', disabled = 'true', onclick = 'go();')
+			t.button('←', id = 'backspace_button', type = 'button', title = 'Push this to erase/backspace/delete the last number you entered', onclick = 'backspace();')
+			t.hr()
+			t.div(t.button('Done!', onclick = 'done();'), '(for now)')
+
+		with t.div(cls = 'main', id = 'all_stats_content', style = 'display:none;'): # shown later...
+			with t.table():
+				with t.tr():
+					t.th('All Time', colspan = 2)
+				with t.tr():
+					t.td('Elapsed Time:')
+					t.td(id = 'stat_all_time')
+				with t.tr():
+					t.td('Count:')
+					t.td(id = 'stat_all_count')
+				with t.tr():
+					t.td('Accuracy:')
+					t.td(id = 'stat_all_accuracy')
+				with t.tr():
+					t.td('Sazzle Score:')
+					t.td(id = 'stat_all_sizzle_score')
+				with t.tr():
+					t.td('"Sazzle Score" is a cumulative', colspan = 2)
+				with t.tr():
+					t.td('combo of accuracy and practice time', colspan = 2)
+			t.div(t.button('Restart', onclick = 'reset();'))
+
+		t.hr()
+		with t.div(t.b('Stats')):
+			t.button("Hide ▲", id = 'show_hide_stats_button', type = 'button', title = 'Show / Hide this "Stats" panel', onclick = 'show_hide_stats()') # show: "Show ▼"
+			with t.div(id = 'stats_content'):
+				with t.table():
+					#with t.tr():
+					#	t.th('This Session', colspan = 2)
+					with t.tr():
+						t.td('Elapsed Time:')
+						t.td(id = 'stat_session_time')
+					with t.tr():
+						t.td('Count:')
+						t.td(id = 'stat_session_count')
+					with t.tr():
+						t.td('Accuracy:')
+						t.td(id = 'stat_session_accuracy')
+					with t.tr():
+						t.td('Sizzle Score:')
+						t.td(id = 'stat_session_sizzle_score')
+					with t.tr():
+						t.td('"Sizzle Score" is a combo', colspan = 2)
+					with t.tr():
+						t.td('of speed and accuracy', colspan = 2)
+
+	return container.render()
+
+
+def practice(links, filters, login, user_settings):
 	d = _doc(text.doc_prefix + 'Practice')
 	with d:
 		
@@ -512,85 +585,21 @@ def practice(ws_url, links, filters, qargs, login, user_settings):
 		with t.div(cls = 'flex-wrap'): # TODO: make a 'header_block' or something; different border color, perhaps
 			t.div(t.b('Focus'), cls = 'title')
 			with t.div(cls = 'main'):
-				for key, options, hint in filters:
+				for key, options, hint, selected_id in filters:
 					with t.div(id = '%s-container' % key):
-						_url_dropdown()
-						_dropdown((key, options), qargs, 'ib-left', hint = hint, task = 'arithmetic_filter')
+						_dropdown((key, options, selected_id), 'ib-left', hint = hint, task = 'practice_filter')
 
-		with t.div(cls = 'flex-wrap'): # TODO: make a 'header_block' or something; different border color, perhaps
+		with t.div(cls = 'flex-wrap'):
 			t.div(t.b('Practice'), cls = 'title')
 			with t.div(cls = 'main', id = 'main_content'):
-				with t.table():
-					with t.tr():
-						t.td('Calculating...', id = 'problem', cls = 'problem')
-						t.td(id = 'correct_answer', cls = 'correct_answer')
-						t.td(id = 'answer', tabindex = '-1', cls = 'problem') # instead of t.td(t.input_(id = 'answer', type = 'text', size = 3, maxlength = 4, autofocus = 'true'), cls = 'problem_response')
-
-				_ninepin_button = lambda value: t.button(value, type = 'button', value = str(value), cls = 'ninepin_button', onclick = 'add_ninepin(this)')
-				with t.div(cls = 'ninepin'):
-					for row in (2, 1, 0):
-						with t.div():
-							for col in (1, 2, 3):
-								_ninepin_button(row * 3 + col)
-					_ninepin_button(0)
-					t.button('Go!', id = 'go_button', type = 'button', title = 'Push this (or hit "Enter") to check your answer', disabled = 'true', onclick = 'go();')
-					t.button('←', id = 'backspace_button', type = 'button', title = 'Push this to erase/backspace/delete the last number you entered', onclick = 'backspace();')
-					t.hr()
-					t.div(t.button('Done!', onclick = 'done();'), '(for now)')
-
-			with t.div(cls = 'main', id = 'all_stats_content', style = 'display:none;'): # shown later...
-				with t.table():
-					with t.tr():
-						t.th('All Time', colspan = 2)
-					with t.tr():
-						t.td('Elapsed Time:')
-						t.td(id = 'stat_all_time')
-					with t.tr():
-						t.td('Count:')
-						t.td(id = 'stat_all_count')
-					with t.tr():
-						t.td('Accuracy:')
-						t.td(id = 'stat_all_accuracy')
-					with t.tr():
-						t.td('Sazzle Score:')
-						t.td(id = 'stat_all_sizzle_score')
-					with t.tr():
-						t.td('"Sazzle Score" is a cumulative', colspan = 2)
-					with t.tr():
-						t.td('combo of accuracy and practice time', colspan = 2)
-				t.div(t.button('Restart', onclick = 'reset();'))
-
-
-		with t.div(cls = 'flex-wrap'): # TODO: make a 'header_block' or something; different border color, perhaps
-			t.div(t.b('Stats'), cls = 'title')
-			with t.div(cls = 'main'):
-				t.button("Hide ▲", id = 'show_hide_stats_button', type = 'button', title = 'Show / Hide this "Stats" panel', onclick = 'show_hide_stats()') # show: "Show ▼"
-				with t.div(id = 'stats_content'):
-					t.hr()
-					with t.table():
-						with t.tr():
-							t.th('This Session', colspan = 2)
-						with t.tr():
-							t.td('Elapsed Time:')
-							t.td(id = 'stat_session_time')
-						with t.tr():
-							t.td('Count:')
-							t.td(id = 'stat_session_count')
-						with t.tr():
-							t.td('Accuracy:')
-							t.td(id = 'stat_session_accuracy')
-						with t.tr():
-							t.td('Sizzle Score:')
-							t.td(id = 'stat_session_sizzle_score')
-						with t.tr():
-							t.td('"Sizzle Score" is a combo', colspan = 2)
-						with t.tr():
-							t.td('of speed and accuracy', colspan = 2)
+				t.div('Fetching practice...')
+				# This div gets populated after initial ws-fetch (and in response to a filter change, etc.)...
 
 		t.script(_js_basic())
-		t.script(_js_ws(ws_url))
-		t.script(_js_dropdown())
+		t.script(_js_ws())
+		t.script(_js_practice())
 		t.script(_js_arithmetic())
+		t.script(_js_dropdown())
 		t.script(_js_load_bg(user_settings))
 				
 	return d.render()
@@ -640,7 +649,8 @@ def quiz(ws_url, db_handler, html_function):
 
 
 def grades_filter_button(key, options, show_grammar_option):
-	r = [_dropdown((key, options), {}, 'ib-left'), ]
+	r = [_dropdown((key, options, None),  'ib-left'), ]
+
 	if show_grammar_option:
 		r.append(t.div(t.input_(type = 'checkbox', id = 'show_grammar'), t.label('Show Grammar', for_ = 'show_grammar'), cls = 'ib-left'))
 	return t.div(r).render()
@@ -677,14 +687,14 @@ def resources(ws_url, filters, cycles, weeks, qargs, links, login, user_settings
 			with t.div(cls = 'flex-wrap'): # TODO: make a 'header_block' or something; different border color, perhaps
 				t.div(t.b('Filter'), cls = 'title')
 				with t.div(cls = 'main'):
-					for key, options, hint in filters:
+					for key, options, hint, selected_id in filters:
 						with t.div(id = '%s-container' % key):
-							_dropdown((key, options), qargs, 'ib-left', hint = hint)
-					_dropdown(weeks[0], qargs, 'ib-right', button_class = 'cw-button', hint = 'Select START week')
+							_dropdown((key, options, selected_id), 'ib-left', hint = hint)
+					_dropdown(weeks[0], 'ib-right', button_class = 'cw-button', hint = 'Select START week')
 					#TODO: bring!search!back!(it works, but isn't very useful in its current form; ist's more of a filter, and doesn't reset when blanked) --- t.div(_text_input('search', None, ('autofocus',), {'autocomplete': 'off', 'oninput': 'search(this.value)', 'class': 'search'}, 'Search', type_ = 'search'), cls = 'clear') # TODO: replace with a magnifying-glass gif!
 					t.div(cls = 'clear') # NOTE: this is just a stand-in for the above-line: "Search" field, which we're temporarily removing; this allows the next dropdown to be "below" the top one, rather than beside it
-					_dropdown(weeks[1], qargs, 'ib-right', button_class = 'cw-button', hint = 'Select END week')
-					#TODO: BRING BACK! -- _dropdown(cycles, qargs, 'ib-right', button_class = 'cw-button')
+					_dropdown(weeks[1], 'ib-right', button_class = 'cw-button', hint = 'Select END week')
+					#TODO: BRING BACK! -- _dropdown(cycles, 'ib-right', button_class = 'cw-button')
 
 		t.div(id = 'content') # filtered results themselves are added here, in this `result` div, via websocket, as search text is typed (see javascript)
 
@@ -1142,7 +1152,7 @@ def _assignments(container, spec, records, show_cw):
 			else:
 				instruction = f'[Grade {grade_first}] ' + instruction
 		more_attrs = {}
-		if spec.logged_in and record.get('complete'):
+		if spec.logged_in and record['complete']:
 			more_attrs['checked'] = 'true' # 'true' can be anything at all; with 'checked' attr present at all, we're checked
 		if spec.logged_in:
 			ul += t.li(t.input_(type = 'checkbox', onclick = f"mark_assignment({record['assignment_id']}, this);", **more_attrs), raw(instruction))
@@ -1407,11 +1417,11 @@ def _login_dropdown(username, switch_users, hint = ''):
 	#TODO: add "settings" (?)
 	_url_dropdown(t.div(cls = 'dropdown'), 'login_dropdown', options, username, hint = hint)
 
-def _dropdown(filt, qargs, cls, title = None, button_class = None, hint = '', task = 'filter'):
+def _dropdown_DEPRECATE(filt, qargs, cls, title = None, button_class = None, hint = '', task = 'filter'):
 	key, options = filt
 	if not options:
 		return t.div() # empty div means there's nothing there - no options from which user might choose
-	
+
 	start_option_id = qargs.get(key)
 
 	content_id = key
@@ -1430,6 +1440,30 @@ def _dropdown(filt, qargs, cls, title = None, button_class = None, hint = '', ta
 		button_classes += ' ' + button_class
 	return t.div(
 		t.button(title + ' ▾', cls = button_classes, type = 'button', id = button_id, title = hint, onclick = 'choose_dropdown_item(%s)' % content_id),
+		drop_content,
+		cls = cls,
+	)
+
+def _dropdown(data, cls, title = None, button_class = None, hint = '', task = 'filter'):
+	key, options, selected_id = data # 'options' is a tuple of two-tuples, like: (('option 1', 'op1_id'), ('option 2', 'op2_id')); selected_id should be None or set like 'op2_id'
+	if not options:
+		return t.div() # empty div means there's nothing there - no options from which user might choose
+
+	button_id = '%s-button' % key
+	drop_content = t.div(id = key, cls = 'dropdown-content')
+	with drop_content:
+		for option_title, option_id in options:
+			t.div(option_title, onclick = 'choose_dropdown_option("%s", "%s", "%s", "%s", "%s")' % (key, option_id, option_title, button_id, task))
+			if selected_id and str(selected_id) == str(option_id):
+				title = option_title # override title with selected option
+	if not title:
+		title = options[0][0]
+
+	button_classes = 'dropdown-button'
+	if button_class:
+		button_classes += ' ' + button_class
+	return t.div(
+		t.button(title + ' ▾', cls = button_classes, type = 'button', id = button_id, title = hint, onclick = 'choose_dropdown_item(%s)' % key),
 		drop_content,
 		cls = cls,
 	)
@@ -1587,7 +1621,11 @@ def _js_ws(url = None):
 			case "set_random_url_playlist":
 				set_random_url_playlist(payload.playlist);
 				break;
-			case "arithmetic":
+			case "show_arithmetic":
+				show_arithmetic(payload);
+				update_arithmetic(payload);
+				break;
+			case "arithmetic_problem":
 				update_arithmetic(payload);
 				break;
 			case "arithmetic_totals":
@@ -1943,25 +1981,31 @@ def _js_arithmetic():
 		var problem_start_time;
 		var interval;
 
+		function answer_key_down(event) {
+			if (event.key == 'Enter' && !($('go_button').disabled)) {
+				go();
+			} else if (event.key == 'Backspace') {
+				$('answer').innerHTML = $('answer').innerHTML.slice(0, -1);
+			} else if (event.key >= '0' && event.key <= '9' && !($('go_button').disabled)) {
+				$('answer').innerHTML = $('answer').innerHTML + (event.key - '0').toString();
+			}
+		};
+
 		function update_arithmetic(payload) {
-			//if (payload['operator'] != ) {
-			//	ws_send({task: "arithmetic_start"}); // effectively "skip" - throw away this message, and request more... with the operator change that should have taken effect (this is a little kludgey, and is tied to the "one or two more in the waiting" design
-			//} else {
-				next_id = payload['assessment_id'];
-				next_problem = payload['op1'] + ' ' + payload['operator'] + ' ' + payload['op2'] + ' =';
-				next_answer = payload['answer'];
-				if (initialized) {
-					next_ready = true;
-				} else {
-					advance(); // next_ready already primed to 'true' for first time through
-					clear();
-					$('problem').innerHTML = problem;
-					initialized = true;
-					next_ready = false;
-					interval = setInterval(update_timer, 500);
-					start_time = Date.now();
-				}
-			//}
+			next_id = payload['assessment_id'];
+			next_problem = payload['op1'] + ' ' + payload['operator'] + ' ' + payload['op2'] + ' =';
+			next_answer = payload['answer'];
+			if (initialized) {
+				next_ready = true;
+			} else {
+				advance(); // next_ready already primed to 'true' for first time through
+				clear();
+				$('problem').innerHTML = problem;
+				initialized = true;
+				next_ready = false;
+				interval = setInterval(update_timer, 500);
+				start_time = Date.now();
+			}
 		};
 
 		function arithmetic_totals(payload) {
@@ -1973,7 +2017,7 @@ def _js_arithmetic():
 			$('all_stats_content').style.display = 'block';
 			$('main_content').style.display = 'none';
 		};
-		
+
 		function show_hide_stats() {
 			if ($('show_hide_stats_button').innerHTML == "Show ▼") {
 				$('show_hide_stats_button').innerHTML = "Hide ▲";
@@ -2010,16 +2054,6 @@ def _js_arithmetic():
 			$('answer').focus();
 		};
 
-		$('answer').onkeydown = function(event) {
-			if (event.key == 'Enter' && !($('go_button').disabled)) {
-				go();
-			} else if (event.key == 'Backspace') {
-				$('answer').innerHTML = $('answer').innerHTML.slice(0, -1);
-			} else if (event.key >= '0' && event.key <= '9' && !($('go_button').disabled)) {
-				$('answer').innerHTML = $('answer').innerHTML + (event.key - '0').toString();
-			}
-		};
-
 		function advance() {
 			// must wait for next_ready to be true; async/await and js callbacks do not seem well suited to do this conveniently on an ongoing basis,
 			// and 99% of the time, by the time advance() gets called, next_ready will, indeed, be true already, so... just going for the poor ole' timeout-check method
@@ -2032,7 +2066,7 @@ def _js_arithmetic():
 				next_ready = false; // stays false until update_arithmetic next called, which will happen as soon as the send_message() is received by server and the server responds
 			}
 		};
-		
+
 		function clear() {
 			$('problem').innerHTML = "";
 			$('answer').focus();
@@ -2059,7 +2093,7 @@ def _js_arithmetic():
 			//for (var i = 0, ii = myElements.length; i < ii; i++) {
  			//	ninepin_buttons[i].disabled = true;
 			//};
-			
+
 			// update counts and times:
 			session_count += 1;
 			$('stat_session_count').innerHTML = session_count;
@@ -2085,9 +2119,9 @@ def _js_arithmetic():
 				$('correct_answer').innerHTML = answer;
 				$('answer').style.textDecoration = "line-through";
 			}
-			
+
 			// now send the message (which might very shortly result in an update_arithmetic which will overwrite next_problem, next_answer, and next_id
-			var message = {task: "arithmetic", assessment_id: id, speed_ms: speed_ms, correct: correct}
+			var message = {task: "arithmetic_answer", assessment_id: id, speed_ms: speed_ms, correct: correct}
 			ws_send(message);
 
 			// pause, longer or shorter depending on whether 'correct':
@@ -2127,7 +2161,7 @@ def _js_arithmetic():
 		function stop_random_play() {
 			// bogus - just a filler b/c choose_dropdown_option calls this (we hijacked it from resources()
 		};
-				
+
 		function rest_of_go_MOVING() {
 			which = Math.floor(Math.random() * audio_count);
 			if (data.answer == answer.value) {
@@ -2149,7 +2183,14 @@ def _js_arithmetic():
 			}
 		};
 
-		
+
+	''')
+
+def _js_practice():
+	return raw('''
+		function show_arithmetic(payload) {
+			$("main_content").innerHTML = payload.content;
+		}
 	''')
 
 def _js_mark_assignment():

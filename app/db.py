@@ -253,8 +253,8 @@ async def assess_arithmetic_fact_DEPRECATE(dbc, spec): # spec contains arithmeti
 
 # NEWER STILL....
 
-async def arithmetic_new_problems(dbc, uuid, spec):
-	return await sql.arithmetic_new_problems(dbc, uuid, spec)
+async def fetch_new_arithmetic_problems(dbc, uuid, spec):
+	return await sql.fetch_new_arithmetic_problems(dbc, uuid, spec)
 
 async def arithmetic_answer(dbc, uuid, data):
 	return await sql.arithmetic_answer(dbc, uuid, data)
@@ -308,8 +308,8 @@ async def get_programs(dbc):
 async def get_program(dbc, id):
 	return await sql.get_program(dbc, id)
 
-async def get_subjects(dbc):
-	return await sql.get_subjects(dbc)
+async def get_subjects(dbc, flag = None):
+	return await sql.get_subjects(dbc, flag)
 
 async def get_cycles(dbc):
 	return await sql.get_cycles(dbc)

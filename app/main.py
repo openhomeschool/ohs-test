@@ -296,17 +296,17 @@ class New_User(web.View):
 		return hr(html.new_user_success(user_id)) # TODO: lame placeholder - need to redirect, anyway!
 
 
+
 @rt.get('/practice', name = 'practice')
 @auth('student')
 async def practice(rq):
 	session = await get_session(rq)
+	session['after_login'] = str(rq.rel_url) # come back here after a user-switch; this is a kludgey way of pushing this... haven't worked out how to elegantly retain current page after user-switch, or if it's even desirable.
 	uuid = session.get('uuid')
 	dbc = rq.app['db']
 
-	session['after_login'] = str(rq.rel_url) # come back here after a user-switch; this is a kludgey way of pushing this... haven't worked out how to elegantly retain current page after user-switch, or if it's even desirable.
-
-	# TODO: the following is hard-coded to arithmetic, instead of obeying any filters!! (still in "proof of concept)
-	_set_up_twixt(session, _arithmetic_new_problems(dbc, uuid, None, rq.query)) # start the first problem-set lookup now... will be easily done by the time the page is loaded and websocket handshake occurs, when this result is passed on into the loaded page
+	spec = _make_practice_spec(rq.query)
+	_set_up_twixt(session, 'practice', _practice_fetch_new_problems(dbc, uuid, spec), spec) # start the first problem-set lookup now... will be easily done by the time the page is loaded and websocket handshake occurs, when this result is passed on into the loaded page
 
 	links = (
 		#(name/title, hint, content, is-url?)
@@ -317,13 +317,11 @@ async def practice(rq):
 	login, settings = await _login_button(session, dbc)
 
 	filters = (
-		('subject', [(subject['name'], subject['id']) for subject in await db.get_subjects(dbc)], 'Subject'),
-		('arithmetic_op', [('+ (Addition)', '+'), ('- (Subtraction)', '-'), ('× (Multiplication)', '×'), ('÷ (Division)', '÷')], 'Operation: + - × ÷'),
+		# (key, options, hint, selected_id)
+		('subject', [(subject['name'], subject['id']) for subject in await db.get_subjects(dbc, 'practice')], 'Subject', spec.subject),
 	)
 
-	fake_query = {'subject': 4, 'arithmetic_op': '×'} # TODO: this is temporary!!!
-	
-	return hr(html.practice(_ws_url(rq, '/ws_messages'), links, filters, fake_query, login, settings)) # TODO: return to rq.query!!
+	return hr(html.practice(links, filters, login, settings))
 
 
 @rt.view('/enroll', name = 'enroll')
@@ -638,17 +636,19 @@ async def _resources(rq, qargs):
 	dbc = rq.app['db']
 	uuid = session.get('uuid')
 
-	_set_up_twixt(session, _first_resources(dbc, qargs, uuid)) # start the first lookup now... should be done by the time the page is loaded and websocket handshake occurs, when this result is passed on into the loaded skeletal page
+	spec = _make_resources_spec(qargs)
+	_set_up_twixt(session, 'resources', _first_resources(dbc, uuid, spec), spec) # start the first lookup now... should be done by the time the page is loaded and websocket handshake occurs, when this result is passed on into the loaded skeletal page
 
-	filters = (
-		('program', [(program['name'], program['id']) for program in await db.get_programs(dbc)], 'Program'),
-		('grade', (), 'Grade'), # will be populated later
-		('subject', [(subject['name'], subject['id']) for subject in await db.get_subjects(dbc)], 'Subject'),
+	filters = ( # key, options, hint, selected_id
+		('program', [(program['name'], program['id']) for program in await db.get_programs(dbc)], 'Program', qargs.get('program')),
+		('grade', (), 'Grade', None), # will be populated later
+		('subject', [(subject['name'], subject['id']) for subject in await db.get_subjects(dbc)], 'Subject', qargs.get('subject')),
 	)
-	cycles = ('cycle', [(cycle['name'], cycle['id']) for cycle in await db.get_cycles(dbc)])
+	# Just (key, options, selected_id) for following
+	cycles = ('cycle', [(cycle['name'], cycle['id']) for cycle in await db.get_cycles(dbc)], qargs.get('cycle'))
 	weeks = (
-		('first_week', [('W-%d' % week, week) for week in range(0, 29)]), # TODO: hardcode 29!
-		('last_week', [('W-%d' % week, week) for week in range(0, 29)]), # TODO: hardcode 29!
+		('first_week', [('W-%d' % week, week) for week in range(0, 29)], qargs.get('first_week')), # TODO: hardcode 29!
+		('last_week', [('W-%d' % week, week) for week in range(0, 29)], qargs.get('last_week')), # TODO: hardcode 29!
 	)
 
 	links = _links(rq)
@@ -657,43 +657,53 @@ async def _resources(rq, qargs):
 	return hr(html.resources(_ws_url(rq, '/ws_messages'), filters, cycles, weeks, qargs, links, login, settings))
 
 
-
 @rt.get('/ws_messages')
 async def ws_messages(rq):
+	session = await get_session(rq)
 	try:
 		ws = web.WebSocketResponse()
 		await ws.prepare(rq)
-		
-		# Send first data if packaged in the initial-data-package called 'twixt', which was fetched from the database between the GET reply and this call to set up the web socket in the page (thus the name "twixt")
-		session = await get_session(rq)
-		uuid = session.get('uuid')
-		twixt_id = session.get('twixt_id')
-		spec = None
-		if twixt_id:
-			twixt = await g_twixt_work[twixt_id] # since session['twixt_id'] exists, then g_twixt_work[twixt_id] should definitely exist; it would be a true 500 exception if it didn't
-			spec = twixt.spec
-			dbc = rq.app['db']
+
+		# The first data (to send back to client) was packaged in the initial-data-package called 'twixt'; it was fetched from the database between ("betwixt") the initial GET and this call to set up the web socket within the page (thus the name "twixt")
+		twixt = g_twixt_work[session['twixt_id']] # g_twixt_work[twixt_id] should definitely exist. By design, twixt must always exist for every ws kicked off;  it is a true 500 exception error case for a twixt to not exist; NOTE: we'll 'await' twixt.result later...
+
+		handler_data = U.Struct(
+			rq = rq,
+			ws = ws,
+			session = session,
+			uuid = session.get('uuid'),
+			dbc = rq.app['db'],
+			spec = twixt.spec,
+			data = twixt.result, # we don't even 'await' this now!  Just pass it on... will await handler_data.data later! (In the meantime, it's finishing (or finished), but the real reason we're delaying the await is for the uniformity of handling `data`; later, in some cases, data is assigned to a new asyncio.create_task(); we want the await() to happen in the same place always, whether we got this data/result from twixt or from another, later assignment
+		)
+		try:
 			if twixt.task == 'resources':
-				await ws.send_json(_make_show_resources_message(spec, twixt.result, await _grades_filter(dbc, spec.program)))
-				del g_twixt_work[twixt_id] # the show_resources twixt is a 1-timer; just delete now
-				del session['twixt_id']
-			elif twixt.task == 'arithmetic':
-				await ws.send_json(_make_arithmetic_message(twixt_id, twixt, dbc, uuid))
-				# First time, we actually need to send TWO problems, as one is cached to swap in as soon as user answers, so...:
-				await ws.send_json(_make_arithmetic_message(twixt_id, twixt, dbc, uuid))
+				await _send_show_resources_message(handler_data, await _grades_filter(handler_data.dbc, handler_data.spec.program))
+			elif twixt.task == 'practice':
+				send_show_practice_message_makers = {
+					14: _send_show_arithmetic_message,
+				}
+				await send_show_practice_message_makers[handler_data.spec.subject](handler_data)
+			else:
+				l.warning(f'Unknown twixt.task: ({twixt.task})!')
+		finally:
+			del g_twixt_work[session['twixt_id']]
+			del session['twixt_id']
 
 		handlers = {
+			'ping': _ws_ping_pong,
 			'check_username': _ws_check_username,
 			'filter': _ws_filter,
 			'show_shopping': _ws_show_shopping,
-			'arithmetic': _ws_arithmetic,
-			'arithmetic_totals': _ws_arithmetic_totals,
+			'practice_filter': _ws_practice_filter,
+			'arithmetic_answer': _ws_arithmetic_answer_swap,
 			'arithmetic_start': _ws_arithmetic_start,
 			'arithmetic_filter': _ws_arithmetic_filter,
+			'arithmetic_totals': _ws_arithmetic_totals,
 			'get_random_url_playlist': _get_random_url_playlist,
 			'mark_assignment': _ws_mark_assignment,
 		}
-	
+
 		l.info('Websocket prepared, listening for messages...')
 		async for msg in ws:
 			try:
@@ -702,14 +712,8 @@ async def ws_messages(rq):
 				elif msg.type == WSMsgType.PONG:
 					pass # nothing to do, but it's nice if the client/browser actually sends PONGs!
 				elif msg.type == WSMsgType.TEXT:
-					payload = json.loads(msg.data) # Note: payload validated in real msg_handler, below
-					if payload['task'] == 'ping':
-						# TODO: watch out for potential DOS - don't reply indiscriminately; rather, only reply if enough time has passed since the last ping from the same client
-						await ws.send_json({'task': 'pong'}) # would prefer to use WSMsgType.PING rather than a normal message, but javascript doesn't seem to have specified support for that! (see https://stackoverflow.com/questions/10585355/sending-websocket-ping-pong-frame-from-browser)
-						await ws.ping() # because some browsers will respond to "real" pings from server, or, at *least*, some browsers will keep the connection open, upon receiving a ping, even if they don't properly PONG!
-							# in an ideal world, we wouldn't have our own 'task' 'ping' or 'pong'; rather, we'd rely on ws.ping() or msg.type == WSMsgType.PING, to which we could respond with a PONG, but it doesn't seem that many browsers do this
-					else:
-						await handlers[payload['task']](rq, payload, ws, spec)
+					handler_data.payload = json.loads(msg.data) # Note: payload validated in real msg_handlers, later
+					await handlers[handler_data.payload['task']](handler_data)
 				elif msg.type == WSMsgType.ERROR:
 					l.warning('websocket connection closed with exception "%s"' % ws.exception())
 				else:
@@ -789,7 +793,7 @@ k_db_handlers = { # 'id' keys must coincide with DB 'program' table
 	9: db.get_high1_resources, # TODO: placeholder
 }
 
-async def _first_resources(dbc, qargs, uuid):
+def _make_resources_spec(qargs):
 	spec = U.Struct(
 		search = qargs.get('search'),
 		deep_search = False,
@@ -812,12 +816,12 @@ async def _first_resources(dbc, qargs, uuid):
 	)
 	if spec.week != None:
 		spec.first_week = spec.last_week = int(spec.week)
-		
-	return U.Struct(
-		task = 'resources',
-		spec = spec, # need to send spec, itself, as there's no other way for retrieving end (ws_messages function) to get spec hereafter!
-		result = await k_db_handlers[spec.program](dbc, spec, uuid),
-	)
+
+	return spec
+
+
+async def _first_resources(dbc, uuid, spec):
+	return await k_db_handlers[spec.program](dbc, spec, uuid)
 
 
 k_filter_map = {
@@ -832,28 +836,21 @@ k_filter_map = {
 }
 
 
-async def _ws_filter(rq, payload, ws, spec):
-	assert(payload['task'] == 'filter')
-	session = await get_session(rq)
-	dbc = rq.app['db']
+async def _ws_filter(hd):
+	cast, validator = k_filter_map[hd.payload['filter']]
+	value = cast(hd.payload['data'])
+	if validator and not validator(value):
+		raise ValueError() # treat like failed cast, above; either way - invalid filter input was tried
+	setattr(hd.spec, hd.payload['filter'], value) # note that hd.payload calls must match field names in `hd.spec`; but this is only so by declaration
+	hd.data = k_db_handlers[hd.spec.program](hd.dbc, hd.spec, hd.uuid) # await() later, upon use; in this case, there's no real advantage, as we're not setting this up to run between transactions, but we want a uniform treatment, which (by declaration) always involves await()ing data right before use
+	# program changes require special treatment of the "grade" filter/button -- grab the grades that are appropriate for this (new) program selected:
+	grades = None if hd.payload['filter'] != 'program' else await _grades_filter(hd.dbc, value) # value is program_id in this case
+	# reset any existing playlist; will have to be reconstructed if play_random is attempted again after this filter establishes a new set of grammar
+	if 'playlist_id' in hd.session:
+		hd.session.pop('playlist_id', None)
+	# send the message:
+	await _send_show_resources_message(hd, grades)
 
-	try:
-		cast, validator = k_filter_map[payload['filter']]
-		value = cast(payload['data'])
-		if validator and not validator(value):
-			raise ValueError() # treat like failed cast, above; either way - invalid filter input was tried
-		setattr(spec, payload['filter'], value) # note that payload calls must match field names in `spec`; but this is only so by declaration
-		result = await k_db_handlers[spec.program](dbc, spec, uuid)
-		# program changes require special treatment of the "grade" filter/button -- grab the grades that are appropriate for this (new) program selected:
-		grades = None if payload['filter'] != 'program' else await _grades_filter(dbc, value) # value is program_id in this case
-		# reset any existing playlist; will have to be reconstructed if play_random is attempted again after this filter establishes a new set of grammar
-		if 'playlist_id' in session:
-			session.pop('playlist_id', None)
-		# send the message:
-		await ws.send_json(_make_show_resources_message(spec, result, grades))
-		
-	except ValueError as e:
-		l.warning('invalid filter input to ws_resources') # but do nothing else; client code already checks for validity; this must/might be an attack attempt; no need to respond
 
 async def _grades_filter(dbc, program_id):
 	program = await db.get_program(dbc, program_id)
@@ -864,116 +861,97 @@ async def _grades_filter(dbc, program_id):
 	return html.grades_filter_button('grade', grades, program['show_grammar_option'])
 
 
-async def _arithmetic_new_problems(dbc, uuid, spec, qargs = None):
-	if not spec:
-		assert(qargs != None) # should only be None if spec is provided; else, should at least be the {} that an empty request.query might be
-		spec = U.Struct(
-			# NOTE: this is copied from _resources(); consolidate!?!  (Not yet used, but may be a great way of doing this consistently)
-			arithmetic_op = qargs.get('arithmetic_op', '×'),
-			#program = int(qargs.get('program', 1)), # hardcode default to "grammar school" program if program choice not made (TODO: set this, instead, to logged-in-user's attached program
-			#grade = int(qargs.get('grade', 0)), # 0 = "unspecified" or "all"; common, when a program is treated all the same, and there's no need to differentiate grade
-			subject = qargs.get('subject', 0), # 0 = "all" indicator
-			#cycles = (4, int(qargs.get('cycle', k_temp_this_cycle))), # default: k_temp_this_cycle ("4" refers to grammar that belongs to "all cycles" (like timeline grammar) - this is hardcode! TODO:FIX!)
-			first_week = int(qargs.get('first_week', k_temp_this_week)), # TODO: hardcode default to week 0! replace with lookup for user's "current week"
-			last_week = int(qargs.get('last_week', k_temp_this_week)), # TODO: see above; look up user's current-week
-			week = qargs.get('week', None), # convenience - use this to specify first_week = last_week = week
-		)
-		if spec.week != None:
-			spec.first_week = spec.last_week = int(spec.week)
-	
-	return U.Struct(
-		task = 'arithmetic',
-		spec = spec, # need to send spec, itself, as there's no other way for retrieving end (ws_messages function) to get spec hereafter!
-		problems = await db.arithmetic_new_problems(dbc, uuid, spec),
-		index = 0, # `problems` is a list, so this index is used to track transaction-by-transaction use of the items until they're all used up and another call to _arithmetic_problems()
-	)
-	
+def _arithmetic_add_spec_details(spec, qargs):
+	spec.arithmetic_op = qargs.get('arithmetic_op', '×') # default to multiplication if not specified
 
-async def _ws_check_username(rq, payload, ws, spec = None):
-	# Note: `spec` not used in this function, but required in function signature for generic calling
-	assert(payload['task'] == 'check_username')
-	dbc = rq.app['db']
-	
-	if payload['string']:
-		value = str(payload['string'])
+_practice_subject_add_spec_details = { # Note, keys in this dict are hard-tied to id field in Subject table, in database!
+	14: _arithmetic_add_spec_details
+	# others...
+}
+_practice_subject_fetch_new_problems = { # Note, keys in this dict are hard-tied to id field in Subject table, in database!
+	14: lambda dbc, uuid, spec: db.fetch_new_arithmetic_problems(dbc, uuid, spec),
+	# others...
+}
+
+def _make_practice_spec(qargs):
+	spec = U.Struct(
+		# NOTE: this is copied from _resources(); consolidate!?!  (Not yet used, but may be a great way of doing this consistently)
+		subject = qargs.get('subject', 14), # 14 = "Arithmetic" (hard-code default)
+		#program = int(qargs.get('program', 1)), # hardcode default to "grammar school" program if program choice not made (TODO: set this, instead, to logged-in-user's attached program
+		#grade = int(qargs.get('grade', 0)), # 0 = "unspecified" or "all"; common, when a program is treated all the same, and there's no need to differentiate grade
+		#cycles = (4, int(qargs.get('cycle', k_temp_this_cycle))), # default: k_temp_this_cycle ("4" refers to grammar that belongs to "all cycles" (like timeline grammar) - this is hardcode! TODO:FIX!)
+		first_week = int(qargs.get('first_week', k_temp_this_week)), # TODO: hardcode default to week 0! replace with lookup for user's "current week"
+		last_week = int(qargs.get('last_week', k_temp_this_week)), # TODO: see above; look up user's current-week
+		week = qargs.get('week', None), # convenience - use this to specify first_week = last_week = week
+	)
+	if spec.week != None:
+		spec.first_week = spec.last_week = int(spec.week)
+	_practice_subject_add_spec_details[spec.subject](spec, qargs)
+	return spec
+
+async def _practice_fetch_new_problems(dbc, uuid, spec):
+	return U.Struct(
+		problems = await db.fetch_new_arithmetic_problems(dbc, uuid, spec),
+		index = 0, # `problems` is a list, so this index is used to track problem-by-problem use, through the list, until they're all used up and another call to _practice_fetch_new_problems() needs to be made
+	)
+
+
+async def _ws_check_username(hd):
+	if hd.payload['string']:
+		value = str(hd.payload['string'])
 		if valid.rec_username.match(value):
-			exists = await db.username_exists(dbc, payload['string'])
-			await ws.send_json({'task': 'check_username', 'div': payload['div'], 'reply': 'exists' if exists else 'available!'})
+			exists = await db.username_exists(hd.dbc, hd.payload['string'])
+			await hd.ws.send_json({'task': 'check_username', 'div': hd.payload['div'], 'reply': 'exists' if exists else 'available!'})
 		else:
 			l.warning('username fragment sent to ws_check_username was not a valid string') # but do nothing else; client code already checks for validity; this must/might be an attack attempt; no need to respond
 
 
-async def _ws_arithmetic_answer(uuid, dbc, payload):
-	await db.arithmetic_answer(dbc, uuid, payload)
-
-async def _ws_arithmetic_send_next(session, uuid, dbc, payload, ws, spec):
-	
-	twixt_id = session.get('twixt_id')
-	if not twixt_id:
-		# We'll have to fetch the _arithmetic_new_problems now, instead of relying on having been done in twixt, as it should've been...
-		# leave spec = `spec`, as there's no twixt.spec; (function arg) `spec` will always be the initial spec sent to ws_messages at time of ws setup, but may get modified internally along the way
-		l.warning("_ws_arithmetic was entered without a session['twixt_id']; this is unexpected.  Handling the problem by await'ing a new _arithmetic_new_problems(), but you might want to find out why this happened, contrary to design.")
-		twixt_id = _set_up_twixt(session, _arithmetic_new_problems(dbc, uuid, spec))
-
-	twixt = await g_twixt_work[twixt_id]
-	assert(twixt.task == 'arithmetic')
-
-	# send the 'next' problem to the client 
-	await ws.send_json(_make_arithmetic_message(twixt_id, twixt, dbc, uuid))
+async def _ws_arithmetic_answer_swap(hd):
+	await db.arithmetic_answer(hd.dbc, hd.uuid, hd.payload)
+	if hd.payload['correct']: # only send next problem if hd.payload['correct']; if not correct, user is re-presented with previous problem; not ready to be sent another new problem yet):
+		# send the 'next' problem to the client:
+		await hd.ws.send_json(await _make_arithmetic_problem_message(hd))
 
 
-async def _ws_arithmetic(rq, payload, ws, spec): # we ignore this 'spec' unless there's no twixt; else we propagate the (possibly changing) spec in the twixt each iteration
-	session = await get_session(rq)
-	uuid = session.get('uuid')
-	dbc = rq.app['db']
-
-	await _ws_arithmetic_answer(uuid, dbc, payload)
-	if payload['correct']: # only send next if payload['correct']; if not correct, user is re-presented with previous problem; not ready to be sent another new problem yet):
-		await _ws_arithmetic_send_next(session, uuid, dbc, payload, ws, spec)
-
-
-async def _ws_arithmetic_totals(rq, payload, ws, spec): # we ignore this 'spec' unless there's no twixt; else we propagate the (possibly changing) spec in the twixt each iteration
-	session = await get_session(rq)
-	uuid = session.get('uuid')
-	dbc = rq.app['db']
-
-	result = dict(await db.arithmetic_totals(dbc, uuid, spec))
+async def _ws_arithmetic_totals(hd):
+	result = dict(await db.arithmetic_totals(hd.dbc, hd.uuid, hd.spec))
 	result['task'] = 'arithmetic_totals'
 	result['total_sizzle_score'] = result['total_correct_count'] * result['total_accuracy'] / 100
 	#result['total_sizzle_score'] = result['total_correct_count'] * result['total_accuracy'] / (100 * result['total_time'] ** 0.04) # TODO: somewhat arbitrary, and doesn't work especially well!
 
-	await ws.send_json(result)
+	await hd.ws.send_json(result)
 
 
-async def _ws_arithmetic_start(rq, payload, ws, spec): # we ignore this 'spec' unless there's no twixt; else we propagate the (possibly changing) spec in the twixt each iteration
-	session = await get_session(rq)
-	uuid = session.get('uuid')
-	db = rq.app['db']
-	# send TWO! - have to always be one ahead
-	await _ws_arithmetic_send_next(session, uuid, db, payload, ws, spec)
-	await _ws_arithmetic_send_next(session, uuid, db, payload, ws, spec)
+async def _ws_ping_pong(hd):
+	# TODO: watch out for potential DOS - don't reply indiscriminately; rather, only reply if enough time has passed since the last ping from the same client
+	await hd.ws.send_json({'task': 'pong'}) # would prefer to use WSMsgType.PING rather than a normal message, but javascript doesn't seem to have specified support for that! (see https://stackoverflow.com/questions/10585355/sending-websocket-ping-pong-frame-from-browser)
+	await hd.ws.ping() # because some browsers will respond to "real" pings from server, or, at *least*, some browsers will keep the connection open, upon receiving a ping, even if they don't properly PONG!
+		# in an ideal world, we wouldn't have our own 'task' 'ping' or 'pong'; rather, we'd rely on ws.ping() or msg.type == WSMsgType.PING, to which we could respond with a PONG, but it doesn't seem that many browsers do this
 
-async def _ws_arithmetic_filter(rq, payload, ws, spec):
-	spec.arithmetic_op = payload.get('data') # operator ('+', '-', etc. sent as data: option_id)
-	await _ws_arithmetic_start(rq, payload, ws, spec)
+async def _ws_arithmetic_start(hd):
+	await _send_show_arithmetic_message(hd)
 
-async def _ws_show_shopping(rq, payload, ws, spec = None):
-	# Note: `spec` not used in this function, but required in function signature for generic calling
-	dbc = rq.app['db']
-	match = valid.rec_resource_id_div.match(payload['resource_id'])
+async def _ws_arithmetic_filter(hd):
+	hd.spec.arithmetic_op = hd.payload.get('data') # operator ('+', '-', etc. (option_id) sent as 'data')
+	await _ws_arithmetic_start(hd)
+
+async def _ws_practice_filter(hd):
+	hd.spec.subject = hd.payload.get('data') # id of subject
+	#!!!!await _ws_arithmetic_start(hd)
+
+
+async def _ws_show_shopping(hd):
+	match = valid.rec_resource_id_div.match(hd.payload['resource_id'])
 	if not match:
 		raise ValueError() # treat like a failed cast
-	result = await db.get_shopping_links(dbc, match.group(1)) # group(1) is the actual id matched, after the prefix
-	await ws.send_json({'task': 'show_shopping', 'div_id': payload['resource_id'], 'result': html.show_shopping(result)})
+	result = await db.get_shopping_links(hd.dbc, match.group(1)) # group(1) is the actual id matched, after the prefix
+	await hd.ws.send_json({'task': 'show_shopping', 'div_id': hd.payload['resource_id'], 'result': html.show_shopping(result)})
 
-async def _ws_mark_assignment(rq, payload, ws, spec):
-	session = await get_session(rq)
-	uuid = session.get('uuid')
-	dbc = rq.app['db']
-	result = await db.mark_assignment(dbc, uuid, int(payload['assignment_id']), bool(payload['checked'])) # group(1) is the actual id matched, after the prefix
+async def _ws_mark_assignment(hd):
+	result = await db.mark_assignment(hd.dbc, hd.uuid, int(hd.payload['assignment_id']), bool(hd.payload['checked'])) # group(1) is the actual id matched, after the prefix
 	#TODO: return something useful from mark_assignment() and use this to indicate any trouble to user
 
-async def _get_random_url_playlist(rq, payload, ws, spec):
+async def _get_random_url_playlist(hd):
 	# Assemble the playlist (we build an entire playlist at once in order to avoid repetition (each song/etc. shows up only once), and because it's very easy to do one DB operation that results in a whole (randomly-ordered) set/list of "hits", rather than asking the DB every time, one song at a time):
 	path_map = {
 		db.k_subject_ids['History']: 'history/',
@@ -985,10 +963,10 @@ async def _get_random_url_playlist(rq, payload, ws, spec):
 	}
 	playlist = []
 	for subject, path in path_map.items():
-		if spec.subject in (0, subject): # i.e., spec.subject is either "all subjects" or this one
+		if hd.spec.subject in (0, subject): # i.e., hd.spec.subject is either "all subjects" or this one
 			url = html._aurl(path)
-			for cycle in spec.cycles:
-				for week in range(spec.first_week, spec.last_week + 1):
+			for cycle in hd.spec.cycles:
+				for week in range(hd.spec.first_week, hd.spec.last_week + 1):
 					fn = f'c{cycle}w{week}.mp3'
 					p_fn = f'c{cycle}w{week}-prompt.mp3'
 					if exists('static/audio/' + path + p_fn) and exists('static/audio/' + path + fn): # TODO: fix hardcode static path (local/server path... static files may be stored elsewhere in future!)
@@ -998,7 +976,7 @@ async def _get_random_url_playlist(rq, payload, ws, spec):
 	for pair in playlist:
 		result.extend(pair)
 
-	await ws.send_json({'task': 'set_random_url_playlist', 'playlist': result})
+	await hd.ws.send_json({'task': 'set_random_url_playlist', 'playlist': result})
 
 async def _login_button(session, dbc):
 	result = {'type': 'button'} # default, unless we're already logged in...
@@ -1013,28 +991,43 @@ async def _login_button(session, dbc):
 	return result, settings
 
 
-def _make_show_resources_message(spec, query_result, grades):
-	return {
+async def _send_show_resources_message(hd, grades):
+	await hd.ws.send_json({
 		'task': 'show_resources',
-		'content': html.resource_list(spec, query_result),
-		'spec': json.dumps(spec.asdict()),
+		'content': html.resource_list(hd.spec, await hd.data),
+		'spec': json.dumps(hd.spec.asdict()),
 		'grades': grades,
-	}
+	})
 
-def _make_arithmetic_message(twixt_id, twixt, dbc, uuid):
-	assert(twixt.index < len(twixt.problems))
-	problem = twixt.problems[twixt.index]
-	twixt.index += 1 # for next fetch
-	if twixt.index == len(twixt.problems):
-		g_twixt_work[twixt_id] = asyncio.create_task(_arithmetic_new_problems(dbc, uuid, twixt.spec))
+async def _send_show_arithmetic_message(hd):
+	msg = await _make_arithmetic_problem_message(hd)
+	msg['task'] = 'show_arithmetic'
+	key = 'arithmetic_op'
+	msg['content'] = html.arithmetic_practice(
+		key = key,
+		options = (('+ (Addition)', '+'), ('- (Subtraction)', '-'), ('× (Multiplication)', '×'), ('÷ (Division)', '÷')),
+		hint = 'Operation: + - × ÷',
+		selected_id = hd.spec.arithmetic_op
+	)
+	await hd.ws.send_json(msg)
+	# Starting a new arithmetic session requires sending the original problem (and content, per above) AND a follow-up problem (immediately), which is cached, ready to swap in as soon as user answers first problem:
+	await hd.ws.send_json(await _make_arithmetic_problem_message(hd))
+
+async def _make_arithmetic_problem_message(hd):
+	data = await hd.data # at long last!  By now, the task should be complete... else, this (of course) awaits its completion.  create_task() was called in an earlier transaction
+	assert(data.index < len(data.problems))
+	problem = data.problems[data.index]
+	data.index += 1 # for next fetch
+	if data.index == len(data.problems):
+		hd.data = asyncio.create_task(_practice_fetch_new_problems(hd.dbc, hd.uuid, hd.spec))
 	return {
-		'task': 'arithmetic',
+		'task': 'arithmetic_problem',
 		'assessment_id': problem['assessment_id'],
 		'op1': problem['operand1'],
 		'operator': problem['operator'],
 		'op2': problem['operand2'],
 		'answer': problem['answer'],
-		#'spec': json.dumps(spec.asdict()), # really need this?!!!  Don't do the work unless we need this client-side
+		#'spec': json.dumps(hd.spec.asdict()), # really need this?!!!  Don't do the work unless we need this client-side
 	}
 
 
@@ -1067,9 +1060,14 @@ async def _set_up_common_view_get(view, dbc = True, re_log_in_seconds = None):
 async def _set_up_common_view_post(view, dbc = True, uuid = True, data = True, re_log_in_seconds = None):
 	return await _set_up_common_view(view, dbc, uuid = uuid, data = data, re_log_in_seconds = re_log_in_seconds)
 
-def _set_up_twixt(session, async_call):
+def _set_up_twixt(session, task_name, async_call, spec):
 	session['twixt_id'] = twixt_id = str(uuid4())
-	g_twixt_work[twixt_id] = asyncio.create_task(async_call)
+	twixt = U.Struct(
+		task = task_name,
+		result = asyncio.create_task(async_call),
+		spec = spec, # need to send spec, itself, as there's no other way for retrieving end (ws_messages function) to get spec!
+	)
+	g_twixt_work[twixt_id] = twixt
 	return twixt_id
 
 
