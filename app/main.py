@@ -48,16 +48,16 @@ from . import util as U
 
 # Logging ---------------------------------------------------------------------
 
-logging.getLogger('aiosqlite').setLevel(logging.WARN)
+logging.getLogger('aiosqlite').setLevel(logging.CRITICAL)
 logging.getLogger('aiohttp').setLevel(logging.CRITICAL)
-logging.getLogger('aiohttp_session').setLevel(logging.WARN)
-logging.getLogger('asyncio').setLevel(logging.WARN)
+logging.getLogger('aiohttp_session').setLevel(logging.CRITICAL)
+logging.getLogger('asyncio').setLevel(logging.CRITICAL)
 
 logging.getLogger('adev').setLevel(logging.CRITICAL)
-#logging.getLogger('adev.server.dft').setLevel(logging.CRITICAL)
-#logging.getLogger('adev.server.aux').setLevel(logging.CRITICAL)
-#logging.getLogger('adev.tools').setLevel(logging.CRITICAL)
-#logging.getLogger('adev.main').setLevel(logging.CRITICAL)
+logging.getLogger('adev.server.dft').setLevel(logging.CRITICAL)
+logging.getLogger('adev.server.aux').setLevel(logging.CRITICAL)
+logging.getLogger('adev.tools').setLevel(logging.CRITICAL)
+logging.getLogger('adev.main').setLevel(logging.CRITICAL)
 
 logging.basicConfig(format = '%(asctime)s - %(levelname)s : %(name)s:%(lineno)d -- %(message)s', level = logging.DEBUG if settings.debug else logging.CRITICAL)
 l = logging.getLogger(__name__)
@@ -617,12 +617,12 @@ k_temp_this_cycle = 2
 # cool characters: ⌂♩♪♫♬▲►▼◄→ ʘΞΞΩΨΦΣΠϘЮФѺѼ׀ᴓ₪Ω⃰∞∑∆◊?¿ ᵯ«»
 _links = lambda rq: (
 	#(name/title, hint, content, is-url?)
-	('⌂', "Home (THIS week's grammar)", _http_url(rq, '/resources', {}), True),
+	('⌂', "Home (THIS week)", _http_url(rq, '/resources', {}), True),
 	('?', 'Practice/quiz grammar', _http_url(rq, '/practice', {}), True),
 	# ¿ - ASSESS?!! (practice, but with teeth!?
-	('→1', "NEXT week's grammar", _http_url(rq, '/resources', {'week': k_temp_this_week + 1}), True),
-	('4←', "REVIEW last four weeks' grammar", _http_url(rq, '/resources', {'program': 1, 'first_week': max(0, k_temp_this_week - 4), 'last_week': k_temp_this_week}), True),
-	('%s←' % k_temp_this_week, "REVIEW ALL grammar so far this year", _http_url(rq, '/resources', {'program': 1, 'first_week': 1, 'last_week': k_temp_this_week}), True),
+	('→1', "NEXT week", _http_url(rq, '/resources', {'week': k_temp_this_week + 1}), True),
+	('4←', "REVIEW last four weeks", _http_url(rq, '/resources', {'program': 1, 'first_week': max(0, k_temp_this_week - 4), 'last_week': k_temp_this_week}), True),
+	('%s←' % k_temp_this_week, "REVIEW ALL so far this year", _http_url(rq, '/resources', {'program': 1, 'first_week': 1, 'last_week': k_temp_this_week}), True),
 	('►♫', "PLAY random grammar showing below (filtered)", 'toggle_random_play(this)', False),
 	#('4-6 assignments': _http_url(rq, '/resources?program=2'),
 	#('7th-9th', _http_url(rq, '/resources', {'program': 3}), True),
@@ -659,11 +659,10 @@ async def _resources(rq, qargs):
 
 @rt.get('/ws_messages')
 async def ws_messages(rq):
+	ws = web.WebSocketResponse()
+	await ws.prepare(rq)
 	session = await get_session(rq)
 	try:
-		ws = web.WebSocketResponse()
-		await ws.prepare(rq)
-
 		# The first data (to send back to client) was packaged in the initial-data-package called 'twixt'; it was fetched from the database between ("betwixt") the initial GET and this call to set up the web socket within the page (thus the name "twixt")
 		twixt = g_twixt_work[session['twixt_id']] # g_twixt_work[twixt_id] should definitely exist. By design, twixt must always exist for every ws kicked off;  it is a true 500 exception error case for a twixt to not exist; NOTE: we'll 'await' twixt.result later...
 
@@ -1014,12 +1013,17 @@ async def _send_show_arithmetic_message(hd):
 	await hd.ws.send_json(await _make_arithmetic_problem_message(hd))
 
 async def _make_arithmetic_problem_message(hd):
-	data = await hd.data # at long last!  By now, the task should be complete... else, this (of course) awaits its completion.  create_task() was called in an earlier transaction
+	ct = lambda: asyncio.create_task(_practice_fetch_new_problems(hd.dbc, hd.uuid, hd.spec))
+	data = await hd.data # at long last!  By now the task 	(which was spun off a whole transaction ago) should be complete... else, this (of course) awaits its completion.  create_task() was called in an earlier transaction
+	if hd.spec.arithmetic_op != data.problems[0]['operator']:
+		# operator changed; immediately fetch new problems:
+		hd.data = ct()
+		data = await hd.data # need it immediately!
 	assert(data.index < len(data.problems))
 	problem = data.problems[data.index]
 	data.index += 1 # for next fetch
-	if data.index == len(data.problems):
-		hd.data = asyncio.create_task(_practice_fetch_new_problems(hd.dbc, hd.uuid, hd.spec))
+	if data.index == len(data.problems): # if we're now "to the end"...
+		hd.data = ct() # ... fetch the new request now, so that it will be complete, and we'll have a problem ready to go the next time the user answers the current problem....
 	return {
 		'task': 'arithmetic_problem',
 		'assessment_id': problem['assessment_id'],

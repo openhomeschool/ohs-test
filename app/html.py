@@ -491,25 +491,26 @@ def arithmetic_practice(key, options, hint, selected_id):
 		_dropdown((key, options, selected_id), 'ib-left', hint = hint, task = 'arithmetic_filter')
 		t.div(cls = 'clear')
 
-		with t.table():
-			with t.tr():
-				t.td('Calculating...', id = 'problem', cls = 'problem') # should be immediately injected with real problem (see javascript update_arithmetic(payload))
-				t.td(id = 'correct_answer', cls = 'correct_answer')
-				t.td(id = 'answer', tabindex = '-1', cls = 'problem', onkeydown = 'answer_key_down(event);') # instead of t.td(t.input_(id = 'answer', type = 'text', size = 3, maxlength = 4, autofocus = 'true'), cls = 'problem_response')
+		with t.div(id = 'calcs'):
+			with t.table():
+				with t.tr():
+					t.td('Calculating...', id = 'problem', cls = 'problem') # should be immediately injected with real problem (see javascript update_arithmetic(payload))
+					t.td(id = 'correct_answer', cls = 'correct_answer')
+					t.td(id = 'answer', tabindex = '-1', cls = 'problem', onkeydown = 'answer_key_down(event);') # instead of t.td(t.input_(id = 'answer', type = 'text', size = 3, maxlength = 4, autofocus = 'true'), cls = 'problem_response')
 
-		_ninepin_button = lambda value: t.button(value, type = 'button', value = str(value), cls = 'ninepin_button', onclick = 'add_ninepin(this)')
-		with t.div(cls = 'ninepin'):
-			for row in (2, 1, 0):
-				with t.div():
-					for col in (1, 2, 3):
-						_ninepin_button(row * 3 + col)
-			_ninepin_button(0)
-			t.button('Go!', id = 'go_button', type = 'button', title = 'Push this (or hit "Enter") to check your answer', disabled = 'true', onclick = 'go();')
-			t.button('←', id = 'backspace_button', type = 'button', title = 'Push this to erase/backspace/delete the last number you entered', onclick = 'backspace();')
-			t.hr()
-			t.div(t.button('Done!', onclick = 'done();'), '(for now)')
+			_ninepin_button = lambda value: t.button(value, type = 'button', value = str(value), cls = 'ninepin_button', onclick = 'add_ninepin(this)')
+			with t.div(cls = 'ninepin'):
+				for row in (2, 1, 0):
+					with t.div():
+						for col in (1, 2, 3):
+							_ninepin_button(row * 3 + col)
+				_ninepin_button(0)
+				t.button('Go!', id = 'go_button', type = 'button', title = 'Push this (or hit "Enter") to check your answer', disabled = 'true', onclick = 'go();')
+				t.button('←', id = 'backspace_button', type = 'button', title = 'Push this to erase/backspace/delete the last number you entered', onclick = 'backspace();')
+				t.hr()
+				t.div(t.button('Done!', onclick = 'done();'), '(for now)')
 
-		with t.div(cls = 'main', id = 'all_stats_content', style = 'display:none;'): # shown later...
+		with t.div(id = 'all_stats_content', style = 'display:none;'): # shown later...
 			with t.table():
 				with t.tr():
 					t.th('All Time', colspan = 2)
@@ -583,7 +584,7 @@ def practice(links, filters, login, user_settings):
 							_login_dropdown(login['username'], login['switch_users'], hint = 'Switch person')
 
 		with t.div(cls = 'flex-wrap'): # TODO: make a 'header_block' or something; different border color, perhaps
-			t.div(t.b('Focus'), cls = 'title')
+			t.div(t.b('Do'), cls = 'title')
 			with t.div(cls = 'main'):
 				for key, options, hint, selected_id in filters:
 					with t.div(id = '%s-container' % key):
@@ -597,11 +598,11 @@ def practice(links, filters, login, user_settings):
 
 		t.script(_js_basic())
 		t.script(_js_ws())
-		t.script(_js_practice())
 		t.script(_js_arithmetic())
+		t.script(_js_practice())
 		t.script(_js_dropdown())
 		t.script(_js_load_bg(user_settings))
-				
+
 	return d.render()
 
 
@@ -1604,7 +1605,6 @@ def _js_ws(url = None):
 		url = _ws_url # backup plan
 	return raw('''
 	var ws = new WebSocket("%(url)s");
-	console.log("CREATED ws");
 
 	ws.onmessage = function(event) {
 		var payload = JSON.parse(event.data);
@@ -1642,7 +1642,7 @@ def _js_ws(url = None):
 			alert("Lost connection... going to reload page....");
 			location.reload();
 		} else {
-			console.log("SENDING ws message: " + JSON.stringify(message));
+			//console.log("SENDING ws message: " + JSON.stringify(message));
 			ws.send(JSON.stringify(message));
 		}
 	};
@@ -2015,7 +2015,7 @@ def _js_arithmetic():
 			$('stat_all_sizzle_score').innerHTML = Math.floor(payload['total_sizzle_score']);
 			// the following should already be done, but just in case....
 			$('all_stats_content').style.display = 'block';
-			$('main_content').style.display = 'none';
+			$('calcs').style.display = 'none';
 		};
 
 		function show_hide_stats() {
@@ -2134,7 +2134,7 @@ def _js_arithmetic():
 
 		function done() {
 			// the following should already be done, but just in case....
-			$('main_content').style.display = 'none';
+			$('calcs').style.display = 'none';
 			$('all_stats_content').style.display = 'block';
 
 			$('stat_all_time').innerHTML = "Calculating...";
@@ -2148,7 +2148,7 @@ def _js_arithmetic():
 
 		function reset() {
 			$('all_stats_content').style.display = 'none';
-			$('main_content').style.display = 'block';
+			$('calcs').style.display = 'block';
 			session_count = 0;
 			session_correct = 0;
 			running_sizzle = 0;
@@ -2190,6 +2190,7 @@ def _js_practice():
 	return raw('''
 		function show_arithmetic(payload) {
 			$("main_content").innerHTML = payload.content;
+			initialized = false;
 		}
 	''')
 
