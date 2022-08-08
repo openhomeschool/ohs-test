@@ -260,12 +260,11 @@ async def user_settings(rq):
 @rt.view('/new_user', name = 'new_user')
 class New_User(web.View):
 	async def get(self):
-		return hr(html.new_user(html.Form(_gurl(self.request, 'new_user')), _check_username_url(self)))
+		return hr(html.new_user(html.Form(_gurl(self.request, 'new_user')), self.request.host))
 	
 	async def post(self):
 		rq = self.request
 		data = await rq.post()
-		ws_url = _check_username_url(self)
 		
 		# Validate:
 		invalids = []
@@ -279,7 +278,7 @@ class New_User(web.View):
 
 		if invalids:
 			# Re-present:
-			return hr(html.new_user(html.Form(rq.rel_url, data, invalids), ws_url, _wrap_error(error.invalid_new_user_input)))
+			return hr(html.new_user(html.Form(rq.rel_url, data, invalids), rq.host, _wrap_error(error.invalid_new_user_input)))
 		#else, go on...
 
 		# (Try to) add the user:
@@ -288,7 +287,7 @@ class New_User(web.View):
 			user_id = await db.add_user(rq.app['db'], data['new_username'], data['password'], data['email'])
 		except IntegrityError: # Note that this should **almost** never happen, as we check username availability in real-time, but it's always possible that another new user with the same username is created milliseconds before the db.add_user() attempt, above; this would make the username suddenly unavailable; we could not possibly have told the user about this in advance, and need to revert to posting an error message now:
 			# Re-present with user_exists error:
-			return hr(html.new_user(html.Form(rq.rel_url, data), ws_url, text.user_exists))
+			return hr(html.new_user(html.Form(rq.rel_url, data), rq.host, text.user_exists))
 
 		#if sess.get('trial'): # TODO!
 		#user = db.update_user(dbs, sess['username'], p.username, p.password, p.email)
@@ -321,7 +320,7 @@ async def practice(rq):
 		('subject', [(subject['name'], subject['id']) for subject in await db.get_subjects(dbc, 'practice')], 'Subject', spec.subject),
 	)
 
-	return hr(html.practice(links, filters, login, settings))
+	return hr(html.practice(links, filters, login, settings, rq.host))
 
 
 @rt.view('/enroll', name = 'enroll')
@@ -486,7 +485,7 @@ class Invitation(web.View):
 @rt.get('/select_user')
 @auth('admin')
 async def select_user(rq):
-	return hr(html.select_user(_ws_url(rq, '/ws_filter_list')))
+	return hr(html.select_user(_ws_url(rq, '/ws_filter_list'), rq.host))
 
 
 @rt.get('/ws_filter_list')
@@ -587,7 +586,7 @@ async def detail(rq):
 	detail = await db.get_detail(dbc, rq.match_info['key'])
 	if detail: # is a 4-tuple: {table, record, details, signs}
 		table, record, details, signs = detail
-		return await g_detail_handlers[table](record, details, signs)
+		return await g_detail_handlers[table](record, details, signs, rq.host)
 	else:
 		raise web.HTTPFound(_gurl(rq, 'home')) # TODO - replace with a page/message that indicates failure to find the 'key'
 
@@ -598,18 +597,18 @@ async def event_detail(rq):
 	detail = await db.get_detail_by_id(dbc, table, rq.match_info['id'])
 	if detail: # is a 3-tuple: {record, details, signs (sign-language signs)}
 		record, details, signs = detail
-		return await g_detail_handlers[table](record, details, signs)
+		return await g_detail_handlers[table](record, details, signs, rq.host)
 	else:
 		raise web.HTTPFound(_gurl(rq, 'home')) # TODO - replace with a page/message that indicates failure to find the 'table/id'
 
 
 @detail_handler('event')
-async def timeline_event_detail(record, details, signs):
-	return hr(html.timeline_event_detail(record, details, signs))
+async def timeline_event_detail(record, details, signs, host):
+	return hr(html.timeline_event_detail(record, details, signs, host))
 
 @detail_handler('science')
-async def science_detail(record, details, signs):
-	return hr(html.science_detail(record, details, signs))
+async def science_detail(record, details, signs, host):
+	return hr(html.science_detail(record, details, signs, host))
 
 k_temp_this_week = 28
 k_temp_this_cycle = 2
@@ -1123,7 +1122,7 @@ async def init(argv):
 	def q(db_handler, html_function):
 		#@auth('student') # TODO: comment this back in when it's time to auth students who are looking to quiz
 		async def quiz(rq):
-			return hr(html.quiz(_ws_url(rq, '/ws_quiz_handler'), db_handler, html_function))
+			return hr(html.quiz(_ws_url(rq, '/ws_quiz_handler'), db_handler, html_function, rq.host))
 		return quiz
 	g = web.get
 	app.add_routes([

@@ -428,7 +428,7 @@ def student_invitation(form, invitation, person, enrollments, flash = None):
 
 
 
-def new_user(form, error = None):
+def new_user(form, host, error = None):
 	title = 'New User'
 	d = _doc(text.doc_prefix + title)
 	with d:
@@ -454,7 +454,7 @@ def new_user(form, error = None):
 							_invalid_div(text.inv_email, form.is_invalid('email')))
 				t.input_(type = "submit", value = "Done!")
 		t.script(_js_basic())
-		t.script(_js_ws())
+		t.script(_js_ws(host = host))
 		t.script(_js_validate_event())
 		t.script(_js_validate_username_fields())
 		t.script(_js_validate_password_fields())
@@ -462,14 +462,14 @@ def new_user(form, error = None):
 		t.script(_js_check_username())
 	return d.render()
 
-def select_user(url):
+def select_user(url, host):
 	d = _doc(text.doc_prefix + 'Select User')
 	with d:
 		_text_input('search', None, ('autofocus',), {'autocomplete': 'off', 'oninput': 'search(this.value)', 'size': 12}, 'Search', type_ = 'search')
 		t.div(id = 'content') # filtered results themselves are added here, in this `content` div, via websocket, as search text is typed (see javascript)
 		# JS (intentionally at bottom of file; see https://faqs.skillcrush.com/article/176-where-should-js-script-tags-be-linked-in-html-documents and many stackexchange answers):
 		t.script(_js_basic())
-		t.script(_js_ws())
+		t.script(_js_ws(host = host))
 		t.script(_js_filter_list(url))
 	return d.render()
 
@@ -559,7 +559,7 @@ def arithmetic_practice(key, options, hint, selected_id):
 	return container.render()
 
 
-def practice(links, filters, login, user_settings):
+def practice(links, filters, login, user_settings, host):
 	d = _doc(text.doc_prefix + 'Practice')
 	with d:
 		
@@ -597,7 +597,7 @@ def practice(links, filters, login, user_settings):
 				# This div gets populated after initial ws-fetch (and in response to a filter change, etc.)...
 
 		t.script(_js_basic())
-		t.script(_js_ws())
+		t.script(_js_ws(host = host))
 		t.script(_js_arithmetic())
 		t.script(_js_practice())
 		t.script(_js_dropdown())
@@ -606,7 +606,7 @@ def practice(links, filters, login, user_settings):
 	return d.render()
 
 
-def quiz(ws_url, db_handler, html_function):
+def quiz(ws_url, db_handler, html_function, host):
 	d = _doc(text.doc_prefix + 'Quiz')
 	with d:
 		with t.fieldset(cls = 'small_fieldset'):
@@ -637,7 +637,7 @@ def quiz(ws_url, db_handler, html_function):
 
 		# JS (intentionally at bottom of file; see https://faqs.skillcrush.com/article/176-where-should-js-script-tags-be-linked-in-html-documents and many stackexchange answers):
 		t.script(_js_basic())
-		t.script(_js_ws())
+		t.script(_js_ws(host = host))
 		t.script(_js_socket_quiz_manager(ws_url, db_handler, html_function))
 		t.script(_js_dropdown())
 	return d.render()
@@ -721,7 +721,7 @@ def test_twixt(url):
 		t.div(id = 'foobar')
 		
 		t.script(_js_basic())
-		t.script(_js_ws())
+		t.script(_js_ws(host = host))
 		t.script(_js_test1(url))
 		
 	return d.render()
@@ -1199,7 +1199,7 @@ def _youglishify(text, rawify = True):
 	#else:
 	return result
 
-def _detail_doc(title, subject_section_title, table, record, renderer):
+def _detail_doc(title, subject_section_title, table, record, renderer, host):
 	d = _doc(text.doc_prefix + title)
 	section = _new_subject_section(d, subject_section_title)
 	_grammar_resources(section, None, (record,), True, table, renderer, True)
@@ -1207,7 +1207,7 @@ def _detail_doc(title, subject_section_title, table, record, renderer):
 	with d:
 		# JS (intentionally at bottom of file; see https://faqs.skillcrush.com/article/176-where-should-js-script-tags-be-linked-in-html-documents and many stackexchange answers):
 		t.script(_js_basic())
-		t.script(_js_ws())
+		t.script(_js_ws(host = host))
 		t.script(_js_play_pause())
 	return d.render()
 
@@ -1226,7 +1226,7 @@ def _add_signs(signs, container):
 				t.video(t.source(src = sign['url']), width = '280', height = '157', controls = '1', loop = '1')
 			))
 
-def science_detail(record, details, signs):
+def science_detail(record, details, signs, host):
 	def render(record, container):
 		with container:
 			t.div(_format_answer(record['answer'], True))
@@ -1236,10 +1236,10 @@ def science_detail(record, details, signs):
 		container += t.hr(cls = 'bighr')
 		_add_signs(signs, container)
 
-	return _detail_doc('Science Detail - ' + record['prompt'], 'Science', 'science', record, render)
+	return _detail_doc('Science Detail - ' + record['prompt'], 'Science', 'science', record, render, host)
 
 
-def timeline_event_detail(record, details, signs):
+def timeline_event_detail(record, details, signs, host):
 	
 	def render(record, container): # callback function, see _grammar_resources()
 		with container:
@@ -1273,7 +1273,7 @@ def timeline_event_detail(record, details, signs):
 			container += t.hr(cls = 'bighr')
 		_add_signs(signs, container)
 
-	return _detail_doc('Timeline Event Detail - ' + record['name'], 'Timeline', 'timeline', record, render) # TODO: change 'Timeline' to 'History?!'
+	return _detail_doc('Timeline Event Detail - ' + record['name'], 'Timeline', 'timeline', record, render, host) # TODO: change 'Timeline' to 'History?!'
 	
 
 # -----------------------------------------------------------------------------
@@ -1324,7 +1324,7 @@ _murl = lambda url: settings.k_static_url + 'maps/' + url
 _aurl = lambda url: settings.k_static_url + 'audio/' + url # audio
 _iurl = lambda url: settings.k_static_url + 'images/' + url # images
 _lurl = lambda url: settings.k_static_url + 'images/logos/' + url # logos
-_ws_url = URL.build(scheme = settings.k_ws, host = settings.k_host, path = settings.k_ws_url_prefix + '/ws_messages')
+_ws_url = lambda host: URL.build(scheme = settings.k_ws, host = host, path = settings.k_ws_url_prefix + '/ws_messages')
 
 
 def _doc(title, css = None, scripts = None):
@@ -1600,9 +1600,9 @@ def _js_load_bg(settings):
 		//document.getElementsByClassName("main").style.backgroundColor = "#eff7f6";
 	''' % settings)
 
-def _js_ws(url = None):
+def _js_ws(url = None, host = None):
 	if not url:
-		url = _ws_url # backup plan
+		url = _ws_url(host) # backup plan (Future: ONLY plan!)
 	return raw('''
 	var ws = new WebSocket("%(url)s");
 
