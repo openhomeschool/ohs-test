@@ -397,10 +397,6 @@ def family_user_setup_retry(action, data, passwords, ws_url, invalids, all_exist
 	return _family_user_setup(action, rows, invalids, ws_url, passwords, [], all_exist_already, flash)
 
 
-
-
-
-	
 def student_invitation(form, invitation, person, enrollments, flash = None):
 
 	# TODO: deport these!
@@ -605,6 +601,52 @@ def practice(links, filters, login, user_settings, host):
 
 	return d.render()
 
+def _go_bar(links, login):
+	result = t.div(cls = 'flex-wrap') # TODO: make a 'header_block' or something; different border color, perhaps
+	with result:
+		t.div(t.b('Go'), cls = 'title')
+		with t.div(cls = 'main'):
+			with t.div(id = 'go'):
+				with t.div(cls = 'ib-left'):
+					for name, hint, content, url in links:
+						onclick = f'window.open("{content}", "_self");' # assuming url=True
+						if not url: # then assume script, or other 'raw':
+							onclick = f'{content};'
+						t.button(name, type = 'button', title = hint, onclick = onclick)
+			with t.div(id = 'login'):
+				with t.div(cls = 'ib-right'):
+					if login['type'] == 'button':
+						t.button(text.login_button_title, type = 'button', title = text.login_button_title, onclick = 'load_page("%s")' % _gurl('/login'))
+					else:
+						t.button('₪', title = 'Messages', type = 'button', onclick = 'void()') #TODO: 'load_page("%s")' % _gurl('/messages'))
+						assert(login['type'] == 'menu')
+						_login_dropdown(login['username'], login['switch_users'], hint = 'Switch person')
+	return result
+
+def practice_stats(links, login, user_settings, results):
+	d = _doc(text.doc_prefix + 'Sazzle Scores')
+	with d:
+		_go_bar(links, login)
+		
+		with t.div(cls = 'flex-wrap'):
+			t.div(t.b('Results'), cls = 'title')
+			with t.div(cls = 'main', id = 'main_content'):
+				with t.table():
+					t.tr((t.th('username', cls = 'ca-cell'), t.th('total time',cls = 'ca-cell'), t.th('total count'), t.th('total correct count'), t.th('total accuracy'), t.th('sazzle')))
+					for result in results:
+						with t.tr():
+							t.td(str(result['username']))
+							t.td(str(result['total_time']))
+							t.td(str(result['total_count']))
+							t.td(str(result['total_correct_count']))
+							t.td(str(result['total_accuracy']))
+							t.td(str(result['sazzle']))
+
+		t.script(_js_basic())
+		t.script(_js_dropdown())
+		t.script(_js_load_bg(user_settings))
+		
+	return d.render()
 
 def quiz(ws_url, db_handler, html_function, host):
 	d = _doc(text.doc_prefix + 'Quiz')
@@ -2012,7 +2054,7 @@ def _js_arithmetic():
 			$('stat_all_time').innerHTML = ms_to_time(payload['total_time']);
 			$('stat_all_count').innerHTML = payload['total_count'];
 			$('stat_all_accuracy').innerHTML = payload['total_accuracy'] + '%';
-			$('stat_all_sizzle_score').innerHTML = Math.floor(payload['total_sizzle_score']);
+			$('stat_all_sizzle_score').innerHTML = Math.floor(payload['sazzle']);
 			// the following should already be done, but just in case....
 			$('all_stats_content').style.display = 'block';
 			$('calcs').style.display = 'none';

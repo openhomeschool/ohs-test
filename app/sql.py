@@ -387,10 +387,14 @@ async def fetch_new_arithmetic_problems(dbc, uuid, spec):
 	percent_positive = await fetchone(dbc, ('select 100*(select count(*) from assessment where correct_count > incorrect_count and user = ? and category = ?) / (select count(*) from assessment where (correct_count > 0 or incorrect_count > 0) and user = ? and category = ?)', (uid, spec.arithmetic_op, uid, spec.arithmetic_op)))
 	if percent_positive[0] and percent_positive[0] > 90: # see "mastery level" comment, above; "mastery level" of 90 is hard-coded here
 		new_a = await fetchone(dbc, (f'{select} and assessment.speed_ms = 0 order by assessment.id limit 1', asqlq)) # order by assessment.id b/c records were added to assessment table in careful order, above, according to order established in fact_table
-	improvement_batch_size = 6 if new_a else 7 # maintain total batch size of 7; sometimes there are no records remaining with speed_ms == 0, so the whole batch (of 7) will be improvement records
+	improvement_batch_size = 3 if new_a else 4 # see next comment...
+	practice_batch_size = 3 # maintain total batch size of 7; sometimes there are no records remaining with speed_ms == 0, so the whole batch (of 7) will be improvement records
 	# Fetch "improvement" records in order of greatest challenge (high incorrect_counts, low correct_counts, high speed_ms values); toughest on top:
-	order_by = f'order by assessment.incorrect_count desc, assessment.correct_count asc, assessment.speed_ms desc, assessment.id asc limit {improvement_batch_size}'
-	result = await fetchall(dbc, (f'{select} {order_by}', asqlq))
+	select += ' and assessment.speed_ms > 0'
+	improvement_order_by = f'order by 1000*incorrect_count/correct_count desc, assessment.id asc limit {improvement_batch_size}'
+	result = await fetchall(dbc, (f'{select} {improvement_order_by}', asqlq))
+	practice_order_by = f'order by correct_count + incorrect_count asc limit {practice_batch_size}'
+	result += await fetchall(dbc, (f'{select} {practice_order_by}', asqlq))
 
 	# Combine all, shuffle, and return:
 	if new_a:
@@ -407,16 +411,18 @@ async def arithmetic_answer(dbc, uuid, data):
 	sets = f'set latest_timestamp = ?, speed_ms = ?, total_elapsed_ms = total_elapsed_ms + ?, {count_to_increment} = {count_to_increment} + 1, user = ?'
 	r = await dbc.execute(f'update assessment {sets} where id = ?', (ts, data['speed_ms'], data['speed_ms'], uid, data['assessment_id']))
 	assert(r.rowcount == 1)
+
+_arithmetic_calcs = ', '.join([
+	'sum(total_elapsed_ms) as total_time',
+	'sum(correct_count + incorrect_count) as total_count',
+	'sum(correct_count) as total_correct_count',
+	'100 * sum(correct_count) / sum(correct_count + incorrect_count) as total_accuracy',
+	'(sum(correct_count) * sum(correct_count) / sum(correct_count + incorrect_count)) as sazzle',
+])
 	
 async def arithmetic_totals(dbc, uuid, spec):
 	uid = await _get_user_id(dbc, uuid)
-	calcs = ', '.join([
-			'sum(total_elapsed_ms) as total_time',
-			'sum(correct_count + incorrect_count) as total_count',
-			'sum(correct_count) as total_correct_count',
-			'100 * sum(correct_count) / sum(correct_count + incorrect_count) as total_accuracy',
-		])
-	return await fetchone(dbc, (f'select {calcs} from assessment where user = ? and category = ?', (uid, spec.arithmetic_op)))
+	return await fetchone(dbc, (f'select {_arithmetic_calcs} from assessment where user = ? and category = ?', (uid, spec.arithmetic_op)))
 
 
 async def _fetch_new_fact_DEPRECATED(dbc, spec):
@@ -450,6 +456,9 @@ async def _get_user_id(dbc, uuid, raise_exception = True):
 	return user['user']
 
 
+async def get_practice_stats(dbc):
+	return await fetchall(dbc, (f'select user.username as username, {_arithmetic_calcs} from assessment join user on assessment.user = user.id group by assessment.user order by sazzle desc', []))
+	
 
 # ---------------------------------------------------
 # Resources
