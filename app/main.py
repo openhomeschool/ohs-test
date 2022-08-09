@@ -295,6 +295,19 @@ class New_User(web.View):
 		return hr(html.new_user_success(user_id)) # TODO: lame placeholder - need to redirect, anyway!
 
 
+@rt.get('/practice_stats')
+@auth('admin')
+async def practice_stats(rq):
+	session = await get_session(rq)
+	dbc = rq.app['db']
+	results = await db.get_practice_stats(dbc)
+	links = (
+		#(name/title, hint, content, is-url?)
+		('⌂', "Home (RETURN to this week's GRAMMAR)", _http_url(rq, '/resources', {}), True),
+	)
+	login, settings = await _login_button(session, dbc)
+	return hr(html.practice_stats(links, login, settings, results))
+
 
 @rt.get('/practice', name = 'practice')
 @auth('student')
@@ -914,8 +927,6 @@ async def _ws_arithmetic_answer_swap(hd):
 async def _ws_arithmetic_totals(hd):
 	result = dict(await db.arithmetic_totals(hd.dbc, hd.uuid, hd.spec))
 	result['task'] = 'arithmetic_totals'
-	result['total_sizzle_score'] = result['total_correct_count'] * result['total_accuracy'] / 100
-	#result['total_sizzle_score'] = result['total_correct_count'] * result['total_accuracy'] / (100 * result['total_time'] ** 0.04) # TODO: somewhat arbitrary, and doesn't work especially well!
 
 	await hd.ws.send_json(result)
 

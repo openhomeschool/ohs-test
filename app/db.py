@@ -87,6 +87,10 @@ async def add_roles(dbc, uid, roles, commit = True):
 async def set_user_bg_color(dbc, uid, avoids = None, commit = True):
 	return await sql.set_user_bg_color(dbc, uid, avoids, commit)
 
+async def get_practice_stats(dbc):
+	return await sql.get_practice_stats(dbc)
+
+
 # -----------------------------------------------------------------------------
 # Question transactions
 
