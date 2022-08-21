@@ -390,10 +390,10 @@ async def fetch_new_arithmetic_problems(dbc, uuid, spec):
 	improvement_batch_size = 3 if new_a else 4 # see next comment...
 	practice_batch_size = 3 # maintain total batch size of 7; sometimes there are no records remaining with speed_ms == 0, so the whole batch (of 7) will be improvement records
 	# Fetch "improvement" records in order of greatest challenge (high incorrect_counts, low correct_counts, high speed_ms values); toughest on top:
-	select += ' and assessment.speed_ms > 0'
+	#select += ' and assessment.speed_ms > 0' <-- used to do this, but then we'd get no fetch results early in user's career when there were no practice records with speeds! (Above, "new" are fetched only when percent_positive is > 90, so student couldn't get any candidate problems at all!)
 	improvement_order_by = f'order by 1000*incorrect_count/correct_count desc, assessment.id asc limit {improvement_batch_size}'
 	result = await fetchall(dbc, (f'{select} {improvement_order_by}', asqlq))
-	practice_order_by = f'order by correct_count + incorrect_count asc limit {practice_batch_size}'
+	practice_order_by = f'order by correct_count + incorrect_count asc, assessment.speed_ms desc limit {practice_batch_size}'
 	result += await fetchall(dbc, (f'{select} {practice_order_by}', asqlq))
 
 	# Combine all, shuffle, and return:
