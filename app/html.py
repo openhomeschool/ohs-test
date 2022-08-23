@@ -979,6 +979,17 @@ def _format_answer(answer, youglishit = False):
 		answer = prelude + '<ul><li>' + answer[first_star_pos + 1:].replace('*', '</li><li>') + '</li></ul>'
 	return raw(answer)
 
+def _format_answer2(record, youglishit = False): # stolen from _format_answer(), to try something new....
+	answer = f"{record['prompt'].capitalize()} {record['answer_verb']} {record['answer']}."
+	if youglishit:
+		answer = _youglishify(answer, False)
+	first_star_pos = answer.find('*')
+	if first_star_pos >= 0 and len(answer) > first_star_pos + 1:
+		prelude = answer[:first_star_pos]
+		answer = prelude + '<ul><li>' + answer[first_star_pos + 1:].replace('*', '</li><li>') + '</li></ul>'
+	
+	return raw(answer)
+
 @subject_resources('science_grammar')
 def science_grammar(container, spec, records, show_cw):
 	def render(record, container): # callback function, see _grammar_resources()
@@ -987,7 +998,7 @@ def science_grammar(container, spec, records, show_cw):
 			#TODO: DEPRECATE after fixing cycle 1 grammar: t.div(_prefix_answer(record, True))
 			#TODO: NEW (below):
 			t.div(t.b(t.a('%s - tell me more' % record['prompt'], href = _gurl('/detail/science/%d' % record['id']), target = "_blank", cls = 'hover_link')))
-			t.div(_format_answer(record['answer'], False))
+			t.div(_format_answer2(record, False))
 
 	_grammar_resources(container, spec, records, show_cw, 'science', render, True)
 
@@ -1038,6 +1049,10 @@ def logic_resources(container, spec, records, show_cw):
 
 @subject_resources('shakespeare_resources')
 def shakespeare_resources(container, spec, records, show_cw):
+	_external_resources(container, spec, records, show_cw)
+
+@subject_resources('christ_resources')
+def christ_resources(container, spec, records, show_cw):
 	_external_resources(container, spec, records, show_cw)
 
 @subject_resources('math_resources')
@@ -1115,6 +1130,10 @@ def logic_assignments(container, spec, records, show_cw):
 
 @subject_resources('shakespeare_assignments')
 def shakespeare_assignments(container, spec, records, show_cw):
+	_assignments(container, spec, records, show_cw)
+
+@subject_resources('christ_assignments')
+def christ_assignments(container, spec, records, show_cw):
 	_assignments(container, spec, records, show_cw)
 
 @subject_resources('latin_assignments')
