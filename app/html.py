@@ -287,6 +287,177 @@ def invalid_invitation():
 	return d.render()
 
 
+def financial(links, filters, login, user_settings, person, family, contact, costs, cost_offsets, leader, payments, host):
+	d = _doc(text.doc_prefix + 'Financial')
+	with d:
+		# TODO: this is copy-pasted from resources(), for now -- CONSOLIDATE/refactor!
+		with t.div(cls = 'flex-wrap'): # TODO: make a 'header_block' or something; different border color, perhaps
+			t.div(t.b('Go'), cls = 'title')
+			with t.div(cls = 'main'):
+				with t.div(id = 'go'):
+					with t.div(cls = 'ib-left'):
+						for name, hint, content, url in links:
+							onclick = f'window.open("{content}", "_self");' # assuming url=True
+							if not url: # then assume script, or other 'raw':
+								onclick = f'{content};'
+							t.button(name, type = 'button', title = hint, onclick = onclick)
+				with t.div(id = 'login'):
+					with t.div(cls = 'ib-right'):
+						if login['type'] == 'button':
+							t.button(text.login_button_title, type = 'button', title = text.login_button_title, onclick = 'load_page("%s")' % _gurl('/login'))
+						else:
+							t.button('₪', title = 'Messages', type = 'button', onclick = 'void()') #TODO: 'load_page("%s")' % _gurl('/messages'))
+							assert(login['type'] == 'menu')
+							_login_dropdown(login['username'], login['switch_users'], hint = 'Switch person')
+
+		with t.div(cls = 'flex-wrap'): # TODO: make a 'header_block' or something; different border color, perhaps
+			t.div(t.b('Filter'), cls = 'title')
+			with t.div(cls = 'main'):
+				for key, options, hint, selected_id in filters:
+					with t.div(id = '%s-container' % key):
+						_dropdown((key, options, selected_id), 'ib-left', hint = hint, task = 'practice_filter')
+
+		cl = lambda content: t.div(content, cls = 'contact_line')
+		cli = lambda content: t.div(content, cls = 'contact_line_inset')
+
+		with t.div(cls = 'flex-wrap'):
+			t.div(t.b('Contact'), cls = 'title')
+			with t.div(cls = 'main'):
+				with t.div(cls = 'resource_record'):
+					for address in contact.addresses:
+						if address['note']:
+							cl(t.b(address['note']))
+						if address['po_box']:
+							cl(address['po_box'])
+						else:
+							cl(address['street_1'])
+							if address['street_2']:
+								cl(address['street_2'])
+						cl('%s, %s  %s' % (address['city'], address['state'], address['postal_code']))
+						if address['unlisted']:
+							cl(t.b('(unlisted)'))
+					t.hr()
+				with t.div(cls = 'resource_record'):
+					for email in contact.emails:
+						result = email['address']
+						if email['unlisted']:
+							result += ' (unlisted)'
+						if email['note']:
+							result += ' %s' % email['note']
+						cl(result)
+				with t.div(cls = 'resource_record'):
+					for phone in contact.phones:
+						result = _format_phone(phone['number'])
+						if phone['unlisted']:
+							result += ' (unlisted)'
+						if phone['note']:
+							result += ' %s' % phone['note']
+						cl(result)
+					
+		with t.div(cls = 'flex-wrap'):
+			t.div('Family', cls = 'title')
+			with t.div(cls = 'main'):
+				with t.div(cls = 'resource_record'):
+					fg = family.guardians
+					if len(fg) == 2 and fg[0]['last_name'] == fg[1]['last_name']: # most common "spouse" scenario
+						hoh = 0 if fg[0]['head_of_household'] else 1
+						other = 1 if hoh == 0 else 0
+						cl(fg[hoh]['first_name'] + ' & ' + fg[other]['first_name'] + ' ' + fg[hoh]['last_name'])
+					else:
+						cl(', '.join(['%s %s' % (g['first_name'], g['last_name']) for g in fg]))
+					t.hr()
+				with t.div(cls = 'resource_record'):
+					program_grouped = {}
+					for child in family.children:
+						program_name = '%s (%s)' % (child['program_name'], child['program_schedule'])
+						if program_name not in program_grouped.keys():
+							program_grouped[program_name] = [child,]
+						else:
+							program_grouped[program_name].append(child)
+					for program_name, children in program_grouped.items():
+						cl(t.b(program_name))
+						for child in children:
+							cli(_format_person(child))
+		
+		leadership_offset = 0
+		if leader:
+			with t.div(cls = 'flex-wrap'):
+				t.div('Leadership', cls = 'title')
+				with t.div(cls = 'main'):
+					for role in leader:
+						with t.div(cls = 'resource_record'):
+							role_line = 'Role: ' + role['program_name'] + ' ' + role['role']
+							if role['subject_name']:
+								role_line += ' - ' + role['subject_name'] + ' (%d weeks)' % role['weeks']
+							if role['sections'] > 1:
+								role_line += ' (%s sections)' % role['sections']
+							if role['note']:
+								role_line += f" -- {role['note']}"
+							cl(t.span(role_line))
+							offset = role['annual_offset']
+							if offset:
+								cl(t.span('Annual offset: ', _format_money(offset)))
+								leadership_offset += offset
+			
+			
+		with t.div(cls = 'flex-wrap'):
+			t.div('Costs', cls = 'title')
+			with t.div(cls = 'main'):
+				total = 0
+				total_payments = 0
+				with t.div(cls = 'resource_record'):
+					for cost in [c for c in costs if not c['per_student']]:
+						cl(t.span(*_format_cost(cost)))
+						total += cost['amount']
+					covered = set() # duplicate-coverage tracker -- eek, this is a bit too much "logic" for the interface ("view") layer!
+					for cost_offset in cost_offsets:
+						cl(t.span(*_format_cost_offset(cost_offset)))
+						total += cost_offset['amount']
+						
+					for child in family.children:
+						fn = child['first_name']
+						ln = child['last_name']
+						cl(t.span(t.b(fn + ' ' + ln), ' (', child['program_name'], ')'))
+						child_total = 0
+						for cost in [c for c in costs if c['per_student'] and not c['program']]:
+							tag = '%s %s %s' % (fn, ln, cost['name']) # Eek, this is a bit too much "logic" for the interface ("view") layer!
+							if tag not in covered: # don't duplicate "non-program-centric costs" (e.g., facility-cost, which is per-student; but a student may be in multiple programs, and thus may have multiple "child" records here, the only difference being the cost (name))
+								covered.add(tag)
+								cli(t.span(*_format_cost(cost)))
+								child_total += cost['amount']
+						for cost in [c for c in costs if c['program'] == child['program_id']]:
+							cli(t.span(*_format_cost(cost)))
+							child_total += cost['amount']
+						cli(t.span(*('Total: ', _format_money(child_total))))
+						total += child_total
+					cl(t.span('TOTAL: ', _format_money(total)))
+					t.hr()
+				with t.div(cls = 'resource_record'):
+					cl('Payments:')
+					for payment in payments:
+						cli(t.span('Check #%s (%s): ' % (payment['check_number'], payment['date'].strftime('%x')), _format_money(payment['amount'])))
+						total_payments += payment['amount']
+					t.hr()
+				if leadership_offset:
+					with t.div(cls = 'resource_record'):
+						cl('Offsets:')
+						cli(_format_money(leadership_offset))
+						t.hr()
+				with t.div(cls = 'resource_record'):
+					cl('Balance Due:')
+					cli(_format_money(total - total_payments - leadership_offset))
+
+		t.p('If you see any mistakes, please just contact me directly.  Thanks!')
+
+
+
+
+		t.script(_js_basic())
+		t.script(_js_dropdown())
+		t.script(_js_load_bg(user_settings))
+
+	return d.render()
+
 
 def _family_user_setup(action, rows, invalids, ws_url, passwords, used_passwords, all_exist_already, flash = None):
 	cl = lambda content: t.div(content, cls = 'contact_line') # TODO: DEPORT

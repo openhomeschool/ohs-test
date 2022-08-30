@@ -459,6 +459,8 @@ async def _get_user_id(dbc, uuid, raise_exception = True):
 async def get_practice_stats(dbc):
 	return await fetchall(dbc, (f'select user.username as username, {_arithmetic_calcs} from assessment join user on assessment.user = user.id group by assessment.user order by sazzle desc', []))
 	
+async def get_academic_years(dbc):
+	return await fetchall(dbc, (f'select * from academic_year', [])) # TODO: filter for user-id / enrollments....
 
 # ---------------------------------------------------
 # Resources
@@ -920,8 +922,15 @@ async def get_user_enrollment(dbc, user_id):
 async def get_person(dbc, id):
 	return await fetchone(dbc, ('select * from person where id = ?', (id,)))
 
-async def get_person_user(dbc, person_id):
-	return await fetchone(dbc, ('select person.*, user.* from person join user where user.person = person.id', (id,)))
+async def get_person_user(dbc, person_id): # TODO - this is unused, and should be tested, as it was altered (fixed) blindly
+	return await fetchone(dbc, ('select person.*, user.* from person join user on user.person = person.id where person.id = ?', (id,)))
+
+async def get_person_by_username(dbc, username):
+	return await fetchone(dbc, ('select * from person join user on user.person = person.id where user.username = ?', (username,)))
+
+async def get_person_by_uuid(dbc, uuid):
+	return await fetchone(dbc, ('select * from person join user on user.person = person.id join user_login on user_login.user = user.id where user_login.uuid = ?', (uuid,)))
+
 async def get_person_phones(dbc, person_id):
 	return await fetchall(dbc, ('select phone.* from phone join person_phone on phone.id = person_phone.phone join person on person_phone.person = person.id where person.id = ?', (person_id,)))
 
@@ -979,15 +988,21 @@ async def get_cost_offset(dbc, parent_id, academic_year_id):
 async def get_payments(dbc, guardian_ids, academic_year_id):
 	return await fetchall(dbc, ('select * from payment where person in ({seq}) and academic_year = ?'.format(seq = ','.join(['?']*len(guardian_ids))), guardian_ids + [academic_year_id,]))
 
+_sql_leader = '''
+	select leader.*, leadership_role.name as role, program.name as program_name, subject.name as subject_name from leader
+	join leadership_role on leader.leadership_role = leadership_role.id
+	join program on leader.program = program.id
+	left join subject on leader.subject = subject.id
+'''
 async def get_leader(dbc, person_id, academic_year_id):
-	#TODO: Add logic for filtering records for the CURRENT/coming academic year only
-	return await fetchall(dbc, ('''
-			select leader.*, leadership_role.name as role, program.name as program_name, subject.name as subject_name from leader
-			join leadership_role on leader.leadership_role = leadership_role.id
-			join program on leader.program = program.id
-			left join subject on leader.subject = subject.id
-			where person = ? and academic_year = ?
-		''', (person_id, academic_year_id)))
+	sql = _sql_leader + f' where person = {person_id} and academic_year = {academic_year_id}'
+	return await fetchall(dbc, (sql, ()))
+
+async def get_leaders(dbc, persons, academic_year_id):
+	person_ids = f"({','.join([str(person['id']) for person in persons])})"
+	sql = _sql_leader + f' where person in {person_ids} and academic_year = {academic_year_id}'
+	return await fetchall(dbc, (sql, ()))
+	
 	
 # -----------------------------------------------------------------------------
 # Implementation utilities:

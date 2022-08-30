@@ -90,6 +90,8 @@ async def set_user_bg_color(dbc, uid, avoids = None, commit = True):
 async def get_practice_stats(dbc):
 	return await sql.get_practice_stats(dbc)
 
+async def get_academic_years(dbc):
+	return await sql.get_academic_years(dbc)
 
 # -----------------------------------------------------------------------------
 # Question transactions
@@ -333,6 +335,12 @@ async def get_person(dbc, id):
 async def get_person_user(dbc, person_id):
 	return await sql.get_person_user(dbc, person_id)
 
+async def get_person_by_username(dbc, username):
+	return await sql.get_person_by_username(dbc, username)
+
+async def get_person_by_uuid(dbc, uuid):
+	return await sql.get_person_by_uuid(dbc, uuid)
+
 async def get_family_enrollments(dbc, id, academic_year_id):
 	return await sql.get_family_enrollments(dbc, id, academic_year_id)
 
@@ -361,3 +369,6 @@ async def get_payments(dbc, guardian_ids, academic_year_id):
 
 async def get_leader(dbc, person_id, academic_year_id):
 	return await sql.get_leader(dbc, person_id, academic_year_id)
+
+async def get_leaders(dbc, persons, academic_year_id):
+	return await sql.get_leaders(dbc, persons, academic_year_id)
