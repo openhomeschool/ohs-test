@@ -494,6 +494,43 @@ class Invitation(web.View):
 		rq = self.request
 		data = await rq.post()
 
+async def _financial(rq, dbc, session, person):
+	session['after_login'] = str(rq.rel_url) # come back here after a user-switch; this is a kludgey way of pushing this... haven't worked out how to elegantly retain current page after user-switch, or if it's even desirable.
+
+	links = (
+		#(name/title, hint, content, is-url?)
+		('⌂', "Home (RETURN to this week's GRAMMAR)", _http_url(rq, '/resources', {}), True),
+	)
+	login, settings = await _login_button(session, dbc)
+
+	filters = (
+		# (key, options, hint, selected_id)
+		('year', [(year['name'], year['id']) for year in await db.get_academic_years(dbc)], 'Year', 3), # TODO: '3' (2022-23) is hard-coded!  ALSO, should look up ONLY years this user has been enrolled!
+	)
+
+	person_id = person['id']
+	academic_year = 3 # TODO: '3' is hard-coded!!!
+	family = await db.get_family_enrollments(dbc, person_id, academic_year)
+	contact = await db.get_person_contact_info(dbc, person_id)
+	costs = await db.get_costs(dbc, academic_year)
+	cost_offsets = await db.get_cost_offset(dbc, person_id, academic_year)
+	leaders = await db.get_leaders(dbc, family.guardians, academic_year)
+	payments = await db.get_payments(dbc, [g['id'] for g in family.guardians], academic_year)
+	return hr(html.financial(links, filters, login, settings, person, family, contact, costs, cost_offsets, leaders, payments, rq.host))
+
+@rt.get('/a_financial/{person_id}')
+@auth('admin')
+async def a_financial(rq):
+	dbc = rq.app['db']
+	return await _financial(rq, dbc, await get_session(rq), await db.get_person(dbc, rq.match_info['person_id']))
+
+@rt.get('/financial')
+@auth('parent')
+async def financial(rq):
+	session = await get_session(rq)
+	dbc = rq.app['db']
+	return await _financial(rq, dbc, session, await db.get_person_by_uuid(dbc, session.get('uuid')))
+
 
 @rt.get('/select_user')
 @auth('admin')
