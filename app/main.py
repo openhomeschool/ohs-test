@@ -547,7 +547,7 @@ async def appointments(rq):
 	return hr(html.appointments(links, login, settings, appointments))
 
 
-@rt.get('/ical/{appointment_id}')
+@rt.get('/ical/{appointment_id}.ics')
 async def ical_appointment(rq):
 	dbc = rq.app['db']
 	ical = await db.get_appointment_ical(dbc, rq.match_info['appointment_id'])
