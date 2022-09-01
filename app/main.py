@@ -551,7 +551,16 @@ async def appointments(rq):
 async def ical_appointment(rq):
 	dbc = rq.app['db']
 	ical = await db.get_appointment_ical(dbc, rq.match_info['appointment_id'])
-	return web.Response(text = ical['ical'], content_type = 'text/plain')
+	text = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//openhome.school//calendar\n" + ical['ical'] + "END:VCALENDAR"
+	return web.Response(text = text, content_type = 'text/plain')
+
+@rt.get('/ical_all/all.ics')
+async def ical_all_appointments(rq):
+	l.debug('!!!!!!!!!!!!!!!')
+	dbc = rq.app['db']
+	events = ''.join([e['ical'] for e in await db.get_appointments_ical(dbc)])
+	text = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//openhome.school//calendar\n" + events + "END:VCALENDAR"
+	return web.Response(text = text, content_type = 'text/plain')
 
 @rt.get('/select_user')
 @auth('admin')

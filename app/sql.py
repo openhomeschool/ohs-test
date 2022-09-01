@@ -1010,6 +1010,9 @@ async def get_appointments(dbc, start_date, end_date):
 async def get_appointment_ical(dbc, appointment_id):
 	return await fetchone(dbc, (f'select ical from appointment where id = ?', (appointment_id,)))
 
+async def get_appointments_ical(dbc):
+	return await fetchall(dbc, (f'select ical from appointment order by start', ()))
+
 # -----------------------------------------------------------------------------
 # Implementation utilities:
 

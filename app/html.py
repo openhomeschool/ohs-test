@@ -618,7 +618,8 @@ def appointments(links, login, settings, appointments):
 		with t.div(cls = 'flex-wrap'):
 			t.div('Calendar', cls = 'title')
 			with t.div(cls = 'main'):
-					
+				all_ics = '/ical_all/all.ics'
+				t.a('Import ALL events', href = all_ics, download = all_ics)
 				with t.table():
 					_dt = lambda d: (datetime.fromisoformat(d).strftime('%m/%d (%a)'), datetime.fromisoformat(d).strftime('%I:%M %p'))
 					for appointment in appointments:

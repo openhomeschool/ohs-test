@@ -379,3 +379,5 @@ async def get_appointments(dbc, start_date, end_date):
 async def get_appointment_ical(dbc, appointment_id):
 	return await sql.get_appointment_ical(dbc, appointment_id)
 
+async def get_appointments_ical(dbc):
+	return await sql.get_appointments_ical(dbc)
