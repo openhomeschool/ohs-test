@@ -12,6 +12,7 @@ import re
 import time
 import traceback
 
+from datetime import datetime, timedelta
 from os.path import exists
 from random import shuffle
 
@@ -466,8 +467,8 @@ class Family_Invitation(web.View):
 		return hr(html.family_user_setup_retry(str(vw.rq.rel_url), data, random_passwords, _ws_url(vw.rq, '/ws_messages'), invalids, False, flash)) # assume all_exist_already is False if we're here, or else we would have HTTPFound-forwarded
 
 
-@rt.view('/invitation/{code}', name = 'invitation')
-class Invitation(web.View):
+#@rt.view('/invitation/{code}', name = 'invitation')
+class Invitation_DEPRECATED(web.View):
 	async def get(self):
 		rq = self.request
 		code = rq.match_info['code']
@@ -531,6 +532,26 @@ async def financial(rq):
 	dbc = rq.app['db']
 	return await _financial(rq, dbc, session, await db.get_person_by_uuid(dbc, session.get('uuid')))
 
+@rt.get('/appointments')
+async def appointments(rq):
+	session = await get_session(rq)
+	dbc = rq.app['db']
+	now = datetime.now()
+	appointments = await db.get_appointments(dbc, now, now + timedelta(days = 30))
+	links = (
+		#(name/title, hint, content, is-url?)
+		('⌂', "Home (RETURN to this week's GRAMMAR)", _http_url(rq, '/resources', {}), True),
+	)
+	login, settings = await _login_button(session, dbc)
+	
+	return hr(html.appointments(links, login, settings, appointments))
+
+
+@rt.get('/ical/{appointment_id}')
+async def ical_appointment(rq):
+	dbc = rq.app['db']
+	ical = await db.get_appointment_ical(dbc, rq.match_info['appointment_id'])
+	return web.Response(text = ical['ical'], content_type = 'text/plain')
 
 @rt.get('/select_user')
 @auth('admin')
