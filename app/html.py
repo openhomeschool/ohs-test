@@ -625,7 +625,7 @@ def appointments(links, login, settings, appointments):
 						sd, st = _dt(appointment['start'])
 						ed, et = _dt(appointment['end'])
 						dt2 = f'{st} - {et}' if sd == ed else '- {ed}'
-						link = f"/ical/{appointment['id']}"
+						link = f"/ical/{appointment['id']}.ics"
 						t.tr((t.td(sd), t.td(t.a(appointment['name'], href = _gurl(link), download = link))))
 						t.tr((t.td(f"@{appointment['location']}", cls = 'ra-cell'), t.td(dt2)))
 
