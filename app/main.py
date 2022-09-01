@@ -698,6 +698,7 @@ _links = lambda rq: (
 	('⌂', "Home (THIS week)", _http_url(rq, '/resources', {}), True),
 	('π', 'Practice/quiz grammar', _http_url(rq, '/practice', {}), True),
 	('©', 'Calendar', _http_url(rq, '/appointments', {}), True),
+	('$', 'Shop', _http_url(rq, '/shop1', {}), True),
 	
 	# ¿ - ASSESS?!! (practice, but with teeth!?
 	('→1', "NEXT week", _http_url(rq, '/resources', {'week': k_temp_this_week + 1}), True),
