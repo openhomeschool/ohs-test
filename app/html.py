@@ -907,8 +907,8 @@ def quiz(ws_url, db_handler, html_function, host):
 def grades_filter_button(key, options, show_grammar_option):
 	r = [_dropdown((key, options, None),  'ib-left'), ]
 
-	if show_grammar_option:
-		r.append(t.div(t.input_(type = 'checkbox', id = 'show_grammar'), t.label('Show Grammar', for_ = 'show_grammar'), cls = 'ib-left'))
+	#if show_grammar_option:
+	#	r.append(t.div(t.input_(type = 'checkbox', id = 'show_grammar'), t.label('Show Grammar', for_ = 'show_grammar'), cls = 'ib-left'))
 	return t.div(r).render()
 
 
