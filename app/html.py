@@ -619,7 +619,7 @@ def appointments(links, login, settings, appointments):
 			t.div('Calendar', cls = 'title')
 			with t.div(cls = 'main'):
 				all_ics = '/ical_all/all.ics'
-				t.a('Import ALL events', href = all_ics, download = all_ics)
+				t.a('Import ALL events', href = all_ics)
 				with t.table():
 					_dt = lambda d: (datetime.fromisoformat(d).strftime('%m/%d (%a)'), datetime.fromisoformat(d).strftime('%I:%M %p'))
 					for appointment in appointments:
@@ -627,7 +627,7 @@ def appointments(links, login, settings, appointments):
 						ed, et = _dt(appointment['end'])
 						dt2 = f'{st} - {et}' if sd == ed else '- {ed}'
 						link = f"/ical/{appointment['id']}.ics"
-						t.tr((t.td(sd), t.td(t.a(appointment['name'], href = _gurl(link), download = link))))
+						t.tr((t.td(sd), t.td(t.a(appointment['name'], href = _gurl(link)))))
 						t.tr((t.td(f"@{appointment['location']}", cls = 'ra-cell'), t.td(dt2)))
 
 		t.script(_js_basic())
