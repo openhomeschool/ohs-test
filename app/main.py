@@ -692,11 +692,13 @@ async def science_detail(record, details, signs, host):
 k_temp_this_week = 28
 k_temp_this_cycle = 2
 
-# cool characters: ⌂♩♪♫♬▲►▼◄→ ʘΞΞΩΨΦΣΠϘЮФѺѼ׀ᴓ₪Ω⃰∞∑∆◊?¿ ᵯ«»
+# cool characters: ⌂♩♪♫♬▲►▼◄→ ʘΞΞΩΨΦΣΠϘЮФѺѼ׀ᴓ₪Ω⃰∞∑∆◊?¿ ᵯ«»   ₧◙□∞Ξ©π
 _links = lambda rq: (
 	#(name/title, hint, content, is-url?)
 	('⌂', "Home (THIS week)", _http_url(rq, '/resources', {}), True),
-	('?', 'Practice/quiz grammar', _http_url(rq, '/practice', {}), True),
+	('π', 'Practice/quiz grammar', _http_url(rq, '/practice', {}), True),
+	('©', 'Calendar', _http_url(rq, '/appointments', {}), True),
+	
 	# ¿ - ASSESS?!! (practice, but with teeth!?
 	('→1', "NEXT week", _http_url(rq, '/resources', {'week': k_temp_this_week + 1}), True),
 	('4←', "REVIEW last four weeks", _http_url(rq, '/resources', {'program': 1, 'first_week': max(0, k_temp_this_week - 4), 'last_week': k_temp_this_week}), True),
