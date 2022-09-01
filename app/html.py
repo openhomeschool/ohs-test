@@ -7,6 +7,8 @@ import functools
 import random
 import re
 
+from datetime import datetime
+
 import logging
 l = logging.getLogger(__name__)
 
@@ -131,7 +133,7 @@ def _format_cost(cost):
 def _format_cost_offset(cost_offset):
 	return ('offset (%s): ' % cost_offset['note'], _format_money(cost_offset['amount']))
 
-def invitation(form, invitation, person, family, contact, costs, cost_offsets, leader, payments, flash = None):
+def invitation_DEPRECATED(form, invitation, person, family, contact, costs, cost_offsets, leader, payments, flash = None):
 	#TODO: this is ugly long!  dice it up!!
 	
 	cl = lambda content: t.div(content, cls = 'contact_line')
@@ -449,9 +451,6 @@ def financial(links, filters, login, user_settings, person, family, contact, cos
 
 		t.p('If you see any mistakes, please just contact me directly.  Thanks!')
 
-
-
-
 		t.script(_js_basic())
 		t.script(_js_dropdown())
 		t.script(_js_load_bg(user_settings))
@@ -593,6 +592,48 @@ def student_invitation(form, invitation, person, enrollments, flash = None):
 	return d.render()
 
 
+def appointments(links, login, settings, appointments):
+	d = _doc(text.doc_prefix + 'Calendar')
+	with d:
+		# TODO: this is copy-pasted from resources(), for now -- CONSOLIDATE/refactor!
+		with t.div(cls = 'flex-wrap'): # TODO: make a 'header_block' or something; different border color, perhaps
+			t.div(t.b('Go'), cls = 'title')
+			with t.div(cls = 'main'):
+				with t.div(id = 'go'):
+					with t.div(cls = 'ib-left'):
+						for name, hint, content, url in links:
+							onclick = f'window.open("{content}", "_self");' # assuming url=True
+							if not url: # then assume script, or other 'raw':
+								onclick = f'{content};'
+							t.button(name, type = 'button', title = hint, onclick = onclick)
+				with t.div(id = 'login'):
+					with t.div(cls = 'ib-right'):
+						if login['type'] == 'button':
+							t.button(text.login_button_title, type = 'button', title = text.login_button_title, onclick = 'load_page("%s")' % _gurl('/login'))
+						else:
+							t.button('₪', title = 'Messages', type = 'button', onclick = 'void()') #TODO: 'load_page("%s")' % _gurl('/messages'))
+							assert(login['type'] == 'menu')
+							_login_dropdown(login['username'], login['switch_users'], hint = 'Switch person')
+
+		with t.div(cls = 'flex-wrap'):
+			t.div('Calendar', cls = 'title')
+			with t.div(cls = 'main'):
+					
+				with t.table():
+					_dt = lambda d: (datetime.fromisoformat(d).strftime('%m/%d (%a)'), datetime.fromisoformat(d).strftime('%I:%M %p'))
+					for appointment in appointments:
+						sd, st = _dt(appointment['start'])
+						ed, et = _dt(appointment['end'])
+						dt2 = f'{st} - {et}' if sd == ed else '- {ed}'
+						link = f"/ical/{appointment['id']}"
+						t.tr((t.td(sd), t.td(t.a(appointment['name'], href = _gurl(link), download = link))))
+						t.tr((t.td(f"@{appointment['location']}", cls = 'ra-cell'), t.td(dt2)))
+
+		t.script(_js_basic())
+		t.script(_js_dropdown())
+		t.script(_js_load_bg(settings))
+
+	return d.render()
 
 
 def new_user(form, host, error = None):

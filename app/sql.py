@@ -462,6 +462,7 @@ async def get_practice_stats(dbc):
 async def get_academic_years(dbc):
 	return await fetchall(dbc, (f'select * from academic_year', [])) # TODO: filter for user-id / enrollments....
 
+
 # ---------------------------------------------------
 # Resources
 
@@ -1003,7 +1004,12 @@ async def get_leaders(dbc, persons, academic_year_id):
 	sql = _sql_leader + f' where person in {person_ids} and academic_year = {academic_year_id}'
 	return await fetchall(dbc, (sql, ()))
 	
+async def get_appointments(dbc, start_date, end_date):
+	return await fetchall(dbc, ('select id, name, description, location, start, end from appointment order by start', ()))
 	
+async def get_appointment_ical(dbc, appointment_id):
+	return await fetchone(dbc, (f'select ical from appointment where id = ?', (appointment_id,)))
+
 # -----------------------------------------------------------------------------
 # Implementation utilities:
 

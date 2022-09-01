@@ -372,3 +372,10 @@ async def get_leader(dbc, person_id, academic_year_id):
 
 async def get_leaders(dbc, persons, academic_year_id):
 	return await sql.get_leaders(dbc, persons, academic_year_id)
+
+async def get_appointments(dbc, start_date, end_date):
+	return await sql.get_appointments(dbc, start_date, end_date)
+
+async def get_appointment_ical(dbc, appointment_id):
+	return await sql.get_appointment_ical(dbc, appointment_id)
+
