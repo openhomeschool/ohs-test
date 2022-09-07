@@ -1,0 +1,30 @@
+\documentclass[32pt]{book}
+\usepackage[final]{pdfpages}
+\usepackage{fancyhdr}
+
+\topmargin 70pt
+\oddsidemargin 150pt
+\evensidemargin -30pt
+
+\pagestyle{fancy}
+\fancyhead{}
+\fancyfoot[C]{!!!name!!!} 
+\fancyfoot[LE,RO]{\Large\thepage}
+
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+
+\begin{document}
+\includepdfset{fitpaper=true,scale=0.95}
+\Huge
+!!!name!!! \\
+2022-23 \\
+CCLSC \\
+All-subject \\
+Syllabus
+
+\newpage
+
+\includepdfset{pages=-,pagecommand=\thispagestyle{fancy}}
+\includepdf{all.pdf}
+\end{document}

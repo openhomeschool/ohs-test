@@ -36,6 +36,9 @@ async def get_username(dbc, uuid):
 async def get_user_id(dbc, username):
 	return await sql.get_user_id(dbc, username)
 
+async def get_user_id_from_uuid(dbc, uuid, raise_exception = True):
+	return await sql.get_user_id_from_uuid(dbc, uuid, raise_exception)
+
 async def username_exists(dbc, username):
 	return await sql.username_exists(dbc, username)
 
@@ -272,14 +275,14 @@ async def arithmetic_totals(dbc, uuid, spec):
 # -----------------------------------------------------------------------------
 # Resource handlers
 
-async def get_grammar_resources(dbc, spec, uuid):
-	return await sql.get_grammar_resources(dbc, spec, uuid)
+async def get_grammar_resources(dbc, spec, uid):
+	return await sql.get_grammar_resources(dbc, spec, uid)
 
-async def get_middle_resources(dbc, spec, uuid):
-	return await sql.get_middle_resources(dbc, spec, uuid)
+async def get_middle_resources(dbc, spec, uid):
+	return await sql.get_middle_resources(dbc, spec, uid)
 
-async def get_high1_resources(dbc, spec, uuid):
-	return await sql.get_high1_resources(dbc, spec, uuid)
+async def get_high1_resources(dbc, spec, uid):
+	return await sql.get_high1_resources(dbc, spec, uid)
 
 
 
@@ -310,6 +313,9 @@ async def get_detail_by_id(dbc, table, id):
 
 async def get_programs(dbc):
 	return await sql.get_programs(dbc)
+
+async def get_primary_program(dbc, uid, spec):
+	return await sql.get_primary_program(dbc, uid, spec)
 
 async def get_program(dbc, id):
 	return await sql.get_program(dbc, id)

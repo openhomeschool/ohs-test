@@ -689,8 +689,8 @@ async def timeline_event_detail(record, details, signs, host):
 async def science_detail(record, details, signs, host):
 	return hr(html.science_detail(record, details, signs, host))
 
-k_temp_this_week = 28
-k_temp_this_cycle = 2
+k_temp_this_week = 1
+k_temp_this_cycle = 3
 
 # cool characters: ⌂♩♪♫♬▲►▼◄→ ʘΞΞΩΨΦΣΠϘЮФѺѼ׀ᴓ₪Ω⃰∞∑∆◊?¿ ᵯ«»   ₧◙□∞Ξ©π
 _links = lambda rq: (
@@ -712,30 +712,33 @@ _links = lambda rq: (
 	#('Quiz', _http_url(rq, '/quiz/history/sequence'), True), # TODO!
 )
 
+k_linear = True
 async def _resources(rq, qargs):
 	session = await get_session(rq)
 	dbc = rq.app['db']
-	uuid = session.get('uuid')
-
+	uid = 1#await db.get_user_id_from_uuid(dbc, session.get('uuid'), False)
 	spec = _make_resources_spec(qargs)
-	_set_up_twixt(session, 'resources', _first_resources(dbc, uuid, spec), spec) # start the first lookup now... should be done by the time the page is loaded and websocket handshake occurs, when this result is passed on into the loaded skeletal page
+	_set_up_twixt(session, 'resources', _first_resources(dbc, uid, spec), spec) # start the first lookup now... should be done by the time the page is loaded and websocket handshake occurs, when this result is passed on into the loaded skeletal page
 
-	filters = ( # key, options, hint, selected_id
-		('program', [(program['name'], program['id']) for program in await db.get_programs(dbc)], 'Program', qargs.get('program')),
-		('grade', (), 'Grade', None), # will be populated later
-		('subject', [(subject['name'], subject['id']) for subject in await db.get_subjects(dbc)], 'Subject', qargs.get('subject')),
+	filters = ( # title, key:
+		('All Programs', 'program'),
+		('All Grades', 'grade'),
+		('All Subjects', 'subject'),
 	)
-	# Just (key, options, selected_id) for following
+	# (key, options, selected_id) for following:
 	cycles = ('cycle', [(cycle['name'], cycle['id']) for cycle in await db.get_cycles(dbc)], qargs.get('cycle'))
 	weeks = (
-		('first_week', [('W-%d' % week, week) for week in range(0, 29)], qargs.get('first_week')), # TODO: hardcode 29!
-		('last_week', [('W-%d' % week, week) for week in range(0, 29)], qargs.get('last_week')), # TODO: hardcode 29!
+		('first_week', [('W-%d' % week, week) for week in range(0, 29)], spec.first_week), # TODO: hardcode 29!
+		('last_week', [('W-%d' % week, week) for week in range(0, 29)], spec.last_week), # TODO: hardcode 29!
 	)
 
 	links = _links(rq)
 	login, settings = await _login_button(session, dbc)
 
-	return hr(html.resources(_ws_url(rq, '/ws_messages'), filters, cycles, weeks, qargs, links, login, settings))
+	content = ''
+	if k_linear:
+		content = html.resource_list(spec, await _first_resources(dbc, uid, spec)) # inefficient DUPLICATE call! (since twixt is already looking to fulfill)
+	return hr(html.resources(_ws_url(rq, '/ws_messages'), filters, cycles, weeks, qargs, links, login, settings, content))
 
 
 @rt.get('/ws_messages')
@@ -747,7 +750,7 @@ async def ws_messages(rq):
 		# The first data (to send back to client) was packaged in the initial-data-package called 'twixt'; it was fetched from the database between ("betwixt") the initial GET and this call to set up the web socket within the page (thus the name "twixt")
 		twixt = g_twixt_work[session['twixt_id']] # g_twixt_work[twixt_id] should definitely exist. By design, twixt must always exist for every ws kicked off;  it is a true 500 exception error case for a twixt to not exist; NOTE: we'll 'await' twixt.result later...
 
-		handler_data = U.Struct(
+		hd = handler_data = U.Struct(
 			rq = rq,
 			ws = ws,
 			session = session,
@@ -758,12 +761,15 @@ async def ws_messages(rq):
 		)
 		try:
 			if twixt.task == 'resources':
-				await _send_show_resources_message(handler_data, await _grades_filter(handler_data.dbc, handler_data.spec.program))
+				programs = await _programs_filter_button(hd.dbc, hd.spec.program)
+				grades = await _grades_filter_button(hd.dbc, hd.spec.program, hd.spec.grade)
+				subjects = await _subjects_filter_button(hd.dbc, hd.spec.program, hd.spec.subject)
+				await _send_show_resources_message(hd, programs, grades, subjects)
 			elif twixt.task == 'practice':
 				send_show_practice_message_makers = {
 					14: _send_show_arithmetic_message,
 				}
-				await send_show_practice_message_makers[handler_data.spec.subject](handler_data)
+				await send_show_practice_message_makers[hd.spec.subject](hd)
 			else:
 				l.warning(f'Unknown twixt.task: ({twixt.task})!')
 		finally:
@@ -792,8 +798,8 @@ async def ws_messages(rq):
 				elif msg.type == WSMsgType.PONG:
 					pass # nothing to do, but it's nice if the client/browser actually sends PONGs!
 				elif msg.type == WSMsgType.TEXT:
-					handler_data.payload = json.loads(msg.data) # Note: payload validated in real msg_handlers, later
-					await handlers[handler_data.payload['task']](handler_data)
+					hd.payload = json.loads(msg.data) # Note: payload validated in real msg_handlers, later
+					await handlers[hd.payload['task']](hd)
 				elif msg.type == WSMsgType.ERROR:
 					l.warning('websocket connection closed with exception "%s"' % ws.exception())
 				else:
@@ -877,7 +883,7 @@ def _make_resources_spec(qargs):
 	spec = U.Struct(
 		search = qargs.get('search'),
 		deep_search = False,
-		program = int(qargs.get('program', 1)), # hardcode default to "grammar school" program if program choice not made (TODO: set this, instead, to logged-in-user's attached program
+		program = int(qargs.get('program', 0)), # 0 = "default" (will probably be interpreted as "grammarschool" (program "1")
 		grade = int(qargs.get('grade', 0)), # 0 = "unspecified" or "all"; common, when a program is treated all the same, and there's no need to differentiate grade
 		solo = int(qargs.get('solo', 0)), # 0 = show the designed content for the program; 1 = show *only* the content unique to the program -- TODO: DEPRECATED? I think 'grammar_supplement' now takes care of this, and can't find references to solo elsewhere.....
 		shop = int(qargs.get('shop', 0)), # 1 = show shopping links (all opened up); only pertains to "resources" views, not "grammar" views, which don't show any purchasable resources
@@ -893,6 +899,7 @@ def _make_resources_spec(qargs):
 		show_search = int(qargs.get('show_search', 1)), # 1 = show search bar, 0 = don't
 		show_go = int(qargs.get('show_go', 1)), # 1 = show go bar, 0 = don't
 		random_audio_type = int(qargs.get('random_audio_type', 7)), # 4 = 'song-simple'
+		as_user_id = int(qargs.get('as_user_id', 0)), # will require 'admin' to work (or maybe a parent)
 	)
 	if spec.week != None:
 		spec.first_week = spec.last_week = int(spec.week)
@@ -900,8 +907,9 @@ def _make_resources_spec(qargs):
 	return spec
 
 
-async def _first_resources(dbc, uuid, spec):
-	return await k_db_handlers[spec.program](dbc, spec, uuid)
+async def _first_resources(dbc, uid, spec):
+	program = spec.program if spec.program else (await db.get_primary_program(dbc, uid, spec) if uid else 1) # "interpret" (default) program "0" to imply program (ID) "1" (grammarschool), a little hard-codey?  Note: leave spec.program, itself, 0, which may clue deeper code to interpret its as default, and calculate it
+	return await k_db_handlers[program](dbc, spec, uid) # spec should hold "default" (program = 0, grade = 0) values, if that's what spec has, so that it can interpret program and grade from user (id), but, of course, the right k_db_handlers has to be called upon...
 
 
 k_filter_map = {
@@ -922,23 +930,35 @@ async def _ws_filter(hd):
 	if validator and not validator(value):
 		raise ValueError() # treat like failed cast, above; either way - invalid filter input was tried
 	setattr(hd.spec, hd.payload['filter'], value) # note that hd.payload calls must match field names in `hd.spec`; but this is only so by declaration
-	hd.data = k_db_handlers[hd.spec.program](hd.dbc, hd.spec, hd.uuid) # await() later, upon use; in this case, there's no real advantage, as we're not setting this up to run between transactions, but we want a uniform treatment, which (by declaration) always involves await()ing data right before use
+	uid = await db.get_user_id_from_uuid(hd.dbc, hd.uuid, False)
+	hd.data = k_db_handlers[hd.spec.program](hd.dbc, hd.spec, uid) # await() later, upon use; in this case, there's no real advantage, as we're not setting this up to run between transactions, but we want a uniform treatment, which (by declaration) always involves await()ing data right before use
 	# program changes require special treatment of the "grade" filter/button -- grab the grades that are appropriate for this (new) program selected:
-	grades = None if hd.payload['filter'] != 'program' else await _grades_filter(hd.dbc, value) # value is program_id in this case
+	grades = None if hd.payload['filter'] != 'program' else await _grades_filter_button(hd.dbc, value, hd.spec.grade) # value is program_id in this case
 	# reset any existing playlist; will have to be reconstructed if play_random is attempted again after this filter establishes a new set of grammar
 	if 'playlist_id' in hd.session:
 		hd.session.pop('playlist_id', None)
 	# send the message:
-	await _send_show_resources_message(hd, grades)
+	await _send_show_resources_message(hd, None, grades, None) # never (?) a need to re-load the "programs" in response to a filter selection, but may want to re-load "subjects" - e.g., some programs include different subjects than others....
 
 
-async def _grades_filter(dbc, program_id):
+async def _grades_filter_button(dbc, program_id, selected_id):
 	program = await db.get_program(dbc, program_id)
-	grades = [] # cue to show no "grade" button at all.
-	if program['differentiate']:
-		grades = [('All', 0), ] # select to show all grades together (within program)
+	if program and program['differentiate']:
+		grades = [('All Grades', 0), ] # select to show all grades together (within program)
 		grades.extend([('%sth' % grade, grade) for grade in range(program['grade_first'], program['grade_last'] + 1)])
-	return html.grades_filter_button('grade', grades, program['show_grammar_option'])
+		return html.grades_filter_button('grade', grades, selected_id, False) #TODO? last arg: program['show_grammar_option']) --- probably the wrong place for this, if we even want it at all?
+			# consider just using html.filter_button() if, indeed, we totally kill (or move) the 'show_grammar_option' functionality
+	else:
+		return -1 # cue to show no "grade" button at all.
+
+async def _programs_filter_button(dbc, selected_id):
+	programs = [(program['name'], program['id']) for program in await db.get_programs(dbc)]
+	return html.filter_button('program', programs, selected_id)
+
+async def _subjects_filter_button(dbc, program_id, selected_id):
+	# TODO: add support for program_id...?  maybe even grade? (be careful, a student may have ONE class in another grade (not her default grade), which will show up, in general, but perhaps the subject of that class wouldn't show, based on her primary program/grade? tricky!
+	subjects = [(subject['name'], subject['id']) for subject in await db.get_subjects(dbc)]
+	return html.filter_button('subject', subjects, selected_id)
 
 
 def _arithmetic_add_spec_details(spec, qargs):
@@ -1069,13 +1089,16 @@ async def _login_button(session, dbc):
 	return result, settings
 
 
-async def _send_show_resources_message(hd, grades):
-	await hd.ws.send_json({
-		'task': 'show_resources',
-		'content': html.resource_list(hd.spec, await hd.data),
-		'spec': json.dumps(hd.spec.asdict()),
-		'grades': grades,
-	})
+async def _send_show_resources_message(hd, programs, grades, subjects):
+	if not k_linear:
+		await hd.ws.send_json({
+			'task': 'show_resources',
+			'content': html.resource_list(hd.spec, await hd.data),
+			'spec': json.dumps(hd.spec.asdict()),
+			'programs': programs,
+			'grades': grades,
+			'subjects': subjects,
+		})
 
 async def _send_show_arithmetic_message(hd):
 	msg = await _make_arithmetic_problem_message(hd)

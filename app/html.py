@@ -904,15 +904,18 @@ def quiz(ws_url, db_handler, html_function, host):
 
 
 
-def grades_filter_button(key, options, show_grammar_option):
-	r = [_dropdown((key, options, None),  'ib-left'), ]
-
+def grades_filter_button(key, options, selected_id, show_grammar_option):
+	r = [_dropdown((key, options, selected_id), 'ib-left'), ]
 	#if show_grammar_option:
 	#	r.append(t.div(t.input_(type = 'checkbox', id = 'show_grammar'), t.label('Show Grammar', for_ = 'show_grammar'), cls = 'ib-left'))
 	return t.div(r).render()
 
+def filter_button(key, options, selected_id):
+	r = [_dropdown((key, options, selected_id), 'ib-left'), ]
+	return t.div(r).render()
+	
 
-def resources(ws_url, filters, cycles, weeks, qargs, links, login, user_settings): # TODO: this is basically identical to select_user (and presumably other search-driven pages whose content comes via websocket); consolidate!
+def resources(ws_url, filters, cycles, weeks, qargs, links, login, user_settings, content): # TODO: this is basically identical to select_user (and presumably other search-driven pages whose content comes via websocket); consolidate!
 	d = _doc(text.doc_prefix + 'Resources')
 	for_print = int(qargs.get('for_print', 0)) # 1 = no buttons, no header
 	show_search = int(qargs.get('show_search', 1)) # 1 = show, 0 = don't
@@ -943,16 +946,16 @@ def resources(ws_url, filters, cycles, weeks, qargs, links, login, user_settings
 			with t.div(cls = 'flex-wrap'): # TODO: make a 'header_block' or something; different border color, perhaps
 				t.div(t.b('Filter'), cls = 'title')
 				with t.div(cls = 'main'):
-					for key, options, hint, selected_id in filters:
+					for title, key in filters:
 						with t.div(id = '%s-container' % key):
-							_dropdown((key, options, selected_id), 'ib-left', hint = hint)
+							_dropdown_shell(key, 'ib-left', title, title)
 					_dropdown(weeks[0], 'ib-right', button_class = 'cw-button', hint = 'Select START week')
 					#TODO: bring!search!back!(it works, but isn't very useful in its current form; ist's more of a filter, and doesn't reset when blanked) --- t.div(_text_input('search', None, ('autofocus',), {'autocomplete': 'off', 'oninput': 'search(this.value)', 'class': 'search'}, 'Search', type_ = 'search'), cls = 'clear') # TODO: replace with a magnifying-glass gif!
 					t.div(cls = 'clear') # NOTE: this is just a stand-in for the above-line: "Search" field, which we're temporarily removing; this allows the next dropdown to be "below" the top one, rather than beside it
 					_dropdown(weeks[1], 'ib-right', button_class = 'cw-button', hint = 'Select END week')
 					#TODO: BRING BACK! -- _dropdown(cycles, 'ib-right', button_class = 'cw-button')
 
-		t.div(id = 'content') # filtered results themselves are added here, in this `result` div, via websocket, as search text is typed (see javascript)
+		t.div(raw(content), id = 'content') # filtered results themselves are added here, in this `result` div, via websocket, as search text is typed (see javascript)
 
 		# JS (intentionally at bottom of file; see https://faqs.skillcrush.com/article/176-where-should-js-script-tags-be-linked-in-html-documents and many stackexchange answers):
 		t.script(_js_basic())
@@ -1719,13 +1722,24 @@ def _dropdown_DEPRECATE(filt, qargs, cls, title = None, button_class = None, hin
 		cls = cls,
 	)
 
+def _dropdown_base(key):
+	button_id = '%s-button' % key
+	drop_content = t.div(id = key, cls = 'dropdown-content')
+	return button_id, drop_content
+
+def _dropdown_result(title, button_classes, button_id, hint, key, drop_content, cls):
+	return t.div(
+		t.button(title + ' ▾', cls = button_classes, type = 'button', id = button_id, title = hint, onclick = 'choose_dropdown_item(%s)' % key),
+		drop_content,
+		cls = cls,
+	)
+
 def _dropdown(data, cls, title = None, button_class = None, hint = '', task = 'filter'):
 	key, options, selected_id = data # 'options' is a tuple of two-tuples, like: (('option 1', 'op1_id'), ('option 2', 'op2_id')); selected_id should be None or set like 'op2_id'
 	if not options:
 		return t.div() # empty div means there's nothing there - no options from which user might choose
 
-	button_id = '%s-button' % key
-	drop_content = t.div(id = key, cls = 'dropdown-content')
+	button_id, drop_content = _dropdown_base(key)
 	with drop_content:
 		for option_title, option_id in options:
 			t.div(option_title, onclick = 'choose_dropdown_option("%s", "%s", "%s", "%s", "%s")' % (key, option_id, option_title, button_id, task))
@@ -1737,11 +1751,11 @@ def _dropdown(data, cls, title = None, button_class = None, hint = '', task = 'f
 	button_classes = 'dropdown-button'
 	if button_class:
 		button_classes += ' ' + button_class
-	return t.div(
-		t.button(title + ' ▾', cls = button_classes, type = 'button', id = button_id, title = hint, onclick = 'choose_dropdown_item(%s)' % key),
-		drop_content,
-		cls = cls,
-	)
+	return _dropdown_result(title, button_classes, button_id, hint, key, drop_content, cls)
+
+def _dropdown_shell(key, cls, title, hint = ''):
+	button_id, drop_content = _dropdown_base(key)
+	return _dropdown_result(title, 'dropdown_button', button_id, hint, key, drop_content, cls)
 
 
 def _add_cw(record, div, spec = None):
@@ -1870,8 +1884,10 @@ def _js_basic():
 def _js_load_bg(settings):
 	return raw('''
 		const element = document.querySelector('.main');
-		element.style.backgroundColor = "%(bg_color)s";
-		//document.getElementsByClassName("main").style.backgroundColor = "#eff7f6";
+		if (element != null) {
+			element.style.backgroundColor = "%(bg_color)s";
+			//document.getElementsByClassName("main").style.backgroundColor = "#eff7f6";
+		}
 	''' % settings)
 
 def _js_ws(url = None, host = None):
@@ -2018,8 +2034,14 @@ def _js_filter_list():
 		if (fw_button) { // this basically means that we're printing only
 			fw_button.innerHTML = "W-" + spec.first_week + " ▾";
 			$("last_week-button").innerHTML = "W-" + spec.last_week + " ▾";
-			if (payload.grades != null)
+			if (payload.programs != null)
+				$("program-container").innerHTML = payload.programs;
+			if (payload.grades == -1) // -1 is signal for "don't show"
+				$("grade-container").innerHTML = '';
+			else if (payload.grades != null)
 				$("grade-container").innerHTML = payload.grades;
+			if (payload.subjects != null)
+				$("subject-container").innerHTML = payload.subjects;
 		}
 		// Call for string of random-audio-urls... but NOTE: this doesn't seem to be the best place for this, as this _js_filter_list() may be part of a page that does not avail the random-audio urls...  but moving it down to there ran us into trouble with the variable ws being available; not sure why, yet!
 		request_new_random_url_playlist();

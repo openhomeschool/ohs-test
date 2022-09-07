@@ -445,6 +445,9 @@ def _add_assessment(dbc, spec):
 	cursor.execute(f"insert into {spec.assessment_join_table} (fact, assessment) values (?, ?)", [spec.fact_id, cursor.lastrowid])
 	dbc.commit()
 	
+async def get_user_id_from_uuid(dbc, uuid, raise_exception = True):
+	return await _get_user_id(dbc, uuid, raise_exception)
+
 async def _get_user_id(dbc, uuid, raise_exception = True):
 	user = await fetchone(dbc, ('select user from user_login where uuid = ?', (uuid,)))
 	if not user:
@@ -591,10 +594,26 @@ async def _get_assignments(dbc, spec, resource_spec, uid):
 		joins.extend(resource_spec.extra_joins)
 	wheres, args = [f'{spec.table}.subject = ?',], [k_subject_ids[resource_spec.subject_title], ]
 	_filter_cycle_week_range(spec, joins, wheres, args, True)
-	_filter_program(spec, joins, wheres, args) # TODO: change to specific grade-filtering (or variably...?  NO: **add** grade filtering; then, one can see the whole program, which is united, but drill in (e.g., by virtue of being logged in as a student) to the specific grade treatment; also note that resource_use.program is NOT redundant, here, with grade_resource_use.grade_first (or grade_last) via grade_program table beause that table may have two programs associated with a grade level, and we need to specify the program to which the resource_use really belongs
+	orig_spec_grade = spec.grade
+	orig_spec_program = spec.program
 	if spec.grade != 0:
 		wheres.append('(assignment.grade_first is NULL or assignment.grade_first <= ?) and (assignment.grade_last is NULL or assignment.grade_last >= ?)')
 		args.extend((spec.grade, spec.grade))
+	elif uid:
+		subject_id = k_subject_ids.get(resource_spec.subject_title, 0)
+		grade = None
+		for enrollment in resource_spec.enrollments: # if uid exists, enrollments should be set!
+			if (enrollment['subject'] == subject_id) or (enrollment['subject'] == 0 and not grade): # "0" is the "default" record; only do this if this is a specific enrollment['grade'] match or if we haven't already assigned 'grade' BY such a match (that is, we'll take a "0" default, but trump it with a specific enrollment['grade'] match)
+				spec.program = enrollment['program'] # default user to his own program; WOW! BIG DEAL here; this manifests in _filter_program, to grab, for THIS batch of assignments (for the specific subject), the assignments in this particular program AND grade; in other words, an 11th-grader (program 4) can take a specific class as a 9th-grader in program 3 if the enrollment record specifies both program=3 and grade=9 for the given subject
+				grade = enrollment['grade']
+		if grade: # SHOULD always be one, but, just in case, we do the if; if there really is none, then there's no need for this "WHERE" setup (below); then again, that's really most likely a failure scenario - how can a specific student not have a grade?  The grade can never mess up a query, even if the assignment is for all grades within the program.  Anyway, this avoids explicit logic errors, and one will have to just track down strange errors if an enrollment record simply doesn't have a grade assigned for a student; we could consider assert()ing against that, here....
+			wheres.append('(assignment.grade_first is NULL or assignment.grade_first <= ?) and (assignment.grade_last is NULL or assignment.grade_last >= ?)')
+			args.extend((grade, grade))
+			spec.grade = grade
+	_filter_program(spec, joins, wheres, args) # note that resource_use.program is NOT redundant, here, with grade_resource_use.grade_first (or grade_last) via grade_program table beause that table may have two programs associated with a grade level, and we need to specify the program to which the resource_use really belongs
+	# reset spec (so that subsequent checks on spec. represent the original, not the modifications we briefly made, above, for our _filter_program()):
+	spec.grade = orig_spec_grade
+	spec.program = orig_spec_program
 
 	#if spec.shop:
 	#	# If shopping, we don't actually want all the assignment records, we only want the collection of resources to which those assignments collectively refer.  We still need to query the assignment records, to get this information, as there's no better way to know that a resource needs to be bought than to know that an assignment has referenced it.
@@ -636,15 +655,18 @@ async def _get_assignments_DEPRECATE(dbc, spec, resource_spec):
 
 	return await fetchall(dbc, (f'select * from {spec.table}' + _join(joins) + _where(wheres) + ' order by subject, cw.cycle, cw.week, "order"', args))
 
+async def _is_admin(dbc, uid):
+	return await fetchone(dbc, ("select 1 from user join user_role on user.id = user_role.user join role on role.id = user_role.role where role.name in ('admin', 'super', 'coordinator') and user.id = ?", (uid,)))
 
-async def _get_resources(dbc, spec, resource_specs, uuid):
+async def _get_resources(dbc, spec, resource_specs, uid):
 	# Returns list of Resource_Result objects; one per subject, in the order specified in resource_specs
-	uid = await _get_user_id(dbc, uuid, False)
-	if not uid:
-		l.warning('_get_resources() attempted by user not logged in! (Probably fine!)')
-		spec.logged_in = False
-	else:
+	spec.logged_in = False # default...
+	enrollments = None
+	if uid:
 		spec.logged_in = True
+		if spec.as_user_id and await _is_admin(dbc, uid):
+			uid = spec.as_user_id # "pretend" to be another
+		enrollments = await fetchall(dbc, ('select * from enrollment join person on enrollment.student = person.id join user on user.person = person.id where user.id = ? order by subject', (uid,))) # 'order by subject' just puts the "0 subject" record on top, for easy access at the bottom of this function...
 	result = []
 	try: split_spec_subject_ids = [int(x) for x in str(spec.subject).split(',')]
 	except: split_spec_subject_ids = ()
@@ -653,10 +675,15 @@ async def _get_resources(dbc, spec, resource_specs, uuid):
 		if spec.subject == 0 or spec.subject == subject_id or subject_id in split_spec_subject_ids:
 			rrs = []
 			for rs in ss.resource_specs:
+				rs.enrollments = enrollments
 				rr = RR(rs.handler, await rs.getter(dbc, spec, rs, uid))
 				if rr.records:
 					rrs.append(rr)
 			result.append(SR(ss.subject_title, rrs))
+	# Finally, set the spec.program and spec.grade to the most "default" (subject=0 record):
+	if uid and enrollments:
+		spec.program = enrollments[0]['program']
+		spec.grade = enrollments[0]['grade']
 	return result
 
 
@@ -769,16 +796,16 @@ k_high1_assignments = [
 ]
 
 
-async def get_grammar_resources(dbc, spec, uuid):
-	return await _get_resources(dbc, spec, k_grammar_resources, uuid)
+async def get_grammar_resources(dbc, spec, uid):
+	return await _get_resources(dbc, spec, k_grammar_resources, uid)
 
-async def get_middle_resources(dbc, spec, uuid):
+async def get_middle_resources(dbc, spec, uid):
 	resources = k_middle_resources if spec.grammar_supplement else k_middle_assignments
-	return await _get_resources(dbc, spec, resources, uuid)
+	return await _get_resources(dbc, spec, resources, uid)
 
-async def get_high1_resources(dbc, spec, uuid):
+async def get_high1_resources(dbc, spec, uid):
 	resources = k_high1_resources if spec.grammar_supplement else k_high1_assignments
-	return await _get_resources(dbc, spec, resources, uuid)
+	return await _get_resources(dbc, spec, resources, uid)
 
 async def get_external_resource_detail_DEPRECATE(id):
 	raise Exception("DEPRECATE?!!!")
@@ -901,6 +928,12 @@ async def get_programs(dbc):
 
 async def get_program(dbc, id):
 	return await fetchone(dbc, ('select * from program where id = ? order by grade_first', (id,)))
+
+async def get_primary_program(dbc, uid, spec):
+	if spec.as_user_id and await _is_admin(dbc, uid):
+		uid = spec.as_user_id # "pretend" to be another
+	result = await fetchone(dbc, ('select program from enrollment join person on person.id = enrollment.student join user on user.person = person.id where user.id = ? and subject = 0 order by program desc limit 1', (uid,)))
+	return result['program'] if result else 1 # 1 is (hard-code?!) default (grammarschool); honestly, this should never happen, but it's a graceful (or mysteriously problematical?) way of dealing with the oddity 
 
 async def get_subjects(dbc, flag = None):
 	q = 'select * from subject'
