@@ -915,7 +915,7 @@ def filter_button(key, options, selected_id):
 	return t.div(r).render()
 	
 
-def resources(ws_url, filters, cycles, weeks, qargs, links, login, user_settings, content): # TODO: this is basically identical to select_user (and presumably other search-driven pages whose content comes via websocket); consolidate!
+def resources(ws_url, filters, cycles, weeks, qargs, links, login, user_settings, main_content): # TODO: this is basically identical to select_user (and presumably other search-driven pages whose content comes via websocket); consolidate!
 	d = _doc(text.doc_prefix + 'Resources')
 	for_print = int(qargs.get('for_print', 0)) # 1 = no buttons, no header
 	show_search = int(qargs.get('show_search', 1)) # 1 = show, 0 = don't
@@ -955,7 +955,9 @@ def resources(ws_url, filters, cycles, weeks, qargs, links, login, user_settings
 					_dropdown(weeks[1], 'ib-right', button_class = 'cw-button', hint = 'Select END week')
 					#TODO: BRING BACK! -- _dropdown(cycles, 'ib-right', button_class = 'cw-button')
 
-		t.div(raw(content), id = 'content') # filtered results themselves are added here, in this `result` div, via websocket, as search text is typed (see javascript)
+		if not main_content:
+			main_content = 'Loading... please refresh your browser if this message does not disappear shortly....'
+		t.div(raw(main_content), id = 'content') # filtered results themselves are added here, in this `result` div, via websocket, as search text is typed (see javascript)
 
 		# JS (intentionally at bottom of file; see https://faqs.skillcrush.com/article/176-where-should-js-script-tags-be-linked-in-html-documents and many stackexchange answers):
 		t.script(_js_basic())

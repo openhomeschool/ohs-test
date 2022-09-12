@@ -487,7 +487,7 @@ k_subject_ids = { # IDs from DB table, mapped to handler names TODO: just create
 	'Logic': 12,
 	'Shakespeare': 13,
 	'Arithmetic': 14,
-	'Christ': 15,
+	'Apologetics': 15,
 }
 
 @dataclass
@@ -606,7 +606,7 @@ async def _get_assignments(dbc, spec, resource_spec, uid):
 			if (enrollment['subject'] == subject_id) or (enrollment['subject'] == 0 and not grade): # "0" is the "default" record; only do this if this is a specific enrollment['grade'] match or if we haven't already assigned 'grade' BY such a match (that is, we'll take a "0" default, but trump it with a specific enrollment['grade'] match)
 				spec.program = enrollment['program'] # default user to his own program; WOW! BIG DEAL here; this manifests in _filter_program, to grab, for THIS batch of assignments (for the specific subject), the assignments in this particular program AND grade; in other words, an 11th-grader (program 4) can take a specific class as a 9th-grader in program 3 if the enrollment record specifies both program=3 and grade=9 for the given subject
 				grade = enrollment['grade']
-		if grade: # SHOULD always be one, but, just in case, we do the if; if there really is none, then there's no need for this "WHERE" setup (below); then again, that's really most likely a failure scenario - how can a specific student not have a grade?  The grade can never mess up a query, even if the assignment is for all grades within the program.  Anyway, this avoids explicit logic errors, and one will have to just track down strange errors if an enrollment record simply doesn't have a grade assigned for a student; we could consider assert()ing against that, here....
+		if grade: # SHOULD always be one (non-None), but, just in case, we do the if; if there really is none, then there's no need for this "WHERE" setup (below); then again, that's really most likely a failure scenario - how can a specific student not have a grade?  The grade can never mess up a query, even if the assignment is for all grades within the program.  Anyway, this avoids explicit logic errors, and one will have to just track down strange errors if an enrollment record simply doesn't have a grade assigned for a student; we could consider assert()ing against that, here....
 			wheres.append('(assignment.grade_first is NULL or assignment.grade_first <= ?) and (assignment.grade_last is NULL or assignment.grade_last >= ?)')
 			args.extend((grade, grade))
 			spec.grade = grade
@@ -666,7 +666,13 @@ async def _get_resources(dbc, spec, resource_specs, uid):
 		spec.logged_in = True
 		if spec.as_user_id and await _is_admin(dbc, uid):
 			uid = spec.as_user_id # "pretend" to be another
-		enrollments = await fetchall(dbc, ('select * from enrollment join person on enrollment.student = person.id join user on user.person = person.id where user.id = ? order by subject', (uid,))) # 'order by subject' just puts the "0 subject" record on top, for easy access at the bottom of this function...
+		select = 'select * from enrollment join person on enrollment.student = person.id join user on user.person = person.id'
+		where = ' where user.id = ?'
+		args = [uid,]
+		if spec.academic_year != -1:
+			where += ' and academic_year = ?'
+			args.append(spec.academic_year)
+		enrollments = await fetchall(dbc, (select + where + ' order by academic_year desc, subject', args)) # 'order by subject' just puts the "0 subject" record on top, for easy access at the bottom of this function...
 	result = []
 	try: split_spec_subject_ids = [int(x) for x in str(spec.subject).split(',')]
 	except: split_spec_subject_ids = ()
@@ -713,7 +719,7 @@ k_computer_exre_rs = _make_exre_resource_spec('Computer', 'computer_resources')
 k_spanish_exre_rs = _make_exre_resource_spec('Spanish', 'spanish_resources')
 k_logic_exre_rs = _make_exre_resource_spec('Logic', 'logic_resources')
 k_shakespeare_exre_rs = _make_exre_resource_spec('Shakespeare', 'shakespeare_resources')
-k_christ_exre_rs = _make_exre_resource_spec('Christ', 'christ_resources')
+k_christ_exre_rs = _make_exre_resource_spec('Apologetics', 'christ_resources')
 k_math_exre_rs = _make_exre_resource_spec('Math', 'math_resources')
 k_latin_exre_rs = _make_exre_resource_spec('Latin', 'latin_resources')
 
@@ -730,7 +736,7 @@ k_computer_assignment_rs = _make_assignment_spec('Computer', 'computer_assignmen
 k_spanish_assignment_rs = _make_assignment_spec('Spanish', 'spanish_assignments')
 k_logic_assignment_rs = _make_assignment_spec('Logic', 'logic_assignments')
 k_shakespeare_assignment_rs = _make_assignment_spec('Shakespeare', 'shakespeare_assignments')
-k_christ_assignment_rs = _make_assignment_spec('Christ', 'christ_assignments')
+k_christ_assignment_rs = _make_assignment_spec('Apologetics', 'christ_assignments')
 k_math_assignment_rs = _make_assignment_spec('Math', 'math_assignments')
 k_latin_assignment_rs = _make_assignment_spec('Latin', 'latin_assignments')
 
@@ -777,7 +783,7 @@ k_high1_resources = [
 	SS('Spanish', (k_spanish_assignment_rs, )),
 	SS('Logic', (k_logic_assignment_rs, )),
 	SS('Shakespeare', (k_shakespeare_assignment_rs, )),
-	SS('Christ', (k_christ_assignment_rs, )),
+	SS('Apologetics', (k_christ_assignment_rs, )),
 	SS('Latin', (k_latin_assignment_rs, k_latin_vocabulary_rs, k_latin_grammar_rs, )),
 ]
 
@@ -791,7 +797,7 @@ k_high1_assignments = [
 	SS('Spanish', (k_spanish_assignment_rs, )),
 	SS('Logic', (k_logic_assignment_rs, )),
 	SS('Shakespeare', (k_shakespeare_assignment_rs, )),
-	SS('Christ', (k_christ_assignment_rs, )),
+	SS('Apologetics', (k_christ_assignment_rs, )),
 	SS('Latin', (k_latin_assignment_rs, )),
 ]
 

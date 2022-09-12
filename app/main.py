@@ -630,19 +630,19 @@ async def resources(rq):
 
 @rt.get('/shop1', name = 'shop1')
 async def shop_year_program1(rq):
-	return await _resources(rq, {'shop': 1, 'cycle': 3, 'program': 1, 'first_week': 0, 'last_week': 0, 'grammar_supplement': 0})
+	return await _resources(rq, {'shop': 1, 'cycle': 3, 'program': 1, 'week': -1, 'grammar_supplement': 0})
 
 @rt.get('/shop2', name = 'shop2')
 async def shop_year_program2(rq):
-	return await _resources(rq, {'shop': 1, 'cycle': 3, 'program': 2, 'first_week': 0, 'last_week': 0, 'grammar_supplement': 0})
+	return await _resources(rq, {'shop': 1, 'cycle': 3, 'program': 2, 'week': -1, 'grammar_supplement': 0})
 
 @rt.get('/shop3', name = 'shop3')
 async def shop_year_program3(rq):
-	return await _resources(rq, {'shop': 1, 'cycle': 3, 'program': 3, 'first_week': 0, 'last_week': 0, 'grammar_supplement': 0})
+	return await _resources(rq, {'shop': 1, 'cycle': 3, 'program': 3, 'week': -1, 'grammar_supplement': 0})
 
 @rt.get('/shop4', name = 'shop4')
 async def shop_year_program4(rq):
-	return await _resources(rq, {'shop': 1, 'cycle': 3, 'program': 4, 'first_week': 0, 'last_week': 0, 'grammar_supplement': 0})
+	return await _resources(rq, {'shop': 1, 'cycle': 3, 'program': 4, 'week': -1, 'grammar_supplement': 0})
 
 
 
@@ -712,11 +712,11 @@ _links = lambda rq: (
 	#('Quiz', _http_url(rq, '/quiz/history/sequence'), True), # TODO!
 )
 
-k_linear = True
 async def _resources(rq, qargs):
 	session = await get_session(rq)
 	dbc = rq.app['db']
-	uid = 1#await db.get_user_id_from_uuid(dbc, session.get('uuid'), False)
+	uid = await db.get_user_id_from_uuid(dbc, session.get('uuid'), False)
+	#uid = 1 #!!!!!!
 	spec = _make_resources_spec(qargs)
 	_set_up_twixt(session, 'resources', _first_resources(dbc, uid, spec), spec) # start the first lookup now... should be done by the time the page is loaded and websocket handshake occurs, when this result is passed on into the loaded skeletal page
 
@@ -735,9 +735,7 @@ async def _resources(rq, qargs):
 	links = _links(rq)
 	login, settings = await _login_button(session, dbc)
 
-	content = ''
-	if k_linear:
-		content = html.resource_list(spec, await _first_resources(dbc, uid, spec)) # inefficient DUPLICATE call! (since twixt is already looking to fulfill)
+	content = None if not spec.linear else html.resource_list(spec, await _first_resources(dbc, uid, spec)) # content = None is the "normal" mode; spec.linear is just for (see above).  NOTE: inefficient DUPLICATE call to get first resources! (since twixt is already looking to fulfill - in the case of k_linear, we'll just never utilized the fetch that is done in the background while initial page-load occurs and websocket is set up; rather, that work is throw-away; however, this ONLY happens in the spec.linear case, which is ONLY used to generate printable syllabi using print-syllabi.py, so this should be fine.)
 	return hr(html.resources(_ws_url(rq, '/ws_messages'), filters, cycles, weeks, qargs, links, login, settings, content))
 
 
@@ -900,6 +898,8 @@ def _make_resources_spec(qargs):
 		show_go = int(qargs.get('show_go', 1)), # 1 = show go bar, 0 = don't
 		random_audio_type = int(qargs.get('random_audio_type', 7)), # 4 = 'song-simple'
 		as_user_id = int(qargs.get('as_user_id', 0)), # will require 'admin' to work (or maybe a parent)
+		linear = int(qargs.get('linear', 0)), # 1 = load linearly, in-line, rather than "dynamically" via follow-up websocket call.  Currently (2022-9-8) this is only supported by resources/, and is use primarily in the creation of syllabus printing, using print-syllabi.py
+		academic_year = int(qargs.get('academic_year', -1)), # the academic_year field in tables like enrollment; designating the specific year of a student's enrollment, and thus, e.g., showing them the right syllabus (e.g., as a 9th grader, rather than the 8th-grader they were last year); the default of -1 just means "the highest on record", i.e., the "current" or at least "most recent"
 	)
 	if spec.week != None:
 		spec.first_week = spec.last_week = int(spec.week)
@@ -1090,7 +1090,7 @@ async def _login_button(session, dbc):
 
 
 async def _send_show_resources_message(hd, programs, grades, subjects):
-	if not k_linear:
+	if not hd.spec.linear:
 		await hd.ws.send_json({
 			'task': 'show_resources',
 			'content': html.resource_list(hd.spec, await hd.data),

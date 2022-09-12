@@ -8,9 +8,9 @@ import os
 from os import path
 
 #preload_command = lambda week, left_right, url: ['chromium', '--headless', f'{url}']
-chromium_command = lambda pdf_filename, url: ['chromium', '--headless', '--run-all-compositor-stages-before-draw', '--virtual-time-budget=10000', '--print-to-pdf-no-header', f'--print-to-pdf={pdf_filename}.pdf', f'{url}']
+chromium_command = lambda pdf_filename, url: ['chromium', '--headless', '--print-to-pdf-no-header', f'--print-to-pdf={pdf_filename}.pdf', f'{url}']
 	#chromium --headless --print-to-pdf-no-header --print-to-pdf="test3.pdf" "http://localhost:8000/resources?as_user_id=141&for_print=1"
-url = lambda uid, week, subjects: f'http://localhost:8000/resources?as_user_id={uid}&for_print=1&week={week}&subject={subjects}'
+url = lambda uid, week, subjects: f'http://localhost:8000/resources?as_user_id={uid}&for_print=1&week={week}&subject={subjects}&linear=1' # 'linear=1' forces a linear load; if we wait for the websockets async load of the middle content, sometimes the print happens before the content ever loads (and so we get a blank page)!  NOTE that chrome/chromium args like '--run-all-compositor-stages-before-draw', '--virtual-time-budget=10000' do NOT actually resolve this -- we'd have to figure out how to stall the DOM load completion to capitalize on those, and that's not easy; I tried hard for a long time.  It's no just like a normal "load", like an image or the completion of an inline javascript.
 
 def main():
 	db = sqlite3.connect('ohs-test.db')
@@ -22,7 +22,7 @@ def main():
 		join enrollment on enrollment.student = person.id
 		join user on user.person = person.id
 		where enrollment.academic_year=3 and enrollment.program in (3, 4) and enrollment.subject=0
-		and person.id = 117
+		and person.id = 27
 	''')
 
 	subjects = {'a': '2,8,4', 'b': '5,7,11,15'} # left-page subjects and right-page-subjects
