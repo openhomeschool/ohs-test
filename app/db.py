@@ -66,6 +66,9 @@ async def is_person_teacher(dbc, pid):
 async def is_a_guardian(dbc, pid):
 	return await sql.is_a_guardian(dbc, pid)
 
+async def is_guardian_of(dbc, uid, child_username):
+	return await is_guardian_of(dbc, uid, child_username)
+
 async def forge_noun_passwords(dbc):
 	return await sql.forge_noun_passwords(dbc)
 
