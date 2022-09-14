@@ -347,6 +347,31 @@ class Enroll(web.View):
 	async def set(self):
 		return hr(html.enroll())
 
+@rt.view('/go_edit_user/{username}')
+class Go_Edit_User(web.View):
+	async def common(self):
+		session = await get_session(rq)
+		dbc = rq.app['db']
+		uid = await db.get_user_id_from_uuid(dbc, session.get('uuid'), False)
+		username = self.request.match_info['username']
+		if is_guardian_of(dbc, uid, username):#!!!! or is_user(dbc, uid, username):
+			vw = await _set_up_common_view_get(self, dbc = False, re_log_in_seconds = 60) # dbc only needed in post(), so only set it up there
+			return hr(html.reset_password(html.Form(vw.rq.rel_url)))
+		#WIP!!!!
+		
+	async def get(self):
+		commons = await self.common()
+		if isinstance(commons, web.Response):
+			return commons
+		#else:
+		#WIP!!!!
+	async def set(self):
+		commons = await self.common()
+		if isinstance(commons, web.Response):
+			return commons
+		#else:
+		#WIP!!!!
+		
 
 @rt.view('/family_invitation/{code}', name = 'family_invitation')
 class Family_Invitation(web.View):
@@ -875,6 +900,7 @@ k_db_handlers = { # 'id' keys must coincide with DB 'program' table
 	7: db.get_grammar_resources, # TODO: placeholder
 	8: db.get_high1_resources, # TODO: placeholder
 	9: db.get_high1_resources, # TODO: placeholder
+	10: db.get_high1_resources, # TODO: placeholder
 }
 
 def _make_resources_spec(qargs):
@@ -886,7 +912,7 @@ def _make_resources_spec(qargs):
 		solo = int(qargs.get('solo', 0)), # 0 = show the designed content for the program; 1 = show *only* the content unique to the program -- TODO: DEPRECATED? I think 'grammar_supplement' now takes care of this, and can't find references to solo elsewhere.....
 		shop = int(qargs.get('shop', 0)), # 1 = show shopping links (all opened up); only pertains to "resources" views, not "grammar" views, which don't show any purchasable resources
 		subject = qargs.get('subject', 0), # 0 = "all" indicator
-		cycles = (4, int(qargs.get('cycle', k_temp_this_cycle))), # default: k_temp_this_cycle ("4" refers to grammar that belongs to "all cycles" (like timeline grammar) - this is hardcode! TODO:FIX!)
+		cycles = (0, int(qargs.get('cycle', k_temp_this_cycle))), # default: k_temp_this_cycle ("0" refers to grammar that belongs to "all cycles" (like timeline grammar) - this is hardcode! TODO:FIX!)
 		first_week = int(qargs.get('first_week', k_temp_this_week)), # TODO: hardcode default to week 0! replace with lookup for user's "current week"
 		last_week = int(qargs.get('last_week', k_temp_this_week)), # TODO: see above; look up user's current-week
 		week = qargs.get('week', None), # convenience - use this to specify first_week = last_week = week

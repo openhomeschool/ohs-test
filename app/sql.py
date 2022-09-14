@@ -211,6 +211,11 @@ async def is_person_teacher(dbc, pid):
 async def is_a_guardian(dbc, pid):
 	return True if await fetchone(dbc, ('select 1 from child_guardian where guardian = ?', (pid,))) else False
 
+async def is_guardian_of(dbc, uid, child_username):
+	return True if await fetchone(dbc, ('''select 1 from user as guardian_user
+		join child_guardian on guardian_user.person = child_guardian.guardian
+		join user as child_user on child_user.person = child_guardian.child
+		where guardian_user.id = ? and child_user.username = ?''', (uid, child_username))) else False
 
 async def add_user_switch_allows(dbc, from_user_ids, user_id = None, without_password = True, commit = True):
 	'''
@@ -606,7 +611,7 @@ async def _get_assignments(dbc, spec, resource_spec, uid):
 			if (enrollment['subject'] == subject_id) or (enrollment['subject'] == 0 and not grade): # "0" is the "default" record; only do this if this is a specific enrollment['grade'] match or if we haven't already assigned 'grade' BY such a match (that is, we'll take a "0" default, but trump it with a specific enrollment['grade'] match)
 				spec.program = enrollment['program'] # default user to his own program; WOW! BIG DEAL here; this manifests in _filter_program, to grab, for THIS batch of assignments (for the specific subject), the assignments in this particular program AND grade; in other words, an 11th-grader (program 4) can take a specific class as a 9th-grader in program 3 if the enrollment record specifies both program=3 and grade=9 for the given subject
 				grade = enrollment['grade']
-		if grade: # SHOULD always be one (non-None), but, just in case, we do the if; if there really is none, then there's no need for this "WHERE" setup (below); then again, that's really most likely a failure scenario - how can a specific student not have a grade?  The grade can never mess up a query, even if the assignment is for all grades within the program.  Anyway, this avoids explicit logic errors, and one will have to just track down strange errors if an enrollment record simply doesn't have a grade assigned for a student; we could consider assert()ing against that, here....
+		if grade: # will be None, still, if none of our enrollments match subject_id - i.e., we don't need to filter for specific grades tied to enrollment in this case
 			wheres.append('(assignment.grade_first is NULL or assignment.grade_first <= ?) and (assignment.grade_last is NULL or assignment.grade_last >= ?)')
 			args.extend((grade, grade))
 			spec.grade = grade
@@ -689,7 +694,8 @@ async def _get_resources(dbc, spec, resource_specs, uid):
 	# Finally, set the spec.program and spec.grade to the most "default" (subject=0 record):
 	if uid and enrollments:
 		spec.program = enrollments[0]['program']
-		spec.grade = enrollments[0]['grade']
+		# NOTE: if you un-comment the following, setting the grade explicitly, then the next time 'round, e.g., after a filter/change of week #, the grade will explicitly be the grade set here, and the innerds of _get_assignments will not look up THIS USER's grade, wrt/ each subject, and the result will not be this user's specific enrollments, which may be unique (e.g., an 8th-grader in 7th-grade Lit or Latin, or a math student in specific math....
+		#spec.grade = enrollments[0]['grade'] # NOTE: see note above; consider a better way to do this...?
 	return result
 
 
@@ -1117,7 +1123,7 @@ def _filter_cycle_week_range(spec, joins, wheres, args, cw_week_range = False, b
 				wheres.append("(? <= cw.week and cw.week <= ?)")
 			args.extend(broaden(spec.first_week, spec.last_week))
 		if spec.cycles:
-			wheres.append("cw.cycle in (%s)" % ', '.join([str(int(i)) for i in spec.cycles + (4,)])) # add "cycle 4", which is just an "all cycles" indicator
+			wheres.append("cw.cycle in (%s)" % ', '.join([str(int(i)) for i in spec.cycles + (0,)])) # add "cycle 0", which is just an "all cycles" indicator
 	#else, no-op
 
 def _filter_program(spec, joins, wheres, args):

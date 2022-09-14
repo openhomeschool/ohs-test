@@ -489,7 +489,8 @@ def _family_user_setup(action, rows, invalids, ws_url, passwords, used_passwords
 											_text_input(username.key, username.value, type_ = 'hidden'),
 											_text_input(password.key, '', type_ = 'hidden'),
 										))
-										t.td(t.button('edit existing account...', type = 'button', onclick = f'go_edit_user({username.value})'))
+										t.td(t.button('edit existing account...', type = 'button', onclick = 'load_page("%s")' % _gurl(f'/go_edit_user/{username.value}')))
+										
 								else:
 									username_fields.append(username.key)
 									password_fields.append(password.key)
@@ -1426,11 +1427,12 @@ def _assignments(container, spec, records, show_cw):
 			instruction = '[optional] ' + instruction
 		grade_first = record['grade_first']
 		grade_last = record['grade_last']
-		if not ((not grade_first and not grade_last) or (record['program_grade_first'] == grade_first and record['program_grade_last'] == grade_last)) and spec.grade == 0: # i.e., if this record does **not** apply to everybody AND the spec isn't set to show only one grade anyway, then...
-			if grade_first != grade_last:
-				instruction = f'[Grades {grade_first}-{grade_last}] ' + instruction
-			else:
-				instruction = f'[Grade {grade_first}] ' + instruction
+		#TEMP COMMENT-OUT!!!!!!!! --- too many students now are in different grades for different subjects, and this needlessly (and constantly) "shows" that when they're logged in and looking at their personal syllabus (or looking at their printed syllabus)... consider just adding a qarg/spec item called show_grades which could be checked here, and grades shown only if that flag is true AND the following conditions are met (note: don't just replace!  b/c then e.g., for IEW, e.g., you'll get grade prefixes on all lines, even those that apply to the full span - it'll just be really ugly)
+		#if not ((not grade_first and not grade_last) or (record['program_grade_first'] == grade_first and record['program_grade_last'] == grade_last)) and spec.grade == 0: # i.e., if this record does **not** apply to everybody AND the spec isn't set to show only one grade anyway, then...
+		#	if grade_first != grade_last:
+		#		instruction = f'[Grades {grade_first}-{grade_last}] ' + instruction
+		#	else:
+		#		instruction = f'[Grade {grade_first}] ' + instruction
 		more_attrs = {}
 		if spec.logged_in and record['complete']:
 			more_attrs['checked'] = 'true' # 'true' can be anything at all; with 'checked' attr present at all, we're checked
@@ -1764,7 +1766,7 @@ def _add_cw(record, div, spec = None):
 	# For now: not showing the "cycle" - it just takes up screen real estate
 	'''
 	cycle = record['cycle']
-	if cycle == 4: # TODO: hardcode for id 4, "All Cycles"
+	if cycle == 0: # TODO: hardcode for id 0, "All Cycles"
 		cycle = 'All'
 	else:
 		cycle = 'C-%s' % cycle
