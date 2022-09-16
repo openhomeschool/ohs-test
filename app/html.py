@@ -23,7 +23,7 @@ from . import settings
 from . import text
 from . import util as U
 
-k_cache_version = '?v=g1'
+k_cache_version = '?v=g2'
 
 # Classes ---------------------------------------------------------------------
 
