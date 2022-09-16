@@ -1177,7 +1177,7 @@ def _add_eqality_record(table, record, left_field_name, right_field_name, yougli
 
 def _prefix_answer(record, youglishit = False):
 	answer_prompt = record['answer_prefix'].capitalize() + ' ' + record['prompt'] if record['answer_prefix'] else record['prompt'].capitalize()
-	answer = '%s %s %s' % (answer_prompt, record['answer_verb'], record['answer'])
+	answer = '%s %s %s.' % (answer_prompt, record['answer_verb'], record['answer'])
 	if youglishit:
 		answer = _youglishify('%s %s %s.' % (answer_prompt, record['answer_verb'], record['answer']))
 	return answer
@@ -1209,15 +1209,29 @@ def _format_answer2(record, youglishit = False): # stolen from _format_answer(),
 	
 	return raw(answer)
 
+def _format_answer3(record, youglishit = False): # stolen from _format_answer2(), to try something new....
+	#OLD: answer = f"{record['prompt'].capitalize()} {record['answer_verb']} {record['answer']}."
+	answer = _prefix_answer(record, False)
+	first_star_pos = answer.find('*')
+	if first_star_pos >= 0 and len(answer) > first_star_pos + 1:
+		prelude = answer[:first_star_pos]
+		answer = prelude + '<ul><li>' + answer[first_star_pos + 1:].replace('*', '</li><li>') + '</li></ul>'
+	if youglishit:
+		answer = _youglishify(answer, False)
+	
+	return raw(answer)
+
 @subject_resources('science_grammar')
 def science_grammar(container, spec, records, show_cw):
 	def render(record, container): # callback function, see _grammar_resources()
 		with container:
-			#TODO: DEPRECATE after fixing cycle 1 grammar: t.div(t.b('What %s %s?' % (record['prompt_prefix'], record['prompt'])))
-			#TODO: DEPRECATE after fixing cycle 1 grammar: t.div(_prefix_answer(record, True))
-			#TODO: NEW (below):
-			t.div(t.b(t.a('%s - tell me more' % record['prompt'], href = _gurl('/detail/science/%d' % record['id']), target = "_blank", cls = 'hover_link')))
-			t.div(_format_answer2(record, False))
+			if not record['continuer']:
+				#OLD: t.div(t.b())
+				prompt = f"{record['answer_prefix']} {record['prompt']}" if record['answer_prefix'] else record['prompt']
+				if not record['addendum']:
+					prompt = f"What {record['answer_verb']} {prompt}?"
+				t.div(t.b(t.a(prompt.capitalize(), href = _gurl('/detail/science/%d' % record['id']), target = "_blank", cls = 'hover_link')))
+			t.div(_format_answer3(record, False))
 
 	_grammar_resources(container, spec, records, show_cw, 'science', render, True)
 
