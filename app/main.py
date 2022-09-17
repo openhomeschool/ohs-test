@@ -891,6 +891,7 @@ def _quick_flash_message(message):
 # WS Handler stuff  ----------------------------------------------------------------------
 
 k_db_handlers = { # 'id' keys must coincide with DB 'program' table
+	0: db.get_grammar_resources,
 	1: db.get_grammar_resources,
 	2: db.get_middle_resources,
 	3: db.get_high1_resources,
