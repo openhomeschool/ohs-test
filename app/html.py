@@ -86,6 +86,7 @@ def reset_password(form, error = None):
 
 	return d.render()
 
+
 def reset_password_success(nexts):
 	title = 'Reset Password'
 	d = _doc(text.doc_prefix + title)
@@ -452,13 +453,14 @@ def financial(links, filters, login, user_settings, person, family, contact, cos
 		t.p('If you see any mistakes, please just contact me directly.  Thanks!')
 
 		t.script(_js_basic())
+		t.script(_js_go_to())
 		t.script(_js_dropdown())
 		t.script(_js_load_bg(user_settings))
 
 	return d.render()
 
 
-def _family_user_setup(action, rows, invalids, ws_url, passwords, used_passwords, all_exist_already, flash = None):
+def _family_user_setup(action, code, rows, invalids, ws_url, passwords, used_passwords, all_exist_already, flash = None):
 	cl = lambda content: t.div(content, cls = 'contact_line') # TODO: DEPORT
 
 	username_fields = []
@@ -489,7 +491,7 @@ def _family_user_setup(action, rows, invalids, ws_url, passwords, used_passwords
 											_text_input(username.key, username.value, type_ = 'hidden'),
 											_text_input(password.key, '', type_ = 'hidden'),
 										))
-										t.td(t.button('edit existing account...', type = 'button', onclick = 'load_page("%s")' % _gurl(f'/go_edit_user/{username.value}')))
+										t.td(t.button('edit existing account...', type = 'button', onclick = 'load_page("%s")' % _gurl(f'/go_edit_user/{username.value}/{code}')))
 										
 								else:
 									username_fields.append(username.key)
@@ -524,6 +526,7 @@ def _family_user_setup(action, rows, invalids, ws_url, passwords, used_passwords
 							t.div(_what_next(text.go_to_grammar, text.go_to_practice, text.go_to_settings))
 
 		t.script(_js_basic())
+		t.script(_js_go_to())
 		t.script(_js_ws(ws_url))
 		t.script(_js_check_username())
 		t.script(_js_validate_event())
@@ -534,7 +537,7 @@ def _family_user_setup(action, rows, invalids, ws_url, passwords, used_passwords
 		t.script(_js_go_to())
 	return d.render()
 
-def family_user_setup(action, users, passwords, ws_url, all_exist_already, flash = None):
+def family_user_setup(action, code, users, passwords, ws_url, all_exist_already, flash = None):
 	used_passwords = []
 	rows = []
 	for u in users:
@@ -549,10 +552,10 @@ def family_user_setup(action, users, passwords, ws_url, all_exist_already, flash
 			U.KVPair(U.tag_it('username', pid), u['username']),
 			U.KVPair(U.tag_it('password', pid), password if not u['exists'] else ''),
 		])
-	return _family_user_setup(action, rows, [], ws_url, passwords, used_passwords, all_exist_already, flash)
+	return _family_user_setup(action, code, rows, [], ws_url, passwords, used_passwords, all_exist_already, flash)
 
 
-def family_user_setup_retry(action, data, passwords, ws_url, invalids, all_exist_already, flash = None):
+def family_user_setup_retry(action, code, data, passwords, ws_url, invalids, all_exist_already, flash = None):
 	rows = []
 	row = [] # contains [(pid_fn, pid_fv), (name_fn, name_fv), (exists_fn, exists_fv), (username_fn, username_fv), (password_fn, password_fv)] (see family_user_setup())
 	for key, value in data.items():
@@ -565,7 +568,7 @@ def family_user_setup_retry(action, data, passwords, ws_url, invalids, all_exist
 	if row:
 		rows.append(row)
 
-	return _family_user_setup(action, rows, invalids, ws_url, passwords, [], all_exist_already, flash)
+	return _family_user_setup(action, code, rows, invalids, ws_url, passwords, [], all_exist_already, flash)
 
 
 def student_invitation(form, invitation, person, enrollments, flash = None):
@@ -632,6 +635,7 @@ def appointments(links, login, settings, appointments):
 						t.tr((t.td(f"@{appointment['location']}", cls = 'ra-cell'), t.td(dt2)))
 
 		t.script(_js_basic())
+		t.script(_js_go_to())
 		t.script(_js_dropdown())
 		t.script(_js_load_bg(settings))
 
@@ -807,6 +811,7 @@ def practice(links, filters, login, user_settings, host):
 				# This div gets populated after initial ws-fetch (and in response to a filter change, etc.)...
 
 		t.script(_js_basic())
+		t.script(_js_go_to())
 		t.script(_js_ws(host = host))
 		t.script(_js_arithmetic())
 		t.script(_js_practice())
@@ -857,6 +862,7 @@ def practice_stats(links, login, user_settings, results):
 							t.td(str(result['sazzle']))
 
 		t.script(_js_basic())
+		t.script(_js_go_to())
 		t.script(_js_dropdown())
 		t.script(_js_load_bg(user_settings))
 		
@@ -962,6 +968,7 @@ def resources(ws_url, filters, cycles, weeks, qargs, links, login, user_settings
 
 		# JS (intentionally at bottom of file; see https://faqs.skillcrush.com/article/176-where-should-js-script-tags-be-linked-in-html-documents and many stackexchange answers):
 		t.script(_js_basic())
+		t.script(_js_go_to())
 		t.script(_js_ws(ws_url))
 		t.script(_js_load_bg(user_settings))
 		t.script(_js_filter_list())
@@ -2123,6 +2130,10 @@ def _js_print_then_submit():
 
 def _js_go_to():
 	return raw('''
+		function load_page(url) {
+			window.location.href = url;
+		};
+
 		function go_to(url) {
 			window.location.href = "%s" + url;
 		};
@@ -2164,10 +2175,6 @@ def _js_dropdown():
 	toggle between hiding and showing the dropdown content */
 	function choose_dropdown_item(element) {
 		element.classList.toggle("show");
-	};
-
-	function load_page(url) {
-		window.location.href = url;
 	};
 
 	function choose_dropdown_option(key, option_id, option_title, button_id, task) {

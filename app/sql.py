@@ -81,10 +81,13 @@ async def _login(dbc, user_id):
 	return (uuid, ts)
 
 async def login(dbc, username, password):
+	if not password: # password is required!
+		return None
+	#else...
 	r = await fetchone(dbc, ('select id, password from "user" where username = ?', (username,)))
-	if r and (password == None or bcrypt.checkpw(password.encode(), r['password'])):
+	if r and bcrypt.checkpw(password.encode(), r['password']):
 		return await _login(dbc, r['id'])
-	#else:
+	#else...
 	return None
 
 async def forget_login(dbc, uuid):
@@ -161,9 +164,8 @@ async def disable_user(dbc, username):
 	await dbc.execute('update "user" set password = NULL where username = ?', [username,]) # can't login with null pw
 	await dbc.commit()
 	
-async def reset_user_password(dbc, uuid, new_password):
+async def reset_user_password(dbc, uid, new_password):
 	#this one-step technique doesn't work: result = await dbc.execute('update user set user.password = ? from user_login where user.id = user_login.user and user_login.uuid = ?', (pwcrypt, uuid))
-	uid = await _get_user_id(dbc, uuid)
 	pwcrypt = bcrypt.hashpw(new_password.encode(), bcrypt.gensalt())
 	r = await dbc.execute('update user set password = ? where id = ?', (pwcrypt, uid,))
 	assert(r.rowcount < 2)
@@ -203,19 +205,22 @@ async def get_user_id(dbc, username):
 	return None
 
 async def is_user_teacher(dbc, uid):
-	return True if await fetchone(dbc, ('select 1 from person join user on user.person = person.id where user.id = ? and person.teacher = 1', (uid,))) else False
+	return True if await fetchone(dbc, ('select 1 from person join user on user.person = person.id where user.id = ? and person.teacher = 1 limit 1', (uid,))) else False
 
 async def is_person_teacher(dbc, pid):
-	return True if await fetchone(dbc, ('select 1 from person where teacher = 1 and id = ?', (pid,))) else False
+	return True if await fetchone(dbc, ('select 1 from person where teacher = 1 and id = ? limit 1', (pid,))) else False
 
 async def is_a_guardian(dbc, pid):
-	return True if await fetchone(dbc, ('select 1 from child_guardian where guardian = ?', (pid,))) else False
+	return True if await fetchone(dbc, ('select 1 from child_guardian where guardian = ? limit 1', (pid,))) else False
 
 async def is_guardian_of(dbc, uid, child_username):
 	return True if await fetchone(dbc, ('''select 1 from user as guardian_user
 		join child_guardian on guardian_user.person = child_guardian.guardian
 		join user as child_user on child_user.person = child_guardian.child
-		where guardian_user.id = ? and child_user.username = ?''', (uid, child_username))) else False
+		where guardian_user.id = ? and child_user.username = ? limit 1''', (uid, child_username))) else False
+
+async def is_user(dbc, uid, username):
+	return True if await fetchone(dbc, ('select 1 from user where id = ? and username = ? limit 1', (uid, username))) else False
 
 async def add_user_switch_allows(dbc, from_user_ids, user_id = None, without_password = True, commit = True):
 	'''
@@ -449,7 +454,15 @@ def _add_assessment(dbc, spec):
 	cursor.execute("insert into assessment (speed_ms, correct, student) values (?, ?, ?)", [spec.speed_ms, spec.correct, spec.student])
 	cursor.execute(f"insert into {spec.assessment_join_table} (fact, assessment) values (?, ?)", [spec.fact_id, cursor.lastrowid])
 	dbc.commit()
-	
+
+async def get_user_id_from_person_id(dbc, person_id):
+	result = await fetchone(dbc, ('select id from user where person = ?', (person_id,)))
+	return None if not result else result['id']
+
+async def get_user_id_from_username(dbc, username):
+	result = await fetchone(dbc, ('select id from user where username = ?', (username,)))
+	return None if not result else result['id']
+
 async def get_user_id_from_uuid(dbc, uuid, raise_exception = True):
 	return await _get_user_id(dbc, uuid, raise_exception)
 

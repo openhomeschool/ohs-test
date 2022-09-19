@@ -39,6 +39,12 @@ async def get_user_id(dbc, username):
 async def get_user_id_from_uuid(dbc, uuid, raise_exception = True):
 	return await sql.get_user_id_from_uuid(dbc, uuid, raise_exception)
 
+async def get_user_id_from_person_id(dbc, person_id):
+	return await sql.get_user_id_from_person_id(dbc, person_id)
+
+async def get_user_id_from_username(dbc, username):
+	return await sql.get_user_id_from_username(dbc, username)
+
 async def username_exists(dbc, username):
 	return await sql.username_exists(dbc, username)
 
@@ -67,7 +73,10 @@ async def is_a_guardian(dbc, pid):
 	return await sql.is_a_guardian(dbc, pid)
 
 async def is_guardian_of(dbc, uid, child_username):
-	return await is_guardian_of(dbc, uid, child_username)
+	return await sql.is_guardian_of(dbc, uid, child_username)
+
+async def is_user(dbc, uid, username):
+	return await sql.is_user(dbc, uid, username)
 
 async def forge_noun_passwords(dbc):
 	return await sql.forge_noun_passwords(dbc)
@@ -75,8 +84,8 @@ async def forge_noun_passwords(dbc):
 async def create_user(dbc, username, password, person_id, commit = True):
 	return await sql.create_user(dbc, username, password, person_id, commit)
 
-async def reset_user_password(dbc, uuid, new_password):
-	return await sql.reset_user_password(dbc, uuid, new_password)
+async def reset_user_password(dbc, uid, new_password):
+	return await sql.reset_user_password(dbc, uid, new_password)
 
 async def get_user_settings(dbc, uuid):
 	return await sql.get_user_settings(dbc, uuid)

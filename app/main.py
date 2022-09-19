@@ -240,7 +240,7 @@ class Reset_Password(web.View):
 		#else, go on...
 
 		# (Try to) change the password:
-		if await db.reset_user_password(vw.dbc, vw.uuid, vw.data['password']):
+		if await db.reset_user_password(vw.dbc, await db.get_user_id_from_uuid(vw.dbc, vw.uuid), vw.data['password']):
 			vw.session.pop('after_login', None)
 			raise web.HTTPFound(_gurl(vw.rq, 'reset_password_success'))
 		#else, re-present:
@@ -347,30 +347,75 @@ class Enroll(web.View):
 	async def set(self):
 		return hr(html.enroll())
 
-@rt.view('/go_edit_user/{username}')
+#@rt.view('/go_edit_user/{username}')
+@rt.view('/go_edit_user/{username}/{family_invitation_code}')
 class Go_Edit_User(web.View):
 	async def common(self):
-		session = await get_session(rq)
-		dbc = rq.app['db']
-		uid = await db.get_user_id_from_uuid(dbc, session.get('uuid'), False)
+		#code = None
+		code = self.request.match_info['family_invitation_code']
+		if code and not valid.rec_invitation.match(code):
+			return hr(html.invalid_invitation()) # this might be an attack attempt!
+		#else:
 		username = self.request.match_info['username']
-		if is_guardian_of(dbc, uid, username):#!!!! or is_user(dbc, uid, username):
-			vw = await _set_up_common_view_get(self, dbc = False, re_log_in_seconds = 60) # dbc only needed in post(), so only set it up there
-			return hr(html.reset_password(html.Form(vw.rq.rel_url)))
-		#WIP!!!!
+		vw = await _set_up_common_view_get(self, re_log_in_seconds = None if code else 60) # force re-login (if login was more than 60 seconds ago) if a special invitation code is not used here
+		uid = None
+		if not code: # if no code; attempt is being made by a logged-in user; but, with code, we'll need to look up uid of invitation-bearer
+			vw.uuid = vw.session.get('uuid')
+			if not vw.uuid:
+				raise web.HTTPFound(_gurl(vw.rq, 'login'))
+			#else:
+			uid = await db.get_user_id_from_uuid(vw.dbc, vw.uuid, False)
+		else:
+			invitation = await db.get_new_user_invitation(vw.dbc, code)
+			if not invitation:
+				return hr(html.invalid_invitation()) # this might be an attack attempt!
+			#else:
+			# Get uid of invitation-bearer:
+			uid = await db.get_user_id_from_person_id(vw.dbc, invitation['person'])
+
+		if not uid:
+			raise web.HTTPFound(_gurl(vw.rq, 'login')) # a message might be useful here; there is a chance of this being attempted for an invitation that hasn't yet been processed (no user exists yet!)....
+
+		if not (await db.is_guardian_of(vw.dbc, uid, username) or await db.is_user(vw.dbc, uid, username)):
+			return hr(html.invalid_invitation()) # this might be an attack attempt! (note, this isn't exactly the right kind of message; bottom line is that the user attempting this isn't a guardian of the user needing the password reset (and isn't self)....
+
+		vw.uid = await db.get_user_id_from_username(vw.dbc, username)
+		return vw
 		
 	async def get(self):
 		commons = await self.common()
 		if isinstance(commons, web.Response):
 			return commons
 		#else:
-		#WIP!!!!
-	async def set(self):
+		vw = commons
+		return hr(html.reset_password(html.Form(vw.rq.rel_url)))
+
+	async def post(self):
 		commons = await self.common()
 		if isinstance(commons, web.Response):
 			return commons
 		#else:
-		#WIP!!!!
+		vw = commons
+		data = await self.request.post()
+
+		invalids = []
+		_validate_regex(data, invalids, (
+				('password', valid.rec_password, True),
+				('password_confirmation', valid.rec_password, True),
+			))
+		if str(data['password']) != str(data['password_confirmation']):
+			invalids.append('password_confirmation')
+		if invalids:
+			# Re-present:
+			return hr(html.reset_password(html.Form(vw.rq.rel_url, data, invalids)))
+		#else...
+
+		# (Try to) change the password:
+		if await db.reset_user_password(vw.dbc, vw.uid, data['password']):
+			vw.session.pop('after_login', None)
+			raise web.HTTPFound(_gurl(vw.rq, 'reset_password_success'))
+		#else, re-present:
+		return hr(html.reset_password(html.Form(vw.rq.rel_url, data, invalids), error.reset_password_failure))
 		
 
 @rt.view('/family_invitation/{code}', name = 'family_invitation')
@@ -388,14 +433,14 @@ class Family_Invitation(web.View):
 		person_id, academic_year = invitation['person'], invitation['academic_year']
 		person = await db.get_person(vw.dbc, person_id)
 		family = await db.get_family_enrollments(vw.dbc, person_id, academic_year)
-		return (vw, person, family.children)
+		return (vw, person, family.children, code)
 		
 	async def get(self):
 		commons = await self.common()
 		if isinstance(commons, web.Response):
 			return commons
 		#else:
-		vw, person, children = commons
+		vw, person, children, code = commons
 		covered = [] # `family` may contain duplicates of a student who is enrolled in multiple programs; we only want each student once, here, so we'll track those covered as we process each of family.children
 		all_exist_already = True
 		async def _user(p):
@@ -414,7 +459,9 @@ class Family_Invitation(web.View):
 		flash = _quick_flash_message(text.new_accounts_family % (person['first_name'], person['last_name']))
 		if all_exist_already:
 			flash = _quick_flash_message(text.existing_accounts_family)
-		return hr(html.family_user_setup(str(vw.rq.rel_url), users, passwords, _ws_url(vw.rq, '/ws_messages'), all_exist_already, flash))
+		_set_up_twixt(vw.session, 'family_invitation', None, None)
+
+		return hr(html.family_user_setup(str(vw.rq.rel_url), code, users, passwords, _ws_url(vw.rq, '/ws_messages'), all_exist_already, flash))
 
 
 	async def post(self):
@@ -422,7 +469,7 @@ class Family_Invitation(web.View):
 		if isinstance(commons, web.Response):
 			return commons
 		#else:
-		vw, person, children = commons
+		vw, person, children, code = commons
 		data = await self.request.post()
 		ids, exists, usernames, passwords = [], [], [], []
 		for key, value in data.items():
@@ -489,7 +536,7 @@ class Family_Invitation(web.View):
 			
 		# Finally, if we need to re-present family_user_setup_retry, then generate new random_passwords for use within, and re-present:
 		random_passwords = await db.forge_noun_passwords(vw.dbc) # only do this lookup if needed, at the last minute
-		return hr(html.family_user_setup_retry(str(vw.rq.rel_url), data, random_passwords, _ws_url(vw.rq, '/ws_messages'), invalids, False, flash)) # assume all_exist_already is False if we're here, or else we would have HTTPFound-forwarded
+		return hr(html.family_user_setup_retry(str(vw.rq.rel_url), code, data, random_passwords, _ws_url(vw.rq, '/ws_messages'), invalids, False, flash)) # assume all_exist_already is False if we're here, or else we would have HTTPFound-forwarded
 
 
 #@rt.view('/invitation/{code}', name = 'invitation')
@@ -1168,12 +1215,9 @@ async def _make_arithmetic_problem_message(hd):
 
 async def _set_up_common_view(view, dbc = True, uuid = True, data = True, re_log_in_seconds = None):
 	result = U.Struct(rq = view.request, session = await get_session(view.request))
-	if dbc:
-		result.dbc = result.rq.app['db'] # TODO: .cursor()
-	if uuid:
-		result.uuid = result.session.get('uuid')
-	if data:
-		result.data = await result.rq.post()
+	result.dbc = result.rq.app['db'] if dbc else None # TODO: .cursor()
+	result.uuid = result.session.get('uuid') if uuid else None
+	result.data = await result.rq.post() if data else None
 	if not re_log_in_seconds:
 		return result # done!
 	# else...
@@ -1197,7 +1241,7 @@ def _set_up_twixt(session, task_name, async_call, spec):
 	session['twixt_id'] = twixt_id = str(uuid4())
 	twixt = U.Struct(
 		task = task_name,
-		result = asyncio.create_task(async_call),
+		result = asyncio.create_task(async_call) if async_call else None,
 		spec = spec, # need to send spec, itself, as there's no other way for retrieving end (ws_messages function) to get spec!
 	)
 	g_twixt_work[twixt_id] = twixt
