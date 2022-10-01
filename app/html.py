@@ -1137,8 +1137,9 @@ def geography(container, spec, records, show_cw):
 		name = record['name']
 		if new_cw != cw:
 			cw = new_cw
-			path = 'c%dw%02d_geography.png' % (record['cycle'], record['week'])
-			container += t.div(t.img(src = _murl(path)))
+			if not spec.no_maps:
+				path = 'c%dw%02d_geography.png' % (record['cycle'], record['week'])
+				container += t.div(t.img(src = _murl(path)))
 		else:
 			name = ', ' + name
 		container += t.span(_youglishify(str(name)))
