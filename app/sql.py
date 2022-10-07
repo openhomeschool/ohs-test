@@ -493,7 +493,7 @@ async def get_academic_years(dbc):
 k_subject_ids = { # IDs from DB table, mapped to handler names TODO: just create from DB table (and cache, so we don't have to constantly look up)!
 	'Timeline': 1,
 	'History': 2,
-	'Geography': 3,
+	'Geog': 3,
 	'Math': 4,
 	'Science': 5,
 	'English': 6,
@@ -622,6 +622,8 @@ async def _get_assignments(dbc, spec, resource_spec, uid):
 		grade = None
 		for enrollment in resource_spec.enrollments: # if uid exists, enrollments should be set!
 			if (enrollment['subject'] == subject_id) or (enrollment['subject'] == 0 and not grade): # "0" is the "default" record; only do this if this is a specific enrollment['grade'] match or if we haven't already assigned 'grade' BY such a match (that is, we'll take a "0" default, but trump it with a specific enrollment['grade'] match)
+				if enrollment['exception']:
+					return [] # SKIP this set of assignments; student is explicitly OUT of this particular class, according to enrollment records
 				spec.program = enrollment['program'] # default user to his own program; WOW! BIG DEAL here; this manifests in _filter_program, to grab, for THIS batch of assignments (for the specific subject), the assignments in this particular program AND grade; in other words, an 11th-grader (program 4) can take a specific class as a 9th-grader in program 3 if the enrollment record specifies both program=3 and grade=9 for the given subject
 				grade = enrollment['grade']
 		if grade: # will be None, still, if none of our enrollments match subject_id - i.e., we don't need to filter for specific grades tied to enrollment in this case
@@ -715,7 +717,7 @@ async def _get_resources(dbc, spec, resource_specs, uid):
 k_general_grammar_rs = RS(_get_general_grammar, 'General', 'general', 'general', ())
 k_timeline_grammar_rs = RS(_get_grammar_resources, 'Timeline', 'timeline', 'event', ('name', 'keywords'), ('primary_sentence', 'secondary_sentence'), None, 'cw.cycle, cw.week, event.seq')
 k_history_grammar_rs = RS(_get_grammar_resources, 'History', 'history_grammar', 'history', ('name', 'keywords', 'primary_sentence'), ('secondary_sentence',), ('event on history.event = event.id',))
-k_geography_grammar_rs = RS(_get_geography_grammar, 'Geography', 'geography', 'location', ())
+k_geography_grammar_rs = RS(_get_geography_grammar, 'Geog', 'geography', 'location', ())
 k_science_grammar_rs = RS(_get_grammar_resources, 'Science', 'science_grammar', 'science', ('prompt', 'answer'), ('note',))
 k_multiplication_fact_grammar_rs = RS(_get_grammar_resources, 'Math', 'multiplication_facts', 'multiplication_facts', ('operand1', 'products'),)
 k_math_vocabulary_rs = RS(_get_grammar_resources, 'Math', 'math_vocabulary', 'math_vocabulary', ('word', 'equivalent'), (), None, 'cw.cycle, cw.week, position')
@@ -746,7 +748,7 @@ k_latin_exre_rs = _make_exre_resource_spec('Latin', 'latin_resources')
 _make_assignment_spec = lambda subject_title, handler: RS(_get_assignments, subject_title, handler, 'assignment', ('instruction', ), order_by = 'cw.cycle, cw.week, "order", resource, assignment.grade_first')
 
 k_history_assignment_rs = _make_assignment_spec('History', 'history_assignments')
-k_geography_assignment_rs = _make_assignment_spec('Geography', 'geography_assignments')
+k_geography_assignment_rs = _make_assignment_spec('Geog', 'geography_assignments')
 k_literature_assignment_rs = _make_assignment_spec('Literature', 'literature_assignments')
 k_english_assignment_rs = _make_assignment_spec('English', 'english_assignments')
 k_science_assignment_rs = _make_assignment_spec('Science', 'science_assignments')
@@ -762,7 +764,7 @@ k_latin_assignment_rs = _make_assignment_spec('Latin', 'latin_assignments')
 k_grammar_resources = [
 	SS('Timeline', (k_timeline_grammar_rs, )),
 	SS('History', (k_history_assignment_rs, k_history_grammar_rs, )),
-	SS('Geography', (k_geography_assignment_rs, k_geography_grammar_rs, )),
+	SS('Geog', (k_geography_assignment_rs, k_geography_grammar_rs, )),
 	SS('Math', (k_multiplication_fact_grammar_rs, k_math_vocabulary_rs )),
 	SS('Science', (k_science_assignment_rs, k_science_grammar_rs, )),
 	SS('English', (k_english_grammar_rs, k_english_vocabulary_rs, )),
@@ -773,7 +775,7 @@ k_grammar_resources = [
 k_middle_resources = [
 	SS('Timeline', (k_timeline_grammar_rs, )),
 	SS('History', (k_history_assignment_rs, k_history_grammar_rs, )),
-	SS('Geography', (k_geography_assignment_rs, k_geography_grammar_rs, )),
+	SS('Geog', (k_geography_assignment_rs, k_geography_grammar_rs, )),
 	SS('Math', (k_math_assignment_rs, k_multiplication_fact_grammar_rs, k_math_vocabulary_rs )),
 	SS('Science', (k_science_assignment_rs, k_science_grammar_rs, )),
 	SS('English', (k_english_vocabulary_rs, k_english_grammar_rs, )),
@@ -784,7 +786,7 @@ k_middle_resources = [
 
 k_middle_assignments = [
 	SS('History', (k_history_assignment_rs, )),
-	SS('Geography', (k_geography_assignment_rs, )),
+	SS('Geog', (k_geography_assignment_rs, )),
 	SS('Math', (k_math_assignment_rs, )),
 	SS('Science', (k_science_assignment_rs, )),
 	SS('Logic', (k_logic_assignment_rs, )),
@@ -1008,7 +1010,7 @@ _children_programs = '''select c.*, program.name as program_name, program.schedu
 	join program on program.id = enrollment.program
 	'''
 
-_order_group_children = ' order by c.birthdate desc, enrollment.program'
+_order_group_children = ' group by c.id, enrollment.program order by c.birthdate desc, enrollment.program'
 
 async def get_family_enrollments(dbc, person_id, academic_year_id):
 	guardians = await fetchall(dbc, ('select g.* from child_guardian join person as g on child_guardian.guardian = g.id join person as c on child_guardian.child = c.id where c.id = ?', (person_id,)))

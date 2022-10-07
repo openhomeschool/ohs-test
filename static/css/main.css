@@ -1,4 +1,11 @@
 
+@media print { /* NOTE: for printing, only! (used in print-grammar.py, with chromium --headless --print-to-pdf-no-header */
+	@page {
+		margin: 0.3in 0.5in 0.2in 0.5in;
+		size:8.5in 11in;
+	}
+}
+ 
 html {
 	font: 400 16px Arial;
 }
