@@ -1129,8 +1129,6 @@ async def _get_random_url_playlist(hd):
 	path_map = {
 		db.k_subject_ids['History']: 'history/',
 		db.k_subject_ids['Science']: 'science/',
-	}
-	new_path_map = {
 		db.k_subject_ids['English']: 'english/',
 		db.k_subject_ids['Latin']: 'latin/',
 	}
@@ -1142,12 +1140,19 @@ async def _get_random_url_playlist(hd):
 				for week in range(hd.spec.first_week, hd.spec.last_week + 1):
 					fn = f'c{cycle}w{week}.mp3'
 					p_fn = f'c{cycle}w{week}-prompt.mp3'
-					if exists('static/audio/' + path + p_fn) and exists('static/audio/' + path + fn): # TODO: fix hardcode static path (local/server path... static files may be stored elsewhere in future!)
-						playlist.append((url + p_fn, url + fn))
+					ksa = 'static/audio/' # TODO: fix hardcode static path (local/server path... static files may be stored elsewhere in future!)
+					if exists(ksa + path + fn):
+						if exists(ksa + path + p_fn): 
+							playlist.append((url + p_fn, url + fn))
+						else:
+							playlist.append(url + fn)
 	shuffle(playlist)
 	result = []
-	for pair in playlist:
-		result.extend(pair)
+	for each in playlist:
+		if type(each) is tuple:
+			result.extend(each)
+		else:
+			result.append(each)
 
 	await hd.ws.send_json({'task': 'set_random_url_playlist', 'playlist': result})
 
