@@ -761,7 +761,7 @@ async def timeline_event_detail(record, details, signs, host):
 async def science_detail(record, details, signs, host):
 	return hr(html.science_detail(record, details, signs, host))
 
-k_temp_this_week = 3
+k_temp_this_week = 4
 k_temp_this_cycle = 3
 
 # cool characters: ⌂♩♪♫♬▲►▼◄→ ʘΞΞΩΨΦΣΠϘЮФѺѼ׀ᴓ₪Ω⃰∞∑∆◊?¿ ᵯ«»   ₧◙□∞Ξ©π
@@ -1129,7 +1129,9 @@ async def _get_random_url_playlist(hd):
 	path_map = {
 		db.k_subject_ids['History']: 'history/',
 		db.k_subject_ids['Science']: 'science/',
-		db.k_subject_ids['English']: 'english/',
+	}
+	new_path_map = {
+ 		db.k_subject_ids['English']: 'english/',
 		db.k_subject_ids['Latin']: 'latin/',
 	}
 	playlist = []
