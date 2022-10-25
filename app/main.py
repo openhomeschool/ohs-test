@@ -567,7 +567,7 @@ class Invitation_DEPRECATED(web.View):
 		rq = self.request
 		data = await rq.post()
 
-async def _financial(rq, dbc, session, person):
+async def _financial(rq, dbc, session, person, academic_year):
 	session['after_login'] = str(rq.rel_url) # come back here after a user-switch; this is a kludgey way of pushing this... haven't worked out how to elegantly retain current page after user-switch, or if it's even desirable.
 
 	links = (
@@ -576,33 +576,32 @@ async def _financial(rq, dbc, session, person):
 	)
 	login, settings = await _login_button(session, dbc)
 
-	filters = (
-		# (key, options, hint, selected_id)
-		('year', [(year['name'], year['id']) for year in await db.get_academic_years(dbc)], 'Year', 3), # TODO: '3' (2022-23) is hard-coded!  ALSO, should look up ONLY years this user has been enrolled!
-	)
+	#academic_year = 2 # !!!!!!!!!!!!!!!!!! # TODO: '3' (2022-23) is hard-coded!  ALSO, should look up ONLY years this user has been enrolled!
+	#academic_year = 3 # TODO: '3' is hard-coded!!! ALSO, should look up ONLY years this user has been enrolled!
+	years_filter = ( # (key, options, hint, selected_id)
+		'academic_year', [(year['name'], year['id']) for year in await db.get_academic_years(dbc)], 'Year', academic_year) 
 
 	person_id = person['id']
-	academic_year = 3 # TODO: '3' is hard-coded!!!
 	family = await db.get_family_enrollments(dbc, person_id, academic_year)
 	contact = await db.get_person_contact_info(dbc, person_id)
 	costs = await db.get_costs(dbc, academic_year)
 	cost_offsets = await db.get_cost_offset(dbc, person_id, academic_year)
 	leaders = await db.get_leaders(dbc, family.guardians, academic_year)
 	payments = await db.get_payments(dbc, [g['id'] for g in family.guardians], academic_year)
-	return hr(html.financial(links, filters, login, settings, person, family, contact, costs, cost_offsets, leaders, payments, rq.host))
+	return hr(html.financial(links, years_filter, login, settings, person, family, contact, costs, cost_offsets, leaders, payments, rq.host))
 
 @rt.get('/a_financial/{person_id}')
 @auth('admin')
 async def a_financial(rq):
 	dbc = rq.app['db']
-	return await _financial(rq, dbc, await get_session(rq), await db.get_person(dbc, rq.match_info['person_id']))
+	return await _financial(rq, dbc, await get_session(rq), await db.get_person(dbc, rq.match_info['person_id']), int(rq.query.get('academic_year', -1)))
 
 @rt.get('/financial')
 @auth('parent')
 async def financial(rq):
 	session = await get_session(rq)
 	dbc = rq.app['db']
-	return await _financial(rq, dbc, session, await db.get_person_by_uuid(dbc, session.get('uuid')))
+	return await _financial(rq, dbc, session, await db.get_person_by_uuid(dbc, session.get('uuid')), rq.query.get('academic_year', -1))
 
 @rt.get('/appointments')
 async def appointments(rq):
@@ -761,8 +760,9 @@ async def timeline_event_detail(record, details, signs, host):
 async def science_detail(record, details, signs, host):
 	return hr(html.science_detail(record, details, signs, host))
 
-k_temp_this_week = 5
+k_temp_this_week = 6
 k_temp_this_cycle = 3
+k_temp_this_academic_year = 3
 
 # cool characters: ⌂♩♪♫♬▲►▼◄→ ʘΞΞΩΨΦΣΠϘЮФѺѼ׀ᴓ₪Ω⃰∞∑∆◊?¿ ᵯ«»   ₧◙□∞Ξ©π
 _links = lambda rq: (
@@ -1129,6 +1129,8 @@ async def _get_random_url_playlist(hd):
 	path_map = {
 		db.k_subject_ids['History']: 'history/',
 		db.k_subject_ids['Science']: 'science/',
+ 		db.k_subject_ids['English']: 'english/',
+		db.k_subject_ids['Latin']: 'latin/',
 	}
 	new_path_map = {
  		db.k_subject_ids['English']: 'english/',

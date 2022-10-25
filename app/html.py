@@ -290,7 +290,7 @@ def invalid_invitation():
 	return d.render()
 
 
-def financial(links, filters, login, user_settings, person, family, contact, costs, cost_offsets, leader, payments, host):
+def financial(links, years_filter, login, user_settings, person, family, contact, costs, cost_offsets, leader, payments, host):
 	d = _doc(text.doc_prefix + 'Financial')
 	with d:
 		# TODO: this is copy-pasted from resources(), for now -- CONSOLIDATE/refactor!
@@ -316,9 +316,9 @@ def financial(links, filters, login, user_settings, person, family, contact, cos
 		with t.div(cls = 'flex-wrap'): # TODO: make a 'header_block' or something; different border color, perhaps
 			t.div(t.b('Filter'), cls = 'title')
 			with t.div(cls = 'main'):
-				for key, options, hint, selected_id in filters:
-					with t.div(id = '%s-container' % key):
-						_dropdown((key, options, selected_id), 'ib-left', hint = hint, task = 'practice_filter')
+				key, options, hint, selected_id = years_filter
+				with t.div(id = '%s-container' % key):
+					_url_dropdown(t.div(cls = 'dropdown'), key, [(year_name, _gurl(f'?{year_id}')) for (year_name, year_id) in options], 'Years...')
 
 		cl = lambda content: t.div(content, cls = 'contact_line')
 		cli = lambda content: t.div(content, cls = 'contact_line_inset')
