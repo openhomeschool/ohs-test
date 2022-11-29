@@ -17,7 +17,7 @@ from os.path import exists
 from random import shuffle
 
 from sqlite3 import PARSE_DECLTYPES
-from dataclasses import dataclass
+#from dataclasses import dataclass
 
 from uuid import uuid4
 from cryptography import fernet
@@ -760,7 +760,7 @@ async def timeline_event_detail(record, details, signs, host):
 async def science_detail(record, details, signs, host):
 	return hr(html.science_detail(record, details, signs, host))
 
-k_temp_this_week = 9
+k_temp_this_week = 10
 k_temp_this_cycle = 3
 k_temp_this_academic_year = 3
 
