@@ -16,24 +16,28 @@ def main():
 	db = sqlite3.connect('ohs-test.db')
 	db.row_factory = sqlite3.Row
 	
-	weeks = 12
+	start_week = 13
+	end_week = 15
 	c = db.execute('''
 		select person.first_name, person.last_name, user.id as uid from person
 		join enrollment on enrollment.student = person.id
 		join user on user.person = person.id
 		where enrollment.academic_year=3 and enrollment.program in (3, 4) and enrollment.subject=0
-		and person.id = 92
 	''')
+	#	and person.id = 92
 
 	subjects = {'a': '2,8,4', 'b': '5,7,11,15'} # left-page subjects and right-page-subjects
-	os.mkdir('3')
-	os.chdir('3')
+	try:
+		os.mkdir('print-syllabi')
+	except:
+		pass
+	os.chdir('print-syllabi')
 	for r in c.fetchall():
 		dir_name = f"{r['first_name']}_{r['last_name']}"
 		os.mkdir(dir_name)
 		os.chdir(dir_name)
 		pdfs = []
-		for week in range(0, weeks+1):
+		for week in range(start_week, end_week+1):
 			for left_right in ('a', 'b'):
 				fn = f'{week:{0}{2}}{left_right}'
 				#args = preload_command(week, left_right, url(r['uid'], week, subjects[left_right]))
