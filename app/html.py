@@ -1271,6 +1271,10 @@ def english_grammar(container, spec, records, show_cw):
 def literature_resources(container, spec, records, show_cw):
 	_external_resources(container, spec, records, show_cw)
 
+@subject_resources('economics_resources')
+def economics_resources(container, spec, records, show_cw):
+	_external_resources(container, spec, records, show_cw)
+
 
 @subject_resources('poetry_resources')
 def poetry_resources(container, spec, records, show_cw):
@@ -1387,6 +1391,10 @@ def math_assignments(container, spec, records, show_cw):
 
 @subject_resources('literature_assignments')
 def literature_assignments(container, spec, records, show_cw):
+	_assignments(container, spec, records, show_cw)
+
+@subject_resources('economics_assignments')
+def economics_assignments(container, spec, records, show_cw):
 	_assignments(container, spec, records, show_cw)
 
 @subject_resources('english_assignments')

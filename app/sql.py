@@ -506,6 +506,7 @@ k_subject_ids = { # IDs from DB table, mapped to handler names TODO: just create
 	'Shakespeare': 13,
 	'Arithmetic': 14,
 	'Apologetics': 15,
+	'Economics': 16,
 }
 
 @dataclass
@@ -741,6 +742,7 @@ k_spanish_exre_rs = _make_exre_resource_spec('Spanish', 'spanish_resources')
 k_logic_exre_rs = _make_exre_resource_spec('Logic', 'logic_resources')
 k_shakespeare_exre_rs = _make_exre_resource_spec('Shakespeare', 'shakespeare_resources')
 k_christ_exre_rs = _make_exre_resource_spec('Apologetics', 'christ_resources')
+k_economics_exre_rs = _make_exre_resource_spec('Economics', 'economics_resources')
 k_math_exre_rs = _make_exre_resource_spec('Math', 'math_resources')
 k_latin_exre_rs = _make_exre_resource_spec('Latin', 'latin_resources')
 
@@ -758,6 +760,7 @@ k_spanish_assignment_rs = _make_assignment_spec('Spanish', 'spanish_assignments'
 k_logic_assignment_rs = _make_assignment_spec('Logic', 'logic_assignments')
 k_shakespeare_assignment_rs = _make_assignment_spec('Shakespeare', 'shakespeare_assignments')
 k_christ_assignment_rs = _make_assignment_spec('Apologetics', 'christ_assignments')
+k_economics_assignment_rs = _make_assignment_spec('Economics', 'economics_assignments')
 k_math_assignment_rs = _make_assignment_spec('Math', 'math_assignments')
 k_latin_assignment_rs = _make_assignment_spec('Latin', 'latin_assignments')
 
@@ -805,6 +808,7 @@ k_high1_resources = [
 	SS('Logic', (k_logic_assignment_rs, )),
 	SS('Shakespeare', (k_shakespeare_assignment_rs, )),
 	SS('Apologetics', (k_christ_assignment_rs, )),
+	SS('Economics', (k_economics_assignment_rs, )),
 	SS('Latin', (k_latin_assignment_rs, k_latin_vocabulary_rs, k_latin_grammar_rs, )),
 ]
 
@@ -819,6 +823,7 @@ k_high1_assignments = [
 	SS('Logic', (k_logic_assignment_rs, )),
 	SS('Shakespeare', (k_shakespeare_assignment_rs, )),
 	SS('Apologetics', (k_christ_assignment_rs, )),
+	SS('Economics', (k_economics_assignment_rs, )),
 	SS('Latin', (k_latin_assignment_rs, )),
 ]
 
@@ -1038,9 +1043,8 @@ async def get_family_children_DEPRECATED(dbc, parent_id): # TODO: remove; now ju
 
 async def get_costs(dbc, academic_year_id):
 	return await fetchall(dbc, ('''select * from cost 
-		join academic_year on cost.academic_year = academic_year.id
-		where academic_year.id = ?
-		''', (academic_year_id,))) # TODO: change this to just where academic_year = ? -- no need for the join, in this case!
+		where cost.academic_year = ?
+		''', (academic_year_id,)))
 
 async def get_cost_offset(dbc, parent_id, academic_year_id):
 	return await fetchall(dbc, ('select * from cost_offset where academic_year = ? and parent = ?', (academic_year_id, parent_id)))
