@@ -760,7 +760,7 @@ async def timeline_event_detail(record, details, signs, host):
 async def science_detail(record, details, signs, host):
 	return hr(html.science_detail(record, details, signs, host))
 
-k_temp_this_week = 16
+k_temp_this_week = 18
 k_temp_this_cycle = 3
 k_temp_this_academic_year = 3
 
