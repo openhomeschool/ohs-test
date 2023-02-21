@@ -1021,15 +1021,20 @@ def _grammar_resources(container, spec, records, show_cw, subject_directory, ren
 
 				if audio_widgets and (not spec or not spec.for_print):
 					filename_base = subject_directory + '/c%sw%s' % (record['cycle'], record['week'])
+					filename_solo_base = filename_base + '-solo'
 					if main_audio_base and main_audio_suffix_field:
 						filename_base = subject_directory + '/%s%s' % (main_audio_base, record[main_audio_suffix_field])
 					filename_accompanied_base = subject_directory + '/c%sw%s-chant' % (record['cycle'], record['week'])
 					with buttonstrip:
 						t.button('♬', title = 'Musical score', onclick = 'window.open("%s","_blank");' % _aurl(filename_base + '.pdf' + k_cache_version))
 						#t.button('»', title = 'Accompanied song', onclick = 'play_pause("%s", this, "»");' % filename_accompanied_base)
-						t.button('►', title = 'Audio song', onclick = 'play_pause("%s", this, "►");' % filename_base)
+						t.button('►', title = 'Audio song', onclick = 'play_pause("%s", this, "►");' % filename_solo_base)
+						t.button('►►', title = 'Audio song with repeat phrases', onclick = 'play_pause("%s", this, "►►");' % filename_base)
 						#t.button('ℓ', title = 'Copywork')
 						#t.button('Ξ', title = 'Details')
+					buttonstrip_detail_solo = t.div(cls = 'buttonstrip_detail', id = filename_solo_base + '_container') # invisible at first
+					with buttonstrip_detail_solo:
+						t.audio(t.source(src = _aurl(filename_solo_base + '.mp3' + k_cache_version), type = 'audio/mpeg'), controls = True, preload='none', id = filename_solo_base)
 					buttonstrip_detail = t.div(cls = 'buttonstrip_detail', id = filename_base + '_container') # invisible at first
 					with buttonstrip_detail:
 						t.audio(t.source(src = _aurl(filename_base + '.mp3' + k_cache_version), type = 'audio/mpeg'), controls = True, preload='none', id = filename_base)
