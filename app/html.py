@@ -23,7 +23,7 @@ from . import settings
 from . import text
 from . import util as U
 
-k_cache_version = '?v=i5'
+k_cache_version = '?v=i6'
 
 # Classes ---------------------------------------------------------------------
 
@@ -1146,8 +1146,8 @@ def geography(container, spec, records, show_cw):
 				path = 'c%dw%02d_geography.png' % (record['cycle'], record['week'])
 				container += t.div(t.img(src = _murl(path)))
 		else:
-			name = ', ' + name
-		container += t.span(_youglishify(str(name)))
+			name = ' | ' + name
+		container += t.span(_youglishify(str(name))) # TODO: youglishifying the "|" in the name, here! kludgy; fix!
 
 	_grammar_resources(container, spec, records, show_cw, 'geography', render, False, t.div)
 
