@@ -8,6 +8,7 @@ import random
 import re
 
 from datetime import datetime
+from os.path import exists as path_exists
 
 import logging
 l = logging.getLogger(__name__)
@@ -1026,10 +1027,13 @@ def _grammar_resources(container, spec, records, show_cw, subject_directory, ren
 						filename_base = subject_directory + '/%s%s' % (main_audio_base, record[main_audio_suffix_field])
 					filename_accompanied_base = subject_directory + '/c%sw%s-chant' % (record['cycle'], record['week'])
 					with buttonstrip:
-						t.button('♬', title = 'Musical score', onclick = 'window.open("%s","_blank");' % _aurl(filename_base + '.pdf' + k_cache_version))
+						if path_exists('static/audio/' + filename_solo_base + '.pdf'): # TODO: improve! use pathstuffs!
+							t.button('♬', title = 'Musical score', onclick = 'window.open("%s","_blank");' % _aurl(filename_base + '.pdf' + k_cache_version))
 						#t.button('»', title = 'Accompanied song', onclick = 'play_pause("%s", this, "»");' % filename_accompanied_base)
-						t.button('►', title = 'Audio song', onclick = 'play_pause("%s", this, "►");' % filename_solo_base)
-						t.button('►►', title = 'Audio song with repeat phrases', onclick = 'play_pause("%s", this, "►►");' % filename_base)
+						if path_exists('static/audio/' + filename_solo_base + '.mp3'): # TODO: improve! use pathstuffs!
+							t.button('►', title = 'Audio song', onclick = 'play_pause("%s", this, "►");' % filename_solo_base)
+						if path_exists('static/audio/' + filename_base + '.mp3'): # TODO: improve! use pathstuffs!
+							t.button('►►', title = 'Audio song with repeat phrases', onclick = 'play_pause("%s", this, "►►");' % filename_base)
 						#t.button('ℓ', title = 'Copywork')
 						#t.button('Ξ', title = 'Details')
 					buttonstrip_detail_solo = t.div(cls = 'buttonstrip_detail', id = filename_solo_base + '_container') # invisible at first
