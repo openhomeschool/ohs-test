@@ -108,6 +108,9 @@ async def get_practice_stats(dbc):
 async def get_academic_years(dbc):
 	return await sql.get_academic_years(dbc)
 
+async def get_academic_year(dbc, academic_year_id):
+	return await sql.get_academic_year(dbc, academic_year_id)
+
 # -----------------------------------------------------------------------------
 # Question transactions
 
@@ -359,8 +362,11 @@ async def get_person_by_username(dbc, username):
 async def get_person_by_uuid(dbc, uuid):
 	return await sql.get_person_by_uuid(dbc, uuid)
 
-async def get_family_enrollments(dbc, id, academic_year_id):
-	return await sql.get_family_enrollments(dbc, id, academic_year_id)
+async def get_prior_academic_year_ids(dbc, person_id, academic_year_id):
+	return await sql.get_prior_academic_year_ids(dbc, person_id, academic_year_id)
+
+async def get_family_enrollments(dbc, id, academic_year_ids):
+	return await sql.get_family_enrollments(dbc, id, academic_year_ids)
 
 from dataclasses import dataclass
 async def get_person_contact_info(dbc, person_id):
@@ -376,20 +382,23 @@ async def get_heads_of_households(dbc):
 async def get_family_children_DEPRECATED(dbc, parent_id):
 	return await sql.get_family_children_DEPRECATED(dbc, parent_id)
 
-async def get_costs(dbc, academic_year_id):
-	return await sql.get_costs(dbc, academic_year_id)
+async def get_enrollment_costs(dbc, student_person_ids, academic_year_ids):
+	return await sql.get_enrollment_costs(dbc, student_person_ids, academic_year_ids)
 
-async def get_cost_offset(dbc, parent_id, academic_year_id):
-	return await sql.get_cost_offset(dbc, parent_id, academic_year_id)
+async def get_family_costs(dbc, academic_year_ids):
+	return await sql.get_family_costs(dbc, academic_year_ids)
 
-async def get_payments(dbc, guardian_ids, academic_year_id):
-	return await sql.get_payments(dbc, guardian_ids, academic_year_id)
+async def get_cost_offsets(dbc, guardian_person_ids, academic_year_ids):
+	return await sql.get_cost_offsets(dbc, guardian_person_ids, academic_year_ids)
+
+async def get_payments(dbc, guardian_ids, academic_year_ids):
+	return await sql.get_payments(dbc, guardian_ids, academic_year_ids)
 
 async def get_leader(dbc, person_id, academic_year_id):
 	return await sql.get_leader(dbc, person_id, academic_year_id)
 
-async def get_leaders(dbc, persons, academic_year_id):
-	return await sql.get_leaders(dbc, persons, academic_year_id)
+async def get_leaders(dbc, person_ids, academic_year_ids):
+	return await sql.get_leaders(dbc, person_ids, academic_year_ids)
 
 async def get_appointments(dbc, start_date, end_date):
 	return await sql.get_appointments(dbc, start_date, end_date)

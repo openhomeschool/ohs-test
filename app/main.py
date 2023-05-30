@@ -556,7 +556,7 @@ class Invitation_DEPRECATED(web.View):
 				family = await db.get_family_enrollments(dbc, person_id, academic_year)
 				contact = await db.get_person_contact_info(dbc, person_id)
 				costs = await db.get_costs(dbc, academic_year)
-				cost_offsets = await db.get_cost_offset(dbc, person_id, academic_year)
+				cost_offsets = await db.get_cost_offsets(dbc, person_id, academic_year)
 				leader = await db.get_leader(dbc, person_id, academic_year)
 				payments = await db.get_payments(dbc, [g['id'] for g in family.guardians], academic_year)
 				return hr(html.invitation(html.Form(rq.rel_url), invitation, person, family, contact, costs, cost_offsets, leader, payments))
@@ -567,7 +567,47 @@ class Invitation_DEPRECATED(web.View):
 		rq = self.request
 		data = await rq.post()
 
-async def _financial(rq, dbc, session, person, academic_year):
+
+async def _build_financial_struct(dbc, person_id, academic_year_ids):
+	if not hasattr(academic_year_ids, '__iter__'):
+		academic_year_ids = [academic_year_ids, ]
+	family = await db.get_family_enrollments(dbc, person_id, academic_year_ids)
+	return U.Struct(
+		family = family,
+		costs = await db.get_enrollment_costs(dbc, [c['id'] for c in family.children], academic_year_ids),
+		family_costs = await db.get_family_costs(dbc, academic_year_ids),
+		cost_offsets = await db.get_cost_offsets(dbc, [g['id'] for g in family.guardians], academic_year_ids),
+		leaders = await db.get_leaders(dbc, [g['id'] for g in family.guardians], academic_year_ids),
+		payments = await db.get_payments(dbc, [g['id'] for g in family.guardians], academic_year_ids),
+	)
+
+async def _carryover_financial(dbc, person_id, academic_year_id):
+	# TODO NOTE: this function duplicates a lot of logic in html.financial() (which honestly carries too much logic weight for the display layer) -- risk is high, here, of changing something in one, and not the other; try to improve this!
+	prior_ay_ids = await db.get_prior_academic_year_ids(dbc, person_id, academic_year_id)
+	fs = await _build_financial_struct(dbc, person_id, prior_ay_ids)
+
+	total = 0
+	for cost in fs.costs:
+		total += cost['amount']
+	for cost in fs.family_costs:
+		total += cost['amount']
+	for offset in fs.cost_offsets:
+		total += offset['amount']
+
+	leadership_credit = 0
+	for role in fs.leaders:
+		offset = role['annual_offset']
+		if offset:
+			leadership_credit += offset
+
+	total_payments = 0
+	for payment in fs.payments:
+		total_payments += payment['amount']
+
+	return total - leadership_credit - total_payments
+
+
+async def _financial(rq, dbc, session, person, academic_year_id):
 	session['after_login'] = str(rq.rel_url) # come back here after a user-switch; this is a kludgey way of pushing this... haven't worked out how to elegantly retain current page after user-switch, or if it's even desirable.
 
 	links = (
@@ -576,32 +616,31 @@ async def _financial(rq, dbc, session, person, academic_year):
 	)
 	login, settings = await _login_button(session, dbc)
 
-	#academic_year = 2 # !!!!!!!!!!!!!!!!!! # TODO: '3' (2022-23) is hard-coded!  ALSO, should look up ONLY years this user has been enrolled!
-	#academic_year = 3 # TODO: '3' is hard-coded!!! ALSO, should look up ONLY years this user has been enrolled!
-	years_filter = ( # (key, options, hint, selected_id)
-		'academic_year', [(year['name'], year['id']) for year in await db.get_academic_years(dbc)], 'Year', academic_year) 
+	academic_year = await db.get_academic_year(dbc, academic_year_id)
+	academic_year_id = academic_year['id']
+
+	years_filter = ( # (key, options, hint, selected)
+		'academic_year', [(year['name'], year['id']) for year in await db.get_academic_years(dbc)], 'Year', academic_year['name'])
 
 	person_id = person['id']
-	family = await db.get_family_enrollments(dbc, person_id, academic_year)
-	contact = await db.get_person_contact_info(dbc, person_id)
-	costs = await db.get_costs(dbc, academic_year)
-	cost_offsets = await db.get_cost_offset(dbc, person_id, academic_year)
-	leaders = await db.get_leaders(dbc, family.guardians, academic_year)
-	payments = await db.get_payments(dbc, [g['id'] for g in family.guardians], academic_year)
-	return hr(html.financial(links, years_filter, login, settings, person, family, contact, costs, cost_offsets, leaders, payments, rq.host))
+	data = await _build_financial_struct(dbc, person_id, academic_year_id)
+	data.contact = await db.get_person_contact_info(dbc, person_id)
+	data.carryover = await _carryover_financial(dbc, person_id, academic_year_id)
+
+	return hr(html.financial(links, years_filter, login, settings, person, data))
 
 @rt.get('/a_financial/{person_id}')
 @auth('admin')
 async def a_financial(rq):
 	dbc = rq.app['db']
-	return await _financial(rq, dbc, await get_session(rq), await db.get_person(dbc, rq.match_info['person_id']), int(rq.query.get('academic_year', -1)))
+	return await _financial(rq, dbc, await get_session(rq), await db.get_person(dbc, rq.match_info['person_id']), int(rq.query.get('academic_year', 0)))
 
 @rt.get('/financial')
 @auth('parent')
 async def financial(rq):
 	session = await get_session(rq)
 	dbc = rq.app['db']
-	return await _financial(rq, dbc, session, await db.get_person_by_uuid(dbc, session.get('uuid')), rq.query.get('academic_year', -1))
+	return await _financial(rq, dbc, session, await db.get_person_by_uuid(dbc, session.get('uuid')), int(rq.query.get('academic_year', 0)))
 
 @rt.get('/appointments')
 async def appointments(rq):
@@ -788,7 +827,7 @@ async def _resources(rq, qargs):
 	session = await get_session(rq)
 	dbc = rq.app['db']
 	uid = await db.get_user_id_from_uuid(dbc, session.get('uuid'), False)
-	#uid = 1 #!!!!!!
+	#uid = 1 # DEPRECATED !!!!!! -- NOTE, this is NO LONGER a needed hack; 'admin' users can now correctly access, e.g., a_financial/{person_id}
 	spec = _make_resources_spec(qargs)
 	_set_up_twixt(session, 'resources', _first_resources(dbc, uid, spec), spec) # start the first lookup now... should be done by the time the page is loaded and websocket handshake occurs, when this result is passed on into the loaded skeletal page
 
@@ -974,7 +1013,7 @@ def _make_resources_spec(qargs):
 		random_audio_type = int(qargs.get('random_audio_type', 7)), # 4 = 'song-simple'
 		as_user_id = int(qargs.get('as_user_id', 0)), # will require 'admin' to work (or maybe a parent)
 		linear = int(qargs.get('linear', 0)), # 1 = load linearly, in-line, rather than "dynamically" via follow-up websocket call.  Currently (2022-9-8) this is only supported by resources/, and is use primarily in the creation of syllabus printing, using print-syllabi.py
-		academic_year = int(qargs.get('academic_year', -1)), # the academic_year field in tables like enrollment; designating the specific year of a student's enrollment, and thus, e.g., showing them the right syllabus (e.g., as a 9th grader, rather than the 8th-grader they were last year); the default of -1 just means "the highest on record", i.e., the "current" or at least "most recent"
+		academic_year = int(qargs.get('academic_year', 0)), # the academic_year field in tables like enrollment; designating the specific year of a student's enrollment, and thus, e.g., showing them the right syllabus (e.g., as a 9th grader, rather than the 8th-grader they were last year); the default of 0 just means "the highest on record", i.e., the "current" or at least "most recent"
 	)
 	if spec.week != None:
 		spec.first_week = spec.last_week = int(spec.week)

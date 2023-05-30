@@ -481,8 +481,15 @@ async def get_practice_stats(dbc):
 	return await fetchall(dbc, (f'select user.username as username, {_arithmetic_calcs} from assessment join user on assessment.user = user.id group by assessment.user order by sazzle desc', []))
 	
 async def get_academic_years(dbc):
-	return await fetchall(dbc, (f'select * from academic_year', [])) # TODO: filter for user-id / enrollments....
+	return await fetchall(dbc, ('select * from academic_year', ())) # TODO: filter for user-id / enrollments....
 
+async def get_academic_year(dbc, academic_year_id):
+	result = None
+	if academic_year_id:
+		result = await fetchone(dbc, ('select * from academic_year where id = ?', (academic_year_id,)))
+	if not result:
+		result = await fetchone(dbc, ('select * from academic_year order by seq desc limit 1', ())) # TODO: this is a kludge - do a better job, using, e.g., today's date! Or use a flag in the DB table itself
+	return result
 
 # ---------------------------------------------------
 # Resources
@@ -1006,26 +1013,48 @@ async def get_person_emails(dbc, person_id):
 async def get_person_addresses(dbc, person_id):
 	return await fetchall(dbc, ('select address.* from address join person_address on address.id = person_address.address join person on person_address.person = person.id where person.id = ?', (person_id,)))
 
-# NOTE: that enrollment.grade and enrollment.program are not redundant!  Even though you could get to program via grade, through the grade_program join table, a student may or MAY NOT actually be enrolled in multiple programs associated with a given grade!
-_children_programs = '''select c.*, program.name as program_name, program.schedule as program_schedule, program.id as program_id from child_guardian 
-	join person as c on child_guardian.child = c.id
-	join person as g on child_guardian.guardian = g.id
-	join enrollment on enrollment.student = c.id
-	join academic_year on enrollment.academic_year = academic_year.id
-	join program on program.id = enrollment.program
-	'''
+async def get_prior_academic_year_ids(dbc, person_id, academic_year_id):
+	academic_year = await get_academic_year(dbc, academic_year_id) # expected to always return a record
+	guardians = await _get_guardians(dbc, person_id)
+	joins = ['academic_year on academic_year.id = enrollment.academic_year',]
+	wheres = [f'academic_year.seq < {academic_year["seq"]}',]
+	group_order = 'group by academic_year order by academic_year'
+	if guardians:
+		# person_id is a child, get enrollment years:
+		wheres.append('student = ?')
+		result = await fetchall(dbc, (f'select academic_year from enrollment where {" and ".join(wheres)} {group_order}', (person_id,)))
+	else:
+		# person_id is a guardian, get enrollment years for entire family:
+		joins += ['person as s on enrollment.student = s.id', 'child_guardian on child_guardian.child = s.id']
+		wheres.append('child_guardian.guardian = ?')
+		result = await fetchall(dbc, (f'select academic_year from enrollment join {" join ".join(joins)} where {" and ".join(wheres)} {group_order}', (person_id,)))
+	return [r['academic_year'] for r in result]
 
-_order_group_children = ' group by c.id, enrollment.program order by c.birthdate desc, enrollment.program'
+async def _get_guardians(dbc, person_id):
+	return await fetchall(dbc, ('select g.* from child_guardian join person as g on child_guardian.guardian = g.id join person as c on child_guardian.child = c.id where c.id = ?', (person_id,)))
 
-async def get_family_enrollments(dbc, person_id, academic_year_id):
-	guardians = await fetchall(dbc, ('select g.* from child_guardian join person as g on child_guardian.guardian = g.id join person as c on child_guardian.child = c.id where c.id = ?', (person_id,)))
+
+async def get_family_enrollments(dbc, person_id, academic_year_ids):
+	# NOTE: that enrollment.grade and enrollment.program are not redundant!  Even though you could get to program via grade, through the grade_program join table, a student may or MAY NOT actually be enrolled in multiple programs associated with a given grade!
+	_children_programs = '''select c.*, program.name as program_name, program.schedule as program_schedule, program.id as program_id from child_guardian
+		join person as c on child_guardian.child = c.id
+		join person as g on child_guardian.guardian = g.id
+		join enrollment on enrollment.student = c.id
+		join academic_year on enrollment.academic_year = academic_year.id
+		join program on program.id = enrollment.program
+		'''
+	_order_group_children = ' group by c.id, enrollment.program order by c.birthdate desc, enrollment.program'
+
+	guardians = await _get_guardians(dbc, person_id)
 	if guardians:
 		# person_id is a child, and we just got the guardians; now get the other children:
 		ids = [g['id'] for g in guardians]
-		children = await fetchall(dbc, (_children_programs + ' where g.id in ({seq}) and academic_year.id = ?'.format(seq = ','.join(['?']*len(ids))) + _order_group_children, ids + [academic_year_id,]))
+		children = await fetchall(dbc, (_children_programs + f" where g.id in ({','.join(['?']*len(ids))}) and academic_year.id in ({','.join(['?']*len(academic_year_ids))})" + _order_group_children, ids + academic_year_ids))
+
 	else:
 		# person_id is a guardian, get children, and other guardians:
-		children = await fetchall(dbc, (_children_programs + ' where g.id = ? and academic_year.id = ?' + _order_group_children, (person_id, academic_year_id))) # TODO: factor out HARDCODE academic_year.id = 2!
+		children = await fetchall(dbc, (_children_programs + f" where g.id = ? and academic_year.id in ({','.join(['?']*len(academic_year_ids))})" + _order_group_children, [person_id,] + academic_year_ids))
+
 		ids = [c['id'] for c in children]
 		guardians = await fetchall(dbc, ('select g.* from child_guardian join person as g on child_guardian.guardian = g.id join person as c on child_guardian.child = c.id where c.id in ({seq}) group by g.id'.format(seq= ','.join(['?']*len(ids))), ids))
 
@@ -1038,20 +1067,26 @@ async def get_family_enrollments(dbc, person_id, academic_year_id):
 async def get_heads_of_households(dbc):
 	return await fetchall(dbc, ('select * from person where head_of_household = 1', ()))
 
-async def get_family_children_DEPRECATED(dbc, parent_id): # TODO: remove; now just fetched as a part of get_family()
-	return await fetchall(dbc, (_children_programs + ' where g.id = ?' + _order_group_children, (parent_id,)))
 
-async def get_costs(dbc, academic_year_id):
-	return await fetchall(dbc, ('''select * from cost 
-		where cost.academic_year = ?
-		''', (academic_year_id,)))
+async def get_enrollment_costs(dbc, student_person_ids, academic_year_ids):
+	sel = f'''select cost.*, program.name as program_name, person.first_name as first_name, person.last_name as last_name from cost
+		join person on person.id = enrollment.student
+		join enrollment on enrollment.academic_year = cost.academic_year and enrollment.program = cost.program
+		join program on program.id = cost.program
+		where enrollment.academic_year = cost.academic_year and enrollment.student = person.id and cost.per_student = 1
+		and person.id in ({','.join(['?']*len(student_person_ids))}) and cost.academic_year in ({','.join(['?']*len(academic_year_ids))}) order by person.id, cost.academic_year, cost.program
+	'''
+	return await fetchall(dbc, (sel, student_person_ids + academic_year_ids))
 
-async def get_cost_offset(dbc, parent_id, academic_year_id):
-	return await fetchall(dbc, ('select * from cost_offset where academic_year = ? and parent = ?', (academic_year_id, parent_id)))
 
+async def get_family_costs(dbc, academic_year_ids):
+	return await fetchall(dbc, (f"select * from cost where academic_year in ({','.join(['?']*len(academic_year_ids))}) and (per_student is null or per_student != 1)", academic_year_ids))
 
-async def get_payments(dbc, guardian_ids, academic_year_id):
-	return await fetchall(dbc, ('select * from payment where person in ({seq}) and academic_year = ?'.format(seq = ','.join(['?']*len(guardian_ids))), guardian_ids + [academic_year_id,]))
+async def get_cost_offsets(dbc, guardian_person_ids, academic_year_ids):
+	return await fetchall(dbc, (f"select * from cost_offset where academic_year in ({','.join(['?']*len(academic_year_ids))}) and parent in ({','.join(['?']*len(guardian_person_ids))})", academic_year_ids + guardian_person_ids))
+
+async def get_payments(dbc, guardian_ids, academic_year_ids):
+	return await fetchall(dbc, (f"select * from payment where person in ({','.join(['?']*len(guardian_ids))}) and academic_year in ({','.join(['?']*len(academic_year_ids))})", guardian_ids + academic_year_ids))
 
 _sql_leader = '''
 	select leader.*, leadership_role.name as role, program.name as program_name, subject.name as subject_name from leader
@@ -1063,10 +1098,9 @@ async def get_leader(dbc, person_id, academic_year_id):
 	sql = _sql_leader + f' where person = {person_id} and academic_year = {academic_year_id}'
 	return await fetchall(dbc, (sql, ()))
 
-async def get_leaders(dbc, persons, academic_year_id):
-	person_ids = f"({','.join([str(person['id']) for person in persons])})"
-	sql = _sql_leader + f' where person in {person_ids} and academic_year = {academic_year_id}'
-	return await fetchall(dbc, (sql, ()))
+async def get_leaders(dbc, person_ids, academic_year_ids):
+	sql = _sql_leader + f" where person in ({','.join(['?']*len(person_ids))}) and academic_year in ({','.join(['?']*len(academic_year_ids))})"
+	return await fetchall(dbc, (sql, person_ids + academic_year_ids))
 	
 async def get_appointments(dbc, start_date, end_date):
 	return await fetchall(dbc, ('select id, name, description, location, start, end from appointment order by start', ()))

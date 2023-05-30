@@ -132,8 +132,6 @@ def _format_money(amount_cents):
 def _format_cost(cost):
 	return (cost['name'] + ': ', _format_money(cost['amount']))
 
-def _format_cost_offset(cost_offset):
-	return ('offset (%s): ' % cost_offset['note'], _format_money(cost_offset['amount']))
 
 def invitation_DEPRECATED(form, invitation, person, family, contact, costs, cost_offsets, leader, payments, flash = None):
 	#TODO: this is ugly long!  dice it up!!
@@ -207,7 +205,7 @@ def invitation_DEPRECATED(form, invitation, person, family, contact, costs, cost
 						for child in children:
 							cli(_format_person(child))
 		
-		leadership_offset = 0
+		leadership_credit = 0
 		if leader:
 			with t.div(cls = 'flex-wrap'):
 				t.div('Leadership', cls = 'title')
@@ -223,7 +221,7 @@ def invitation_DEPRECATED(form, invitation, person, family, contact, costs, cost
 							offset = role['annual_offset']
 							if offset:
 								cl(t.span('Annual offset: ', _format_money(offset)))
-								leadership_offset += offset
+								leadership_credit += offset
 			
 			
 		with t.div(cls = 'flex-wrap'):
@@ -264,14 +262,14 @@ def invitation_DEPRECATED(form, invitation, person, family, contact, costs, cost
 						cli(t.span('Check #%s (%s): ' % (payment['check_number'], payment['date'].strftime('%x')), _format_money(payment['amount'])))
 						total_payments += payment['amount']
 					t.hr()
-				if leadership_offset:
+				if leadership_credit:
 					with t.div(cls = 'resource_record'):
 						cl('Offsets:')
-						cli(_format_money(leadership_offset))
+						cli(_format_money(leadership_credit))
 						t.hr()
 				with t.div(cls = 'resource_record'):
 					cl('Balance Due:')
-					cli(_format_money(total - total_payments - leadership_offset))
+					cli(_format_money(total - total_payments - leadership_credit))
 
 		t.p('If you see any mistakes, please just contact me directly.  Thanks!')
 		
@@ -291,7 +289,7 @@ def invalid_invitation():
 	return d.render()
 
 
-def financial(links, years_filter, login, user_settings, person, family, contact, costs, cost_offsets, leader, payments, host):
+def financial(links, years_filter, login, user_settings, person, data):
 	d = _doc(text.doc_prefix + 'Financial')
 	with d:
 		# TODO: this is copy-pasted from resources(), for now -- CONSOLIDATE/refactor!
@@ -317,9 +315,10 @@ def financial(links, years_filter, login, user_settings, person, family, contact
 		with t.div(cls = 'flex-wrap'): # TODO: make a 'header_block' or something; different border color, perhaps
 			t.div(t.b('Filter'), cls = 'title')
 			with t.div(cls = 'main'):
-				key, options, hint, selected_id = years_filter
+				key, options, hint, selected = years_filter
+				title = selected if selected else 'Select a year...'
 				with t.div(id = '%s-container' % key):
-					_url_dropdown(t.div(cls = 'dropdown'), key, [(year_name, _gurl(f'?{year_id}')) for (year_name, year_id) in options], 'Years...')
+					_url_dropdown(t.div(cls = 'dropdown'), key, [(year_name, _gurl(f'?academic_year={year_id}')) for (year_name, year_id) in options], title, 'Select an accademic year to view...')
 
 		cl = lambda content: t.div(content, cls = 'contact_line')
 		cli = lambda content: t.div(content, cls = 'contact_line_inset')
@@ -328,7 +327,7 @@ def financial(links, years_filter, login, user_settings, person, family, contact
 			t.div(t.b('Contact'), cls = 'title')
 			with t.div(cls = 'main'):
 				with t.div(cls = 'resource_record'):
-					for address in contact.addresses:
+					for address in data.contact.addresses:
 						if address['note']:
 							cl(t.b(address['note']))
 						if address['po_box']:
@@ -342,7 +341,7 @@ def financial(links, years_filter, login, user_settings, person, family, contact
 							cl(t.b('(unlisted)'))
 					t.hr()
 				with t.div(cls = 'resource_record'):
-					for email in contact.emails:
+					for email in data.contact.emails:
 						result = email['address']
 						if email['unlisted']:
 							result += ' (unlisted)'
@@ -350,7 +349,7 @@ def financial(links, years_filter, login, user_settings, person, family, contact
 							result += ' %s' % email['note']
 						cl(result)
 				with t.div(cls = 'resource_record'):
-					for phone in contact.phones:
+					for phone in data.contact.phones:
 						result = _format_phone(phone['number'])
 						if phone['unlisted']:
 							result += ' (unlisted)'
@@ -362,7 +361,7 @@ def financial(links, years_filter, login, user_settings, person, family, contact
 			t.div('Family', cls = 'title')
 			with t.div(cls = 'main'):
 				with t.div(cls = 'resource_record'):
-					fg = family.guardians
+					fg = data.family.guardians
 					if len(fg) == 2 and fg[0]['last_name'] == fg[1]['last_name']: # most common "spouse" scenario
 						hoh = 0 if fg[0]['head_of_household'] else 1
 						other = 1 if hoh == 0 else 0
@@ -372,7 +371,7 @@ def financial(links, years_filter, login, user_settings, person, family, contact
 					t.hr()
 				with t.div(cls = 'resource_record'):
 					program_grouped = {}
-					for child in family.children:
+					for child in data.family.children:
 						program_name = '%s (%s)' % (child['program_name'], child['program_schedule'])
 						if program_name not in program_grouped.keys():
 							program_grouped[program_name] = [child,]
@@ -383,12 +382,12 @@ def financial(links, years_filter, login, user_settings, person, family, contact
 						for child in children:
 							cli(_format_person(child))
 		
-		leadership_offset = 0
-		if leader:
+		leadership_credit = 0
+		if data.leaders:
 			with t.div(cls = 'flex-wrap'):
 				t.div('Leadership', cls = 'title')
 				with t.div(cls = 'main'):
-					for role in leader:
+					for role in data.leaders:
 						with t.div(cls = 'resource_record'):
 							role_line = 'Role: ' + role['program_name'] + ' ' + role['role']
 							if role['subject_name']:
@@ -401,55 +400,62 @@ def financial(links, years_filter, login, user_settings, person, family, contact
 							offset = role['annual_offset']
 							if offset:
 								cl(t.span('Annual offset: ', _format_money(offset)))
-								leadership_offset += offset
-			
-			
+								leadership_credit += offset
+					t.hr()
+					with t.div(cls = 'resource_record'):
+						cli(t.span(*('Total: ', _format_money(leadership_credit))))
+
 		with t.div(cls = 'flex-wrap'):
 			t.div('Costs', cls = 'title')
 			with t.div(cls = 'main'):
 				total = 0
 				total_payments = 0
 				with t.div(cls = 'resource_record'):
-					for cost in [c for c in costs if not c['per_student']]:
-						cl(t.span(*_format_cost(cost)))
+
+
+					for cost in data.family_costs:
 						total += cost['amount']
-					covered = set() # duplicate-coverage tracker -- eek, this is a bit too much "logic" for the interface ("view") layer!
-					for cost_offset in cost_offsets:
-						cl(t.span(*_format_cost_offset(cost_offset)))
-						total += cost_offset['amount']
-						
-					for child in family.children:
-						fn = child['first_name']
-						ln = child['last_name']
-						cl(t.span(t.b(fn + ' ' + ln), ' (', child['program_name'], ')'))
-						child_total = 0
-						for cost in [c for c in costs if c['per_student'] and not c['program']]:
-							tag = '%s %s %s' % (fn, ln, cost['name']) # Eek, this is a bit too much "logic" for the interface ("view") layer!
-							if tag not in covered: # don't duplicate "non-program-centric costs" (e.g., facility-cost, which is per-student; but a student may be in multiple programs, and thus may have multiple "child" records here, the only difference being the cost (name))
-								covered.add(tag)
-								cli(t.span(*_format_cost(cost)))
-								child_total += cost['amount']
-						for cost in [c for c in costs if c['program'] == child['program_id']]:
-							cli(t.span(*_format_cost(cost)))
-							child_total += cost['amount']
-						cli(t.span(*('Total: ', _format_money(child_total))))
-						total += child_total
+						cl(t.span(*_format_cost(cost)))
+
+					for offset in data.cost_offsets:
+						total += offset['amount']
+						cl(t.span(*(offset['note'], ': ', _format_money(offset['amount']))))
+
+					fn = ln = ''
+					for cost in data.costs:
+						if cost['amount'] != 0:
+							total += cost['amount']
+							if fn != cost['first_name'] or ln != cost['last_name']:
+								fn = cost['first_name']
+								ln = cost['last_name']
+								cl(t.span(t.b(fn + ' ' + ln + ' --')))
+							cli(t.span(*(cost['program_name'], ' - ', cost['name'], ' : ', _format_money(cost['amount']))))
+
 					cl(t.span('TOTAL: ', _format_money(total)))
 					t.hr()
+
 				with t.div(cls = 'resource_record'):
 					cl('Payments:')
-					for payment in payments:
+					if not data.payments:
+						cli(t.span('<None>'))
+					#else:
+					for payment in data.payments:
 						cli(t.span('Check #%s (%s): ' % (payment['check_number'], payment['date'].strftime('%x')), _format_money(payment['amount'])))
 						total_payments += payment['amount']
 					t.hr()
-				if leadership_offset:
+
+				if leadership_credit or data.carryover:
 					with t.div(cls = 'resource_record'):
-						cl('Offsets:')
-						cli(_format_money(leadership_offset))
+						cl('Adjustments:')
+						if leadership_credit:
+							cli(t.span(*'Leadership Credit (see detail above): ', _format_money(-leadership_credit)))
+						if data.carryover:
+							cli(t.span(*'Carryover from previous years: ', _format_money(data.carryover)))
+							total += data.carryover
 						t.hr()
 				with t.div(cls = 'resource_record'):
 					cl('Balance Due:')
-					cli(_format_money(total - total_payments - leadership_offset))
+					cli(_format_money(total - total_payments - leadership_credit))
 
 		t.p('If you see any mistakes, please just contact me directly.  Thanks!')
 
