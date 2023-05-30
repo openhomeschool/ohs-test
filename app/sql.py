@@ -1069,7 +1069,7 @@ async def get_heads_of_households(dbc):
 
 
 async def get_enrollment_costs(dbc, student_person_ids, academic_year_ids):
-	sel = f'''select cost.*, program.name as program_name, person.first_name as first_name, person.last_name as last_name from cost
+	sel = f'''select cost.*, program.name as program_name, person.first_name as first_name, person.last_name as last_name, enrollment.exception as enrollment_exception, enrollment.grade as enrollment_grade from cost
 		join person on person.id = enrollment.student
 		join enrollment on enrollment.academic_year = cost.academic_year and enrollment.program = cost.program
 		join program on program.id = cost.program

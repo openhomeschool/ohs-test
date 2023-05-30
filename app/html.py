@@ -413,9 +413,10 @@ def financial(links, years_filter, login, user_settings, person, data):
 				with t.div(cls = 'resource_record'):
 
 
-					for cost in data.family_costs:
-						total += cost['amount']
-						cl(t.span(*_format_cost(cost)))
+					if data.costs: # don't do any family_costs if there are no enrollments at all!
+						for cost in data.family_costs:
+							total += cost['amount']
+							cl(t.span(*_format_cost(cost)))
 
 					for offset in data.cost_offsets:
 						total += offset['amount']
@@ -423,7 +424,7 @@ def financial(links, years_filter, login, user_settings, person, data):
 
 					fn = ln = ''
 					for cost in data.costs:
-						if cost['amount'] != 0:
+						if cost['amount'] != 0 and cost['enrollment_exception'] != 1:
 							total += cost['amount']
 							if fn != cost['first_name'] or ln != cost['last_name']:
 								fn = cost['first_name']
