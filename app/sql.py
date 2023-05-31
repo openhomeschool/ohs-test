@@ -1036,7 +1036,7 @@ async def _get_guardians(dbc, person_id):
 
 async def get_family_enrollments(dbc, person_id, academic_year_ids):
 	# NOTE: that enrollment.grade and enrollment.program are not redundant!  Even though you could get to program via grade, through the grade_program join table, a student may or MAY NOT actually be enrolled in multiple programs associated with a given grade!
-	_children_programs = '''select c.*, program.name as program_name, program.schedule as program_schedule, program.id as program_id from child_guardian
+	_children_programs = '''select c.*, program.name as program_name, program.schedule as program_schedule, program.id as program_id, program.show_top_level as program_show_top_level from child_guardian
 		join person as c on child_guardian.child = c.id
 		join person as g on child_guardian.guardian = g.id
 		join enrollment on enrollment.student = c.id

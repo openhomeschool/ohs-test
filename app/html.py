@@ -371,17 +371,15 @@ def financial(links, years_filter, login, user_settings, person, data):
 					t.hr()
 				with t.div(cls = 'resource_record'):
 					program_grouped = {}
+					current_child = None
 					for child in data.family.children:
-						program_name = '%s (%s)' % (child['program_name'], child['program_schedule'])
-						if program_name not in program_grouped.keys():
-							program_grouped[program_name] = [child,]
-						else:
-							program_grouped[program_name].append(child)
-					for program_name, children in program_grouped.items():
-						cl(t.b(program_name))
-						for child in children:
-							cli(_format_person(child))
-		
+						if child['program_show_top_level']:
+							formatted = _format_person(child)
+							if current_child != formatted:
+								current_child = formatted
+								cl(t.b(formatted))
+							cli('%s (%s)' % (child['program_name'], child['program_schedule']))
+
 		leadership_credit = 0
 		if data.leaders:
 			with t.div(cls = 'flex-wrap'):
