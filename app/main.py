@@ -432,7 +432,7 @@ class Family_Invitation(web.View):
 		#else:
 		person_id, academic_year = invitation['person'], invitation['academic_year']
 		person = await db.get_person(vw.dbc, person_id)
-		family = await db.get_family_enrollments(vw.dbc, person_id, academic_year)
+		family = await db.get_family_enrollments(vw.dbc, person_id, [academic_year,])
 		return (vw, person, family.children, code)
 		
 	async def get(self):
