@@ -453,8 +453,14 @@ def financial(links, years_filter, login, user_settings, person, data):
 							total += data.carryover
 						t.hr()
 				with t.div(cls = 'resource_record'):
-					cl('Balance Due:')
-					cli(_format_money(total - total_payments - leadership_credit))
+					total = total - total_payments - leadership_credit
+					if total > 0:
+						cl('Balance Due (make checks payable to CCLSC):')
+						cli(_format_money(total))
+					else:
+						cl('Balance CCLSC owes YOU:')
+						cli(_format_money(-total))
+						cli('(your check will be delivered soon!)')
 
 		t.p('If you see any mistakes, please just contact me directly.  Thanks!')
 
