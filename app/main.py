@@ -572,13 +572,14 @@ async def _build_financial_struct(dbc, person_id, academic_year_ids):
 	if not hasattr(academic_year_ids, '__iter__'):
 		academic_year_ids = [academic_year_ids, ]
 	family = await db.get_family_enrollments(dbc, person_id, academic_year_ids)
+	guardian_ids = [g['id'] for g in family.guardians] if family.guardians and family.children else [person_id,] # just use person_id if there's no actual family set up - this is (presumably) just a grandparent or....
 	return U.Struct(
 		family = family,
 		costs = await db.get_enrollment_costs(dbc, [c['id'] for c in family.children], academic_year_ids),
 		family_costs = await db.get_family_costs(dbc, academic_year_ids),
-		cost_offsets = await db.get_cost_offsets(dbc, [g['id'] for g in family.guardians], academic_year_ids),
-		leaders = await db.get_leaders(dbc, [g['id'] for g in family.guardians], academic_year_ids),
-		payments = await db.get_payments(dbc, [g['id'] for g in family.guardians], academic_year_ids),
+		cost_offsets = await db.get_cost_offsets(dbc, guardian_ids, academic_year_ids),
+		leaders = await db.get_leaders(dbc, guardian_ids, academic_year_ids),
+		payments = await db.get_payments(dbc, guardian_ids, academic_year_ids),
 	)
 
 async def _carryover_financial(dbc, person_id, academic_year_id):
