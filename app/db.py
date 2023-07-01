@@ -408,3 +408,7 @@ async def get_appointment_ical(dbc, appointment_id):
 
 async def get_appointments_ical(dbc):
 	return await sql.get_appointments_ical(dbc)
+
+
+async def log_sms(dbc, to, frm, msg, idd, ts):
+	return await sql.log_sms(dbc, to, frm, msg, idd, ts)

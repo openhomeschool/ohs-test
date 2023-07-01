@@ -337,6 +337,20 @@ async def practice(rq):
 	return hr(html.practice(links, filters, login, settings, rq.host))
 
 
+@rt.get('/sms')
+async def appointments(rq):
+	to = rq.query.get('to')
+	frm = rq.query.get('frm')
+	msg = rq.query.get('msg')
+	idd = rq.query.get('idd')
+	ts = rq.query.get('ts')
+
+	dbc = rq.app['db']
+	await db.log_sms(dbc, to, frm, msg, idd, ts)
+
+	return hr('ok')
+
+
 @rt.view('/enroll', name = 'enroll')
 @auth('coordinator')
 class Enroll(web.View):
