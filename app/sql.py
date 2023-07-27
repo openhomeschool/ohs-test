@@ -1111,6 +1111,10 @@ async def get_appointment_ical(dbc, appointment_id):
 async def get_appointments_ical(dbc):
 	return await fetchall(dbc, (f'select ical from appointment order by start', ()))
 
+async def get_financial_persons(dbc):
+	return await fetchall(dbc, (f'select id, first_name, last_name from person where teacher=1 order by last_name', ()))
+
+
 async def log_sms(dbc, to, frm, msg, idd, ts):
 	await dbc.execute('insert into sms ("to", frm, msg, idd, ts) values (?, ?, ?, ?, ?)', (to, frm, msg, idd, ts))
 	await dbc.commit()

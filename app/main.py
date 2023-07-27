@@ -637,6 +637,10 @@ async def _financial(rq, dbc, session, person, academic_year_id):
 	years_filter = ( # (key, options, hint, selected)
 		'academic_year', [(year['name'], year['id']) for year in await db.get_academic_years(dbc)], 'Year', academic_year['name'])
 
+	if not person:
+		return hr(html.financial_persons(links, years_filter, login, settings, await db.get_financial_persons(dbc), _gurl(rq, 'a_financial')))
+	#else:
+
 	person_id = person['id']
 	data = await _build_financial_struct(dbc, person_id, academic_year_id)
 	data.contact = await db.get_person_contact_info(dbc, person_id)
@@ -644,11 +648,18 @@ async def _financial(rq, dbc, session, person, academic_year_id):
 
 	return hr(html.financial(links, years_filter, login, settings, person, data))
 
+@rt.get('/a_financial', name = 'a_financial')
+@auth('admin')
+async def a_financial_list(rq):
+	dbc = rq.app['db']
+	return await _financial(rq, dbc, await get_session(rq), None, int(rq.query.get('academic_year', 0)))
+
 @rt.get('/a_financial/{person_id}')
 @auth('admin')
 async def a_financial(rq):
 	dbc = rq.app['db']
-	return await _financial(rq, dbc, await get_session(rq), await db.get_person(dbc, rq.match_info['person_id']), int(rq.query.get('academic_year', 0)))
+	person_id = rq.match_info['person_id']
+	return await _financial(rq, dbc, await get_session(rq), (await db.get_person(dbc, person_id)) if person_id else None, int(rq.query.get('academic_year', 0)))
 
 @rt.get('/financial')
 @auth('parent')
@@ -814,9 +825,9 @@ async def timeline_event_detail(record, details, signs, host):
 async def science_detail(record, details, signs, host):
 	return hr(html.science_detail(record, details, signs, host))
 
-k_temp_this_week = 28
+k_temp_this_week = 1
 k_temp_this_cycle = 3
-k_temp_this_academic_year = 3
+k_temp_this_academic_year = 4
 
 # cool characters: ⌂♩♪♫♬▲►▼◄→ ʘΞΞΩΨΦΣΠϘЮФѺѼ׀ᴓ₪Ω⃰∞∑∆◊?¿ ᵯ«»   ₧◙□∞Ξ©π
 _links = lambda rq: (

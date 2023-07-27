@@ -289,7 +289,15 @@ def invalid_invitation():
 	return d.render()
 
 
-def financial(links, years_filter, login, user_settings, person, data):
+def financial_persons(links, _, login, user_settings, financial_persons, link_base):
+	d = _financial_head_doc(links, login, user_settings)
+	with d:
+		with t.table():
+			for fp in financial_persons:
+				t.tr((t.td(t.a(f"{fp['first_name']} {fp['last_name']}", href = f"{link_base}/{fp['id']}"))))
+	return d.render()
+
+def _financial_head_doc(links, login, user_settings):
 	d = _doc(text.doc_prefix + 'Financial')
 	with d:
 		# TODO: this is copy-pasted from resources(), for now -- CONSOLIDATE/refactor!
@@ -311,6 +319,12 @@ def financial(links, years_filter, login, user_settings, person, data):
 							t.button('₪', title = 'Messages', type = 'button', onclick = 'void()') #TODO: 'load_page("%s")' % _gurl('/messages'))
 							assert(login['type'] == 'menu')
 							_login_dropdown(login['username'], login['switch_users'], hint = 'Switch person')
+	return d
+
+
+def financial(links, years_filter, login, user_settings, person, data):
+	d = _financial_head_doc(links, login, user_settings)
+	with d:
 
 		with t.div(cls = 'flex-wrap'): # TODO: make a 'header_block' or something; different border color, perhaps
 			t.div(t.b('Filter'), cls = 'title')
