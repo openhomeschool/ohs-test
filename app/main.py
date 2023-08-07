@@ -826,7 +826,7 @@ async def science_detail(record, details, signs, host):
 	return hr(html.science_detail(record, details, signs, host))
 
 k_temp_this_week = 1
-k_temp_this_cycle = 3
+k_temp_this_cycle = 1
 k_temp_this_academic_year = 4
 
 # cool characters: ⌂♩♪♫♬▲►▼◄→ ʘΞΞΩΨΦΣΠϘЮФѺѼ׀ᴓ₪Ω⃰∞∑∆◊?¿ ᵯ«»   ₧◙□∞Ξ©π
