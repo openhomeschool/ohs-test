@@ -766,19 +766,19 @@ async def resources(rq):
 
 @rt.get('/shop1', name = 'shop1')
 async def shop_year_program1(rq):
-	return await _resources(rq, {'shop': 1, 'cycle': 3, 'program': 1, 'week': -1, 'grammar_supplement': 0})
+	return await _resources(rq, {'shop': 1, 'cycle': k_temp_this_cycle, 'program': 1, 'week': -1, 'grammar_supplement': 0})
 
 @rt.get('/shop2', name = 'shop2')
 async def shop_year_program2(rq):
-	return await _resources(rq, {'shop': 1, 'cycle': 3, 'program': 2, 'week': -1, 'grammar_supplement': 0})
+	return await _resources(rq, {'shop': 1, 'cycle': k_temp_this_cycle, 'program': 2, 'week': -1, 'grammar_supplement': 0})
 
 @rt.get('/shop3', name = 'shop3')
 async def shop_year_program3(rq):
-	return await _resources(rq, {'shop': 1, 'cycle': 3, 'program': 3, 'week': -1, 'grammar_supplement': 0})
+	return await _resources(rq, {'shop': 1, 'cycle': k_temp_this_cycle, 'program': 3, 'week': -1, 'grammar_supplement': 0})
 
 @rt.get('/shop4', name = 'shop4')
 async def shop_year_program4(rq):
-	return await _resources(rq, {'shop': 1, 'cycle': 3, 'program': 4, 'week': -1, 'grammar_supplement': 0})
+	return await _resources(rq, {'shop': 1, 'cycle': k_temp_this_cycle, 'program': 4, 'week': -1, 'grammar_supplement': 0})
 
 
 
@@ -1228,13 +1228,15 @@ async def _get_random_url_playlist(hd):
 async def _login_button(session, dbc):
 	result = {'type': 'button'} # default, unless we're already logged in...
 	uuid = session.get('uuid')
-	settings = {'bg_color': '#eff7f6'} # default (see main.css .flex-wrap .main background-color
+	settings = None
 	if uuid:
 		result = {
 			'type': 'menu',
 			'username': await db.get_username(dbc, uuid),
 			'switch_users': await db.get_switch_users(dbc, uuid) }
 		settings = await db.get_user_settings(dbc, uuid)
+	if not settings:
+		settings = {'bg_color': '#eff7f6'} # default (see main.css .flex-wrap .main background-color
 	return result, settings
 
 

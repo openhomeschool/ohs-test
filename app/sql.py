@@ -253,7 +253,11 @@ async def switch_user(dbc, from_uuid, to_username):
 	raise exception.InvalidSwitch()
 
 async def get_user_settings(dbc, uuid):
-	return await fetchone(dbc, ('select user_color.color as bg_color from user_settings join user on user_settings.user = user.id join user_login on user.id = user_login.user join user_color on user_settings.bg_color = user_color.id where user_login.uuid = ?', (uuid,)))
+	result = await fetchone(dbc, ('select user_color.color as bg_color from user_settings join user on user_settings.user = user.id join user_login on user.id = user_login.user join user_color on user_settings.bg_color = user_color.id where user_login.uuid = ?', (uuid,)))
+	if not result:
+		set_user_bg_color(dbc, uuid)
+		return get_user_settings(dbc, uuid) # TODO: potential infinite recursion!!
+	return result
 
 async def get_person_username(dbc, person_id):
 	result = await fetchone(dbc, ('select username from user where person = ?', (person_id,)))
@@ -514,6 +518,7 @@ k_subject_ids = { # IDs from DB table, mapped to handler names TODO: just create
 	'Arithmetic': 14,
 	'Apologetics': 15,
 	'Economics': 16,
+	'Oration': 17,
 }
 
 @dataclass
@@ -744,6 +749,7 @@ k_history_exre_rs = _make_exre_resource_spec('History', 'history_resources')
 k_science_exre_rs = _make_exre_resource_spec('Science', 'science_resources')
 k_literature_exre_rs = _make_exre_resource_spec('Literature', 'literature_resources')
 k_poetry_exre_rs = _make_exre_resource_spec('Poetry', 'poetry_resources')
+k_oration_exre_rs = _make_exre_resource_spec('Oration', 'oration_resources')
 k_computer_exre_rs = _make_exre_resource_spec('Computer', 'computer_resources')
 k_spanish_exre_rs = _make_exre_resource_spec('Spanish', 'spanish_resources')
 k_logic_exre_rs = _make_exre_resource_spec('Logic', 'logic_resources')
@@ -762,6 +768,7 @@ k_literature_assignment_rs = _make_assignment_spec('Literature', 'literature_ass
 k_english_assignment_rs = _make_assignment_spec('English', 'english_assignments')
 k_science_assignment_rs = _make_assignment_spec('Science', 'science_assignments')
 k_poetry_assignment_rs = _make_assignment_spec('Poetry', 'poetry_assignments')
+k_oration_assignment_rs = _make_assignment_spec('Oration', 'oration_assignments')
 k_computer_assignment_rs = _make_assignment_spec('Computer', 'computer_assignments')
 k_spanish_assignment_rs = _make_assignment_spec('Spanish', 'spanish_assignments')
 k_logic_assignment_rs = _make_assignment_spec('Logic', 'logic_assignments')
@@ -810,6 +817,7 @@ k_high1_resources = [
 	SS('Literature', (k_literature_assignment_rs, k_english_vocabulary_rs, )),
 	SS('Math', (k_math_assignment_rs, )),
 	SS('Poetry', (k_poetry_assignment_rs, )),
+	SS('Oration', (k_oration_assignment_rs, )),
 	SS('Computer', (k_computer_assignment_rs, )),
 	SS('Spanish', (k_spanish_assignment_rs, )),
 	SS('Logic', (k_logic_assignment_rs, )),
@@ -825,6 +833,7 @@ k_high1_assignments = [
 	SS('Literature', (k_literature_assignment_rs, )),
 	SS('Math', (k_math_assignment_rs, )),
 	SS('Poetry', (k_poetry_assignment_rs, )),
+	SS('Oration', (k_oration_assignment_rs, )),
 	SS('Computer', (k_computer_assignment_rs, )),
 	SS('Spanish', (k_spanish_assignment_rs, )),
 	SS('Logic', (k_logic_assignment_rs, )),

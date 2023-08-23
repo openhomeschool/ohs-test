@@ -1138,7 +1138,7 @@ def _show_shopping(records):
 			resource_note = records[0]['resource_note'] # records[0] because they're all the same; all shopping link records provided reference this same resource
 			if resource_note:
 				t.div('Note: %s' % resource_note, cls = 'shopping_note')
-			t.div('Click to shop...')
+			#t.div('Click to shop...')
 			for record in records:
 				title = '%s (%s)' % (record['source_name'], record['type_name'])
 				if record['note']: # resource_acquisition.note (in addition to the resource.note, already gleaned, above
@@ -1218,7 +1218,7 @@ def _add_eqality_record(table, record, left_field_name, right_field_name, yougli
 		table += t.tr(t.td(), t.td(str(record[line2])))
 
 def _prefix_answer(record, youglishit = False):
-	answer_prompt = record['answer_prefix'].capitalize() + ' ' + record['prompt'] if record['answer_prefix'] else record['prompt'].capitalize()
+	answer_prompt = record['answer_prefix'].capitalize() + ' ' + record['prompt'] if record['answer_prefix'] else record['prompt'][0].upper() + record['prompt'][1:]
 	answer = '%s %s %s.' % (answer_prompt, record['answer_verb'], record['answer'])
 	if youglishit:
 		answer = _youglishify('%s %s %s.' % (answer_prompt, record['answer_verb'], record['answer']))
@@ -1271,8 +1271,9 @@ def science_grammar(container, spec, records, show_cw):
 				#OLD: t.div(t.b())
 				prompt = f"{record['answer_prefix']} {record['prompt']}" if record['answer_prefix'] else record['prompt']
 				if not record['addendum']:
-					prompt = f"What {record['answer_verb']} {prompt}?"
-				t.div(t.b(t.a(prompt.capitalize(), href = _gurl('/detail/science/%d' % record['id']), target = "_blank", cls = 'hover_link')))
+					prompt_verb = record['prompt_verb'] if record['prompt_verb'] else record['answer_verb'] # default to the answer_verb if there is no prompt_verb
+					prompt = f"What {prompt_verb} {prompt}?"
+				t.div(t.b(t.a(prompt, href = _gurl('/detail/science/%d' % record['id']), target = "_blank", cls = 'hover_link')))
 			t.div(_format_answer3(record, False))
 
 	_grammar_resources(container, spec, records, show_cw, 'science', render, True)
@@ -1284,8 +1285,9 @@ def science_resources(container, spec, records, show_cw):
 @subject_resources('english_vocabulary')
 def english_vocabulary(container, spec, records, show_cw):
 	def render(record, container): # callback function, see _grammar_resources()
-		audio_base = 'english/ev%s' % record['id'] if not spec.for_print else None # "turn off" audio if spec.for_print
-		_add_eqality_record(container, record, 'word', 'definition', True, audio_base)
+		if record['level'] == 1: # screen out secondary/harder/supplemental vocab words for now
+			audio_base = 'english/ev%s' % record['id'] if not spec.for_print else None # "turn off" audio if spec.for_print
+			_add_eqality_record(container, record, 'word', 'definition', True, audio_base)
 
 	_grammar_resources(container, spec, records, show_cw, 'english', render, True, t.table)
 
@@ -1312,6 +1314,10 @@ def economics_resources(container, spec, records, show_cw):
 
 @subject_resources('poetry_resources')
 def poetry_resources(container, spec, records, show_cw):
+	_external_resources(container, spec, records, show_cw)
+
+@subject_resources('oration_resources')
+def oration_resources(container, spec, records, show_cw):
 	_external_resources(container, spec, records, show_cw)
 
 @subject_resources('computer_resources')
@@ -1439,6 +1445,15 @@ def english_assignments(container, spec, records, show_cw):
 def science_assignments(container, spec, records, show_cw):
 	_assignments(container, spec, records, show_cw)
 
+@subject_resources('poetry_assignments')
+def poetry_assignments(container, spec, records, show_cw):
+	_assignments(container, spec, records, show_cw)
+
+@subject_resources('oration_assignments')
+def oration_assignments(container, spec, records, show_cw):
+	_assignments(container, spec, records, show_cw)
+
+
 def _assignments(container, spec, records, show_cw):
 	cw = None
 	resource_name = None
@@ -1457,6 +1472,7 @@ def _assignments(container, spec, records, show_cw):
 				container += t.hr(cls = 'clear')
 			hr = cw[1] >= spec.first_week # don't draw a line next time 'round if our current record's week number preceeds what we're spec'd to look at (this can happen for records that whose first_week is earlier than spec.first_week because the record's last_week may be well within spec's range).  For instance, in Literature, a prefix assignment item might apply to two weeks; if the user is looking at the latter, they want to see the prefix, but don't want a line separating it from the rest of the assignment, which would seem like a meaningless line
 			_add_cw(record, container, spec)
+		shopping = ''
 		if resource_name != new_resource_name:
 			new_list = True
 			resource_name = new_resource_name
@@ -1469,10 +1485,9 @@ def _assignments(container, spec, records, show_cw):
 			if not spec.for_print:
 				#TODO: hook up the "details" to work! --  title += t.button('...', onclick = 'show_hide_details("%s");' % div_id, cls = 'chaser'),
 				title += t.button('$', onclick = 'show_hide_shopping("%s");' % div_id, cls = 'chaser'),
-				shopping = ''
 				if spec.shop and (not spec.logged_in or (spec.logged_in and not record.get('complete'))):
 					shopping = _show_shopping(record['shop'])
-				container += t.div(shopping, cls = 'shopping_links', style = 'display:block;' if shopping else 'display:none;', id = div_id) # if no 'shopping', then contents will be filled in, as needed, via websocket upon '$' click to (any given) show_hide_shopping()
+
 
 		if new_list:
 			new_list = False
@@ -1488,7 +1503,7 @@ def _assignments(container, spec, records, show_cw):
 		instruction = instruction.replace('{items}', str(record['items']))
 		instruction = instruction.replace('{skips}', str(record['skips']) if record['skips'] else '')
 		if record['optional']:
-			instruction = '[optional] ' + instruction
+			instruction = '<b>[optional]</b> ' + instruction
 		grade_first = record['grade_first']
 		grade_last = record['grade_last']
 		#TEMP COMMENT-OUT!!!!!!!! --- too many students now are in different grades for different subjects, and this needlessly (and constantly) "shows" that when they're logged in and looking at their personal syllabus (or looking at their printed syllabus)... consider just adding a qarg/spec item called show_grades which could be checked here, and grades shown only if that flag is true AND the following conditions are met (note: don't just replace!  b/c then e.g., for IEW, e.g., you'll get grade prefixes on all lines, even those that apply to the full span - it'll just be really ugly)
@@ -1505,6 +1520,8 @@ def _assignments(container, spec, records, show_cw):
 		else:
 			ul += t.li(raw(instruction))
 
+		if shopping:
+			container += t.div(shopping, cls = 'shopping_links', style = 'display:block;' if shopping else 'display:none;', id = div_id) # if no 'shopping', then contents will be filled in, as needed, via websocket upon '$' click to (any given) show_hide_shopping()
 
 
 def _new_subject_section(container, subject_title):
