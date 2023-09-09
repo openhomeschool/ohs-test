@@ -9,6 +9,7 @@ import random
 import bcrypt # cf https://security.stackexchange.com/questions/133239/what-is-the-specific-reason-to-prefer-bcrypt-or-pbkdf2-over-sha256-crypt-in-pass
 import itertools
 import time
+import string
 
 from uuid import uuid4
 #OLD user stuff: import hashlib
@@ -79,6 +80,10 @@ async def _login(dbc, user_id):
 	await dbc.execute('insert into user_login (user, uuid, timestamp) values (?, ?, ?)', (user_id, uuid, ts))
 	await dbc.commit()
 	return (uuid, ts)
+
+async def force_login(dbc, user_id):
+	r = await fetchone(dbc, ('select id from "user" where id = ?', (user_id,)))
+	return await _login(dbc, r['id'])
 
 async def login(dbc, username, password):
 	if not password: # password is required!
@@ -196,6 +201,26 @@ async def get_username(dbc, uuid):
 async def username_exists(dbc, username):
 	r = await fetchone(dbc, ('select 1 from "user" where username = ?', (username,)))
 	return True if r else False
+
+async def generate_password_reset_code(dbc, user_id):
+	code = ''.join(random.choices(string.digits, k=6))
+	ts = time.time()
+	await dbc.execute('insert into reset_code (code, user, timestamp) values (?, ?, ?)', (code, user_id, ts))
+	await dbc.commit()
+	return code
+
+async def validate_reset_password_code(dbc, code):
+	r = await fetchone(dbc, ('select "user" from reset_code where code = ?', (code,)))
+	if r:
+		await dbc.execute('delete from reset_code where code = ?', (code,)) # done!
+	return r['user'] if r else False
+
+async def get_user_id_by_email(dbc, email):
+	r = await fetchone(dbc, ('select id from "user" where email = ?', (email,)))
+	if r:
+		return r['id']
+	#else:
+	return None
 
 async def get_user_id(dbc, username):
 	r = await fetchone(dbc, ('select id from "user" where username = ?', (username,)))
@@ -1053,6 +1078,10 @@ async def get_family_enrollments(dbc, person_id, academic_year_ids):
 		join program on program.id = enrollment.program
 		'''
 	_order_group_children = ' group by c.id, enrollment.program order by c.birthdate desc, enrollment.program'
+
+	if not academic_year_ids:
+		# "none" means "all" - fetch all academic years:
+		academic_year_ids = [y['id'] for y in await get_academic_years(dbc)]
 
 	guardians = await _get_guardians(dbc, person_id)
 	if guardians:

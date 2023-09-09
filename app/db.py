@@ -21,6 +21,9 @@ k_subject_ids = sql.k_subject_ids
 async def login(dbc, username, password):
 	return await sql.login(dbc, username, password)
 
+async def force_login(dbc, user_id):
+	return await sql.force_login(dbc, user_id)
+
 async def forget_login(dbc, uuid):
 	return await sql.forget_login(dbc, uuid)
 
@@ -32,6 +35,15 @@ async def authorized(dbc, uuid, roles):
 
 async def get_username(dbc, uuid):
 	return await sql.get_username(dbc, uuid)
+
+async def generate_password_reset_code(dbc, user_id):
+	return await sql.generate_password_reset_code(dbc, user_id)
+
+async def validate_reset_password_code(dbc, code):
+	return await sql.validate_reset_password_code(dbc, code)
+
+async def get_user_id_by_email(dbc, email):
+	return await sql.get_user_id_by_email(dbc, email)
 
 async def get_user_id(dbc, username):
 	return await sql.get_user_id(dbc, username)

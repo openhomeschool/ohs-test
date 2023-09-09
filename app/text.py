@@ -17,6 +17,7 @@ existing_accounts_family = "Here is a list of the users set up in your family.  
 print_account_info_first = "Please print this page (or write down its contents), then press 'Save' again; this is the last time you'll be able to see the passwords you're setting here."
 
 what_next = 'What would you like to do next...'
+go_home = 'Go "Home"', '/'
 go_to_grammar = 'Go to "Grammar"...', '/resources'
 go_to_practice = 'Go to "Practice"...', '/practice'
 go_to_settings = 'Go to account settings...', '/settings'
@@ -26,6 +27,8 @@ user_exists = 'Sorry, the username you chose is already in use by somebody else.
 generic_look_down_error = "Oops, something went wrong; check below for messages to help you fix the problem..."
 duplicate_usernames_error = "You cannot have duplicate usernames - each username must be unique; change one of the duplicates below to fix..."
 unable_to_save_new_users_error = "Unable to save new users to database; confirm that nothing looks wrong below and try again..."
+
+password_reset_code_email_body = lambda code: f"You requested a password reset code for openhome.school. Here it is: {code} <-- type or paste that code into your browser, where it's requested"
 
 inv_username = "Username must be a single word (no spaces) made of letters and/or numbers, 16 characters or less, and unique."
 inv_username_exists = "Sorry, this username is already in use by somebody else.  Please add more characters or try another."

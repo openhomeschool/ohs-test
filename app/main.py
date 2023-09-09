@@ -38,6 +38,7 @@ from sqlite3 import IntegrityError
 from yarl import URL
 
 from . import html
+from . import emailer
 from . import db
 from . import valid
 from . import error
@@ -120,7 +121,7 @@ def auth(roles):
 
 # Handlers --------------------------------------------------------------------
 
-async def _finish_login(rq, dbc, username, result, redirect):
+async def _finish_login(rq, dbc, result, redirect):
 	session = await new_session(rq) # "Always use new_session() instead of get_session() in your login views to guard against Session Fixation attacks!" - https://aiohttp-session.readthedocs.io/en/stable/reference.html
 		# it's the next bit of information: the new uuid, that is important to not attatch to the old session, to avoid a Session Fixation attack; starting clean here is the place; prior to now, we needed stuff in the (old) session, such as username_logging_in and after_login
 	session['uuid'], session['login_time'] = result # result is a two-tuple: (uuid, ts)
@@ -175,7 +176,7 @@ async def login_(rq):
 		if not result:
 			return hr(html.login(rq.rel_url, _wrap_error(error.login_failure))) # TODO: password retrieval mechanism
 		#else, success!:
-		await _finish_login(rq, dbc, username, result, session.get('after_login', _gurl(rq, 'home')))
+		await _finish_login(rq, dbc, result, session.get('after_login', _gurl(rq, 'home')))
 
 	except web.HTTPRedirection:
 		raise # move on
@@ -186,6 +187,61 @@ async def login_(rq):
 async def logout(rq):
 	await _logout(rq.app['db'], await get_session(rq))
 	raise web.HTTPFound(_gurl(rq, 'home'))
+
+@rt.get('/forgot_password')
+async def forgot_password(rq):
+	return hr(html.forgot_password(html.Form(rq.rel_url)))
+
+@rt.post('/forgot_password')
+async def forgot_password_(rq):
+	data = await rq.post()
+	# Validate:
+	invalids = []
+	_validate_regex(data, invalids, (
+			('email', valid.rec_email, False),
+		))
+	form = html.Form(rq.rel_url, data, invalids)
+
+	if invalids:
+		return hr(html.forgot_password(form, error.invalid_email))
+
+	email = data['email']
+	dbc = rq.app['db']
+	user_id = await db.get_user_id_by_email(dbc, email)
+	if not user_id:
+		return hr(html.forgot_password(form, error.unknown_email))
+	#else:
+	code = await db.generate_password_reset_code(dbc, user_id)
+	emailer.send_email(email, 'Reset...', text.password_reset_code_email_body(code))
+	raise web.HTTPFound(_gurl(rq, 'forgot_password_enter_code'))
+
+@rt.get('/forgot_password_enter_code', name = 'forgot_password_enter_code')
+async def forgot_password_enter_code(rq):
+	return hr(html.forgot_password_enter_code(html.Form(rq.rel_url)))
+
+@rt.post('/forgot_password_enter_code')
+async def forgot_password_enter_code_(rq):
+	data = await rq.post()
+	code = data['code']
+	dbc = rq.app['db']
+	rel_url = rq.rel_url
+	try:
+		user_id = await db.validate_reset_password_code(dbc, code)
+		if user_id:
+			result = await db.force_login(dbc, user_id)
+			if not result: # this really should never fail
+				return hr(html.login(rel_url, _wrap_error(error.unknown_login_failure)))
+			#success:
+			await _finish_login(rq, dbc, result, _gurl(rq, 'reset_password'))
+		else:
+			return hr(html.forgot_password(html.Form(rel_url), error.invalid_password_reset_code))
+
+	except web.HTTPRedirection:
+		raise # move on (_finish_login raises a web.HTTPFound(redirect) when successful)
+	except: # everything else
+		raise
+		#return hr(html.login(rel_url, _wrap_error(error.unknown_login_failure)))
+
 
 @rt.get('/switch_user/{username}')
 async def switch_user(rq):
@@ -207,7 +263,7 @@ async def switch_user(rq):
 			_add_flash_m(session, text.password_required % new_username)
 			raise web.HTTPFound(_gurl(rq, 'login'))
 		#else: (no password required; real new uuid returned from switch_user(), so, switch was successful (including logout/forget, etc.)...
-		await _finish_login(rq, dbc, new_username, result, session.get('after_login', _gurl(rq, 'home')))
+		await _finish_login(rq, dbc, result, session.get('after_login', _gurl(rq, 'home')))
 
 	except web.HTTPRedirection:
 		raise # move on
@@ -253,9 +309,6 @@ async def reset_password_success(rq):
 			('User Settings', _gurl(rq, 'user_settings')),
 		)))
 
-@rt.get('/user_settings', name = 'user_settings')
-async def user_settings(rq):
-	pass # TODO
 
 
 @rt.view('/new_user', name = 'new_user')
@@ -338,7 +391,7 @@ async def practice(rq):
 
 
 @rt.get('/sms')
-async def appointments(rq):
+async def sms(rq):
 	to = rq.query.get('to')
 	frm = rq.query.get('frm')
 	msg = rq.query.get('msg')
@@ -362,54 +415,30 @@ class Enroll(web.View):
 		return hr(html.enroll())
 
 #@rt.view('/go_edit_user/{username}')
-@rt.view('/go_edit_user/{username}/{family_invitation_code}')
+@rt.view('/go_edit_user/{username}')
 class Go_Edit_User(web.View):
-	async def common(self):
-		#code = None
-		code = self.request.match_info['family_invitation_code']
-		if code and not valid.rec_invitation.match(code):
-			return hr(html.invalid_invitation()) # this might be an attack attempt!
-		#else:
+	async def first(self):
 		username = self.request.match_info['username']
-		vw = await _set_up_common_view_get(self, re_log_in_seconds = None if code else 60) # force re-login (if login was more than 60 seconds ago) if a special invitation code is not used here
-		uid = None
-		if not code: # if no code; attempt is being made by a logged-in user; but, with code, we'll need to look up uid of invitation-bearer
-			vw.uuid = vw.session.get('uuid')
-			if not vw.uuid:
-				raise web.HTTPFound(_gurl(vw.rq, 'login'))
-			#else:
-			uid = await db.get_user_id_from_uuid(vw.dbc, vw.uuid, False)
-		else:
-			invitation = await db.get_new_user_invitation(vw.dbc, code)
-			if not invitation:
-				return hr(html.invalid_invitation()) # this might be an attack attempt!
-			#else:
-			# Get uid of invitation-bearer:
-			uid = await db.get_user_id_from_person_id(vw.dbc, invitation['person'])
-
+		vw = await _set_up_common_view_get(self, uuid = True, re_log_in_seconds = 60) # force re-login (if login was more than 60 seconds ago) if a special invitation code is not used here
+		if not vw.uuid:
+			raise web.HTTPFound(_gurl(vw.rq, 'login'))
+		#else:
+		uid = await db.get_user_id_from_uuid(vw.dbc, vw.uuid, False)
 		if not uid:
 			raise web.HTTPFound(_gurl(vw.rq, 'login')) # a message might be useful here; there is a chance of this being attempted for an invitation that hasn't yet been processed (no user exists yet!)....
-
+		#else:
 		if not (await db.is_guardian_of(vw.dbc, uid, username) or await db.is_user(vw.dbc, uid, username)):
-			return hr(html.invalid_invitation()) # this might be an attack attempt! (note, this isn't exactly the right kind of message; bottom line is that the user attempting this isn't a guardian of the user needing the password reset (and isn't self)....
+			raise web.HTTPFound(_gurl(vw.rq, 'login')) # a message here?!!!
 
 		vw.uid = await db.get_user_id_from_username(vw.dbc, username)
 		return vw
 		
 	async def get(self):
-		commons = await self.common()
-		if isinstance(commons, web.Response):
-			return commons
-		#else:
-		vw = commons
+		vw = await self.first()
 		return hr(html.reset_password(html.Form(vw.rq.rel_url)))
 
 	async def post(self):
-		commons = await self.common()
-		if isinstance(commons, web.Response):
-			return commons
-		#else:
-		vw = commons
+		vw = await self.first()
 		data = await self.request.post()
 
 		invalids = []
@@ -432,14 +461,117 @@ class Go_Edit_User(web.View):
 		return hr(html.reset_password(html.Form(vw.rq.rel_url, data, invalids), error.reset_password_failure))
 		
 
+async def _family_user_setup(vw, result):
+	if not result:
+		raise web.HTTPFound(_gurl(vw.rq, 'login')) # have to be logged in to change settings
+	if isinstance(result, web.Response):
+		return result
+	#else:
+	person, children = result
+	covered = [] # `family` may contain duplicates of a student who is enrolled in multiple programs; we only want each student once, here, so we'll track those covered as we process each of family.children
+	all_exist_already = True
+	async def _user(p):
+		nonlocal all_exist_already
+		covered.append(p['id'])
+		username = await db.get_person_username(vw.dbc, p['id'])
+		exists = True
+		if not username:
+			username = await db.suggest_username(vw.dbc, p)
+			exists = False
+			all_exist_already = False
+		return {'id': p['id'], 'first_name': p['first_name'], 'last_name': p['last_name'], 'username': username, 'exists': exists}
+	users = [await _user(person)]
+	users += [await _user(child) for child in children if child['id'] not in covered]
+	passwords = await db.forge_noun_passwords(vw.dbc)
+	flash = _quick_flash_message(text.new_accounts_family % (person['first_name'], person['last_name']))
+	if all_exist_already:
+		flash = _quick_flash_message(text.existing_accounts_family)
+	_set_up_twixt(vw.session, 'family_invitation', None, None)
+
+	return hr(html.family_user_setup(str(vw.rq.rel_url), users, passwords, _ws_url(vw.rq, '/ws_messages'), all_exist_already, flash))
+
+
+async def _family_user_setup_result(vw, result):
+	if isinstance(result, web.Response):
+		return result
+	#else:
+	person, children = result
+	data = await vw.rq.post()
+	ids, exists, usernames, passwords = [], [], [], []
+	for key, value in data.items():
+		# we know these will come in the following order, by contract! first, user 1's pid, then etc... ; then on to user 2, and we're building parallel lists; we don't care about 'names', so we just skip it
+		if key.startswith('pid'):
+			ids.append(value)
+		if key.startswith('exists'):
+			exists.append(U.KVPair(key, value))
+		if key.startswith('username'):
+			usernames.append(value)
+		if key.startswith('password'):
+			passwords.append(value)
+
+	flash = None
+	invalids = []
+	# Check for duplicate usernames:
+	if len(usernames) != len(set(usernames)): # (sets never include duplicates)
+		flash = _quick_flash_error(text.duplicate_usernames_error)
+
+	# Try to the database:
+	if flash == None:
+		await vw.dbc.execute('begin') # apparently the only way to really do transactions like this (see https://stackoverflow.com/questions/15856976/transactions-with-python-sqlite3)
+		try:
+			used_colors = []
+			for x in range(len(ids)):
+				if exists[x].value not in ('true', 'True'):
+					try:
+						# Create user:
+						new_uid = await db.create_user(vw.dbc, usernames[x], passwords[x], ids[x], False)
+						# Add roles:
+						roles = ['student',]
+						if await db.is_a_guardian(vw.dbc, ids[x]):
+							roles.append('parent')
+						await db.add_roles(vw.dbc, new_uid, roles, False)
+						# Set default settings (bg-color, etc.)
+						used_colors.append(await db.set_user_bg_color(vw.dbc, new_uid, used_colors, False))
+
+						# CANNOT do this:  data[each] = 'True' # now they actually do exist!
+						#    Note, we can't modify data (it's a MultiDictProxy, so not editable), we will just set all_exist_already to True, below, if all succeeds, and that will flag html.family_user_setup_retry to show all fields as "existing" users, successfully created, despite lingering .exists fields that are "false"
+						#    Actually, this doesn't matter, since we're (properly) forwarding on via HTTPFound when all goes well, anyway, to avoid re-POSTs; thus, the 'exists' fields will be rebuilt from database anyway
+					except IntegrityError: # Note that this should **almost** never happen, as we check username availability in real-time, but it's possible that another new user with the same username is created milliseconds before the db.add_user() attempt, above; this would make the username suddenly unavailable; we could not possibly have told the user about this in advance, and need to revert to posting an error message now:
+						invalids.append(U.tag_it('username', ids[x]))
+						flash = _quick_flash_error(text.user_exists)
+						raise # break out of loop and induce rollback
+
+			uids = [await db.get_user_id(vw.dbc, username) for username in usernames] # don't worry about exists[x]; in fact, we need ALL users in order to establish switch-allows between existing and new users.  db.add_user_switch_allows() resists duplications
+			for uid in uids:
+				other_uids = uids.copy()
+				other_uids.remove(uid)
+				await db.add_user_switch_allows(vw.dbc, other_uids, uid, not await db.is_user_teacher(vw.dbc, uid), False)
+
+			# Once all have succeeded:
+			await vw.dbc.execute('commit')
+		except:
+			await vw.dbc.execute('rollback')
+			if not flash:
+				flash = _quick_flash_error(text.unable_to_save_new_users_error)
+			l.debug(traceback.format_exc())
+
+	# If flash is unset, we succeeded!:
+	if flash == None:
+		# Reload the GET for this request, to show all complete:
+		raise web.HTTPFound(str(vw.rq.rel_url))
+
+	# Finally, if we need to re-present family_user_setup_retry, then generate new random_passwords for use within, and re-present:
+	random_passwords = await db.forge_noun_passwords(vw.dbc) # only do this lookup if needed, at the last minute
+	return hr(html.family_user_setup_retry(str(vw.rq.rel_url), data, random_passwords, _ws_url(vw.rq, '/ws_messages'), invalids, False, flash)) # assume all_exist_already is False if we're here, or else we would have HTTPFound-forwarded
+
+
 @rt.view('/family_invitation/{code}', name = 'family_invitation')
 class Family_Invitation(web.View):
-	async def common(self):
+	async def first(self, vw):
 		code = self.request.match_info['code']
 		if not valid.rec_invitation.match(code):
 			return hr(html.invalid_invitation()) # this might be an attack attempt!
 		#else:
-		vw = await _set_up_common_view_get(self)
 		invitation = await db.get_new_user_invitation(vw.dbc, code)
 		if not invitation:
 			return hr(html.invalid_invitation()) # this might be an attack attempt!
@@ -447,111 +579,38 @@ class Family_Invitation(web.View):
 		person_id, academic_year = invitation['person'], invitation['academic_year']
 		person = await db.get_person(vw.dbc, person_id)
 		family = await db.get_family_enrollments(vw.dbc, person_id, [academic_year,])
-		return (vw, person, family.children, code)
-		
+		return (person, family.children)
+
 	async def get(self):
-		commons = await self.common()
-		if isinstance(commons, web.Response):
-			return commons
-		#else:
-		vw, person, children, code = commons
-		covered = [] # `family` may contain duplicates of a student who is enrolled in multiple programs; we only want each student once, here, so we'll track those covered as we process each of family.children
-		all_exist_already = True
-		async def _user(p):
-			nonlocal all_exist_already
-			covered.append(p['id'])
-			username = await db.get_person_username(vw.dbc, p['id'])
-			exists = True
-			if not username:
-				username = await db.suggest_username(vw.dbc, p)
-				exists = False
-				all_exist_already = False
-			return {'id': p['id'], 'first_name': p['first_name'], 'last_name': p['last_name'], 'username': username, 'exists': exists}
-		users = [await _user(person)]
-		users += [await _user(child) for child in children if child['id'] not in covered]
-		passwords = await db.forge_noun_passwords(vw.dbc)
-		flash = _quick_flash_message(text.new_accounts_family % (person['first_name'], person['last_name']))
-		if all_exist_already:
-			flash = _quick_flash_message(text.existing_accounts_family)
-		_set_up_twixt(vw.session, 'family_invitation', None, None)
-
-		return hr(html.family_user_setup(str(vw.rq.rel_url), code, users, passwords, _ws_url(vw.rq, '/ws_messages'), all_exist_already, flash))
-
+		vw = await _set_up_common_view_get(self)
+		result = await self.first(vw)
+		# TODO: auto-log-in guardian?!  uid = await db.get_user_id_from_person_id(vw.dbc, invitation['person'])
+		return await _family_user_setup(vw, result)
 
 	async def post(self):
-		commons = await self.common()
-		if isinstance(commons, web.Response):
-			return commons
-		#else:
-		vw, person, children, code = commons
-		data = await self.request.post()
-		ids, exists, usernames, passwords = [], [], [], []
-		for key, value in data.items():
-			# we know these will come in the following order, by contract! first, user 1's pid, then etc... ; then on to user 2, and we're building parallel lists; we don't care about 'names', so we just skip it
-			if key.startswith('pid'):
-				ids.append(value)
-			if key.startswith('exists'):
-				exists.append(U.KVPair(key, value))
-			if key.startswith('username'):
-				usernames.append(value)
-			if key.startswith('password'):
-				passwords.append(value)
+		vw = await _set_up_common_view_post(self)
+		result = await self.first(vw)
+		# TODO: auto-log-in guardian?!  uid = await db.get_user_id_from_person_id(vw.dbc, invitation['person']) or db.get_user_id_from_username(vw.dbc, username)
+		return await _family_user_setup_post(vw, result)
 
-		flash = None
-		invalids = []
-		# Check for duplicate usernames:
-		if len(usernames) != len(set(usernames)): # (sets never include duplicates)
-			flash = _quick_flash_error(text.duplicate_usernames_error)
-			
-		# Try to the database:
-		if flash == None:
-			await vw.dbc.execute('begin') # apparently the only way to really do transactions like this (see https://stackoverflow.com/questions/15856976/transactions-with-python-sqlite3)
-			try:
-				used_colors = []
-				for x in range(len(ids)):
-					if exists[x].value not in ('true', 'True'):
-						try:
-							# Create user:
-							new_uid = await db.create_user(vw.dbc, usernames[x], passwords[x], ids[x], False)
-							# Add roles:
-							roles = ['student',]
-							if await db.is_a_guardian(vw.dbc, ids[x]):
-								roles.append('parent')
-							await db.add_roles(vw.dbc, new_uid, roles, False)
-							# Set default settings (bg-color, etc.)
-							used_colors.append(await db.set_user_bg_color(vw.dbc, new_uid, used_colors, False))
-							
-							# CANNOT do this:  data[each] = 'True' # now they actually do exist!
-							#    Note, we can't modify data (it's a MultiDictProxy, so not editable), we will just set all_exist_already to True, below, if all succeeds, and that will flag html.family_user_setup_retry to show all fields as "existing" users, successfully created, despite lingering .exists fields that are "false"
-							#    Actually, this doesn't matter, since we're (properly) forwarding on via HTTPFound when all goes well, anyway, to avoid re-POSTs; thus, the 'exists' fields will be rebuilt from database anyway
-						except IntegrityError: # Note that this should **almost** never happen, as we check username availability in real-time, but it's possible that another new user with the same username is created milliseconds before the db.add_user() attempt, above; this would make the username suddenly unavailable; we could not possibly have told the user about this in advance, and need to revert to posting an error message now:
-							invalids.append(U.tag_it('username', ids[x]))
-							flash = _quick_flash_error(text.user_exists)
-							raise # break out of loop and induce rollback
-				
-				uids = [await db.get_user_id(vw.dbc, username) for username in usernames] # don't worry about exists[x]; in fact, we need ALL users in order to establish switch-allows between existing and new users.  db.add_user_switch_allows() resists duplications
-				for uid in uids:
-					other_uids = uids.copy()
-					other_uids.remove(uid)
-					await db.add_user_switch_allows(vw.dbc, other_uids, uid, not await db.is_user_teacher(vw.dbc, uid), False)
+@rt.view('/user_settings', name = 'user_settings')
+class User_Settings(web.View):
+	async def first(self, vw):
+		if not vw.uuid:
+			return False # not logged in, can't go on!
+		person = await db.get_person_by_uuid(vw.dbc, vw.uuid)
+		family = await db.get_family_enrollments(vw.dbc, person['id'], None)
+		return (person, family.children)
 
-				# Once all have succeeded:
-				await vw.dbc.execute('commit')
-			except:
-				await vw.dbc.execute('rollback')
-				if not flash:
-					flash = _quick_flash_error(text.unable_to_save_new_users_error)
-				l.debug(traceback.format_exc())
-				
-		# If flash is unset, we succeeded!:
-		if flash == None:
-			# Reload the GET for this request, to show all complete:
-			raise web.HTTPFound(str(vw.rq.rel_url))
-			
-		# Finally, if we need to re-present family_user_setup_retry, then generate new random_passwords for use within, and re-present:
-		random_passwords = await db.forge_noun_passwords(vw.dbc) # only do this lookup if needed, at the last minute
-		return hr(html.family_user_setup_retry(str(vw.rq.rel_url), code, data, random_passwords, _ws_url(vw.rq, '/ws_messages'), invalids, False, flash)) # assume all_exist_already is False if we're here, or else we would have HTTPFound-forwarded
+	async def get(self):
+		vw = await _set_up_common_view_get(self, uuid = True) # _set_up_common_view_get does not try to set UUID by default; we need to be logged in for this view, though, regardless of GET or POST, so we need to verify uuid...
+		result = await self.first(vw)
+		return await _family_user_setup(vw, result)
 
+	async def post(self):
+		vw = await _set_up_common_view_post(self)
+		result = await self.first(vw)
+		return await _family_user_setup_post(vw, result)
 
 #@rt.view('/invitation/{code}', name = 'invitation')
 class Invitation_DEPRECATED(web.View):
@@ -1308,8 +1367,8 @@ async def _set_up_common_view(view, dbc = True, uuid = True, data = True, re_log
 	result.session['after_login'] = str(result.rq.url) # come back here after logging in
 	raise web.HTTPFound(_gurl(result.rq, 'login'))
 
-async def _set_up_common_view_get(view, dbc = True, re_log_in_seconds = None):
-	return await _set_up_common_view(view, dbc, uuid = False, data = False, re_log_in_seconds = re_log_in_seconds)
+async def _set_up_common_view_get(view, dbc = True, uuid = False, re_log_in_seconds = None):
+	return await _set_up_common_view(view, dbc, uuid = uuid, data = False, re_log_in_seconds = re_log_in_seconds)
 
 async def _set_up_common_view_post(view, dbc = True, uuid = True, data = True, re_log_in_seconds = None):
 	return await _set_up_common_view(view, dbc, uuid = uuid, data = data, re_log_in_seconds = re_log_in_seconds)

@@ -61,10 +61,42 @@ def login(action, flash = None, hide_username = False):
 				else:
 					pw_attrs.append('autofocus')
 				t.div(_text_input('password', None, pw_attrs, type_ = 'password'), cls = 'login_field')
+				t.div(t.a('Forgot password? Click here...', href = _gurl('/forgot_password')))
 				t.div(t.button("Log in!", type = "submit"), cls = 'login_field')
 		t.script(_js_basic())
 		t.script(_js_validate_event())
 		t.script(_js_validate_username_fields())
+	return d.render()
+
+def forgot_password(form, flash = None):
+	d = _doc(text.doc_prefix + 'Forgot Password')
+	with d:
+		with t.form(action = form.action, method = 'post'):
+			with t.fieldset(cls = 'small_fieldset'):
+				t.legend('Request password reset...')
+				_flash(flash)
+				t.div('What is your email address on account?')
+				t.div(_text_input('email', None, ('required', 'autofocus'), {'pattern': valid.re_email}, 'Type your email address here',
+					_invalid_div(text.inv_email, form.is_invalid('email'))))
+				t.div(t.button("Send!", type = "submit"))
+				t.hr()
+				t.div('Then check your email for a link to reset your password.')
+		t.script(_js_basic())
+		t.script(_js_validate_event())
+		t.script(_js_validate_email_field())
+	return d.render()
+
+def forgot_password_enter_code(form, flash = None):
+	d = _doc(text.doc_prefix + 'Forgot Password')
+	with d:
+		with t.form(action = form.action, method = 'post'):
+			with t.fieldset(cls = 'small_fieldset'):
+				t.legend('Password reset code...')
+				_flash(flash)
+				t.div('Type or paste your password-reset code:')
+				t.div(_text_input('code', None, ('required', 'autofocus'), None, 'Type or paste your code here'))
+				t.div(t.button("Go!", type = "submit"))
+		t.script(_js_basic())
 	return d.render()
 
 def reset_password(form, error = None):
@@ -92,14 +124,17 @@ def reset_password_success(nexts):
 	title = 'Reset Password'
 	d = _doc(text.doc_prefix + title)
 	with d:
-		t.div(text.reset_password_success)
-		_nexts(nexts)
+		with t.fieldset(cls = 'small_fieldset'):
+			t.legend('Password reset...')
+			t.div(text.reset_password_success)
+			_nexts(nexts)
 	return d.render()
 
 
 def _nexts(nexts):
 	for name, url in nexts:
-		t.div(t.a(name, href = url))
+		t.div(t.button(name, type = 'button', title = name, onclick = f'window.open("{url}", "_self");'))
+		#t.div(t.a(name, href = url))
 
 
 def new_user_success(id): # TODO: this is just a lame placeholder
@@ -486,7 +521,7 @@ def financial(links, years_filter, login, user_settings, person, data):
 	return d.render()
 
 
-def _family_user_setup(action, code, rows, invalids, ws_url, passwords, used_passwords, all_exist_already, flash = None):
+def _family_user_setup(action, rows, invalids, ws_url, passwords, used_passwords, all_exist_already, flash = None):
 	cl = lambda content: t.div(content, cls = 'contact_line') # TODO: DEPORT
 
 	username_fields = []
@@ -503,7 +538,8 @@ def _family_user_setup(action, code, rows, invalids, ws_url, passwords, used_pas
 							t.hr()
 
 						with t.table():
-							t.tr((t.th('name: username', cls = 'ca-cell'), t.th('password (or type or try "◄ Another")', colspan = '2', cls = 'ca-cell')))
+							password_th = 'password' if all_exist_already else 'password (or type or try "◄ Another")'
+							t.tr((t.th('name: username', cls = 'ca-cell'), t.th(password_th, colspan = '2', cls = 'ca-cell')))
 							for (pid, name, exists, username, password) in rows:
 								if all_exist_already:
 									exists.value = True # flip this here; if it used to be False, thus incuring an INSERT during POST processing, then it's True now (user now exists in database), but we couldn't alter the .exists value because it was a part of a read-only MultiDictProxy; so, we "flag" with all_exist_already upon successful INSERTs in db, and just interpret this sloppy-seeming way here
@@ -517,7 +553,7 @@ def _family_user_setup(action, code, rows, invalids, ws_url, passwords, used_pas
 											_text_input(username.key, username.value, type_ = 'hidden'),
 											_text_input(password.key, '', type_ = 'hidden'),
 										))
-										t.td(t.button('edit existing account...', type = 'button', onclick = 'load_page("%s")' % _gurl(f'/go_edit_user/{username.value}/{code}')))
+										t.td(t.button('edit existing account...', type = 'button', onclick = 'load_page("%s")' % _gurl(f'/go_edit_user/{username.value}')))
 										
 								else:
 									username_fields.append(username.key)
@@ -549,7 +585,7 @@ def _family_user_setup(action, code, rows, invalids, ws_url, passwords, used_pas
 							t.button("Save!", type = "button", onclick = f'print_then_submit()')
 						else:
 							t.p(text.what_next)
-							t.div(_what_next(text.go_to_grammar, text.go_to_practice, text.go_to_settings))
+							t.div(_what_next(text.go_home, text.go_to_grammar, text.go_to_practice))
 
 		t.script(_js_basic())
 		t.script(_js_go_to())
@@ -563,7 +599,7 @@ def _family_user_setup(action, code, rows, invalids, ws_url, passwords, used_pas
 		t.script(_js_go_to())
 	return d.render()
 
-def family_user_setup(action, code, users, passwords, ws_url, all_exist_already, flash = None):
+def family_user_setup(action, users, passwords, ws_url, all_exist_already, flash = None):
 	used_passwords = []
 	rows = []
 	for u in users:
@@ -578,10 +614,10 @@ def family_user_setup(action, code, users, passwords, ws_url, all_exist_already,
 			U.KVPair(U.tag_it('username', pid), u['username']),
 			U.KVPair(U.tag_it('password', pid), password if not u['exists'] else ''),
 		])
-	return _family_user_setup(action, code, rows, [], ws_url, passwords, used_passwords, all_exist_already, flash)
+	return _family_user_setup(action, rows, [], ws_url, passwords, used_passwords, all_exist_already, flash)
 
 
-def family_user_setup_retry(action, code, data, passwords, ws_url, invalids, all_exist_already, flash = None):
+def family_user_setup_retry(action, data, passwords, ws_url, invalids, all_exist_already, flash = None):
 	rows = []
 	row = [] # contains [(pid_fn, pid_fv), (name_fn, name_fv), (exists_fn, exists_fv), (username_fn, username_fv), (password_fn, password_fv)] (see family_user_setup())
 	for key, value in data.items():
@@ -594,7 +630,7 @@ def family_user_setup_retry(action, code, data, passwords, ws_url, invalids, all
 	if row:
 		rows.append(row)
 
-	return _family_user_setup(action, code, rows, invalids, ws_url, passwords, [], all_exist_already, flash)
+	return _family_user_setup(action, rows, invalids, ws_url, passwords, [], all_exist_already, flash)
 
 
 def student_invitation(form, invitation, person, enrollments, flash = None):

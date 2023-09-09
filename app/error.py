@@ -10,3 +10,6 @@ unknown_login_failure = 'An unexpected login failure has occurred.  Please try a
 invalid_new_user_input = 'Invalid entry - username and password must be provided, and password must be four or more characters long.  Email address must be a valid user@domain.tld email format.'
 not_permitted = 'Sorry, you are not authorized to access this particular page under your current login... try logging in as a user with more access?'
 reset_password_failure = 'Sorry, resetting your password failed.  Please contact tech support.'
+
+invalid_email = 'Invalid email address format.  Please correct to user@domain.tld format.'
+unknown_email = 'Unknown email address; please check with your administrator about the email address you have on file.'
