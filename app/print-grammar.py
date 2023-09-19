@@ -30,7 +30,7 @@ def main():
 	os.mkdir('print-grammar-outputs/' + title)
 	os.chdir('print-grammar-outputs/' + title)
 
-	first_week = 13
+	first_week = 1
 	last_week = 28
 	pdfs = []
 	for week in range(first_week, last_week+1):
