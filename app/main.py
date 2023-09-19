@@ -867,13 +867,17 @@ async def detail(rq):
 @rt.get('/detail/{table}/{id}')
 async def event_detail(rq):
 	dbc = rq.app['db']
-	table = rq.match_info['table']
+	table = rq.match_info['table'].lower()
 	detail = await db.get_detail_by_id(dbc, table, rq.match_info['id'])
 	if detail: # is a 3-tuple: {record, details, signs (sign-language signs)}
 		record, details, signs = detail
 		return await g_detail_handlers[table](record, details, signs, rq.host)
 	else:
 		raise web.HTTPFound(_gurl(rq, 'home')) # TODO - replace with a page/message that indicates failure to find the 'table/id'
+
+@rt.get('/DETAIL/{table}/{id}')
+async def event_detail_qr(rq):
+	return await event_detail(rq)
 
 
 @detail_handler('event')
