@@ -24,7 +24,7 @@ from . import settings
 from . import text
 from . import util as U
 
-k_cache_version = '?v=j5'
+k_cache_version = '?v=j6'
 
 # Classes ---------------------------------------------------------------------
 
