@@ -1005,7 +1005,7 @@ async def get_program(dbc, id):
 async def get_primary_program(dbc, uid, spec):
 	if spec.as_user_id and await _is_admin(dbc, uid):
 		uid = spec.as_user_id # "pretend" to be another
-	result = await fetchone(dbc, ('select program from enrollment join person on person.id = enrollment.student join user on user.person = person.id where user.id = ? and subject = 0 order by program desc limit 1', (uid,)))
+	result = await fetchone(dbc, ('select program from enrollment join person on person.id = enrollment.student join user on user.person = person.id where user.id = ? and subject = 0 and academic_year = ? order by program desc limit 1', (uid, spec.academic_year)))
 	return result['program'] if result else 1 # 1 is (hard-code?!) default (grammarschool); honestly, this should never happen, but it's a graceful (or mysteriously problematical?) way of dealing with the oddity 
 
 async def get_subjects(dbc, flag = None):

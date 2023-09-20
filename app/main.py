@@ -916,7 +916,7 @@ async def _resources(rq, qargs):
 	session = await get_session(rq)
 	dbc = rq.app['db']
 	uid = await db.get_user_id_from_uuid(dbc, session.get('uuid'), False)
-	#uid = 1 # DEPRECATED !!!!!! -- NOTE, this is NO LONGER a needed hack; 'admin' users can now correctly access, e.g., a_financial/{person_id}
+	uid = 1 # DEPRECATED !!!!!! -- NOTE, this is NO LONGER a needed hack; 'admin' users can now correctly access, e.g., a_financial/{person_id} --- NO, still use this, in print_syllabi; should be re-designed!
 	spec = _make_resources_spec(qargs)
 	_set_up_twixt(session, 'resources', _first_resources(dbc, uid, spec), spec) # start the first lookup now... should be done by the time the page is loaded and websocket handshake occurs, when this result is passed on into the loaded skeletal page
 
@@ -1102,7 +1102,7 @@ def _make_resources_spec(qargs):
 		random_audio_type = int(qargs.get('random_audio_type', 7)), # 4 = 'song-simple'
 		as_user_id = int(qargs.get('as_user_id', 0)), # will require 'admin' to work (or maybe a parent)
 		linear = int(qargs.get('linear', 0)), # 1 = load linearly, in-line, rather than "dynamically" via follow-up websocket call.  Currently (2022-9-8) this is only supported by resources/, and is use primarily in the creation of syllabus printing, using print-syllabi.py
-		academic_year = int(qargs.get('academic_year', 0)), # the academic_year field in tables like enrollment; designating the specific year of a student's enrollment, and thus, e.g., showing them the right syllabus (e.g., as a 9th grader, rather than the 8th-grader they were last year); the default of 0 just means "the highest on record", i.e., the "current" or at least "most recent"
+		academic_year = int(qargs.get('academic_year', k_temp_this_academic_year)), # the academic_year field in tables like enrollment; designating the specific year of a student's enrollment, and thus, e.g., showing them the right syllabus (e.g., as a 9th grader, rather than the 8th-grader they were last year); the default of 0 just means "the highest on record", i.e., the "current" or at least "most recent"
 	)
 	if spec.week != None:
 		spec.first_week = spec.last_week = int(spec.week)
