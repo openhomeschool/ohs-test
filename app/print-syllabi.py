@@ -16,17 +16,17 @@ def main():
 	db = sqlite3.connect('ohs-test.db')
 	db.row_factory = sqlite3.Row
 	
-	start_week = 13
-	end_week = 15
+	start_week = 1
+	end_week = 12
 	c = db.execute('''
 		select person.first_name, person.last_name, user.id as uid from person
 		join enrollment on enrollment.student = person.id
 		join user on user.person = person.id
-		where enrollment.academic_year=3 and enrollment.program in (3, 4) and enrollment.subject=0
+		where enrollment.academic_year=4 and enrollment.program in (3, 4) and enrollment.subject=0
+		and person.id = 92
 	''')
-	#	and person.id = 92
 
-	subjects = {'a': '2,8,4', 'b': '5,7,11,15'} # left-page subjects and right-page-subjects
+	subjects = {'a': '2,8,4', 'b': '5,7,11,17'} # left-page subjects and right-page-subjects
 	try:
 		os.mkdir('print-syllabi')
 	except:
