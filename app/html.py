@@ -1385,7 +1385,8 @@ def math_resources(container, spec, records, show_cw):
 def latin_vocabulary(container, spec, records, show_cw):
 	def render(record, container): # callback function, see _grammar_resources()
 		audio_base = 'latin/lv%s' % record['id'] if not spec.for_print else None # "turn off" audio if spec.for_print
-		_add_eqality_record(container, record, 'word', 'translation', False, audio_base)
+		if record['level'] == 1:
+			_add_eqality_record(container, record, 'word', 'translation', False, audio_base)
 
 	_grammar_resources(container, spec, records, show_cw, 'latin', render, True, t.table)
 

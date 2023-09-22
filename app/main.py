@@ -916,7 +916,7 @@ async def _resources(rq, qargs):
 	session = await get_session(rq)
 	dbc = rq.app['db']
 	uid = await db.get_user_id_from_uuid(dbc, session.get('uuid'), False)
-	uid = 1 # DEPRECATED !!!!!! -- NOTE, this is NO LONGER a needed hack; 'admin' users can now correctly access, e.g., a_financial/{person_id} --- NO, still use this, in print_syllabi; should be re-designed!
+	#uid = 1 # DEPRECATED !!!!!! -- NOTE, this is NO LONGER a needed hack; 'admin' users can now correctly access, e.g., a_financial/{person_id} --- NO, still use this, in print_syllab
 	spec = _make_resources_spec(qargs)
 	_set_up_twixt(session, 'resources', _first_resources(dbc, uid, spec), spec) # start the first lookup now... should be done by the time the page is loaded and websocket handshake occurs, when this result is passed on into the loaded skeletal page
 
