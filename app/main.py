@@ -823,6 +823,11 @@ async def default(rq):
 async def resources(rq):
 	return await _resources(rq, rq.query)
 
+@rt.get('/GC{cycle}W{week}')
+async def gcw_resources(rq):
+	dbc = rq.app['db']
+	return await _resources(rq, {'cycle': rq.match_info['cycle'], 'week': rq.match_info['week']})
+
 @rt.get('/shop1', name = 'shop1')
 async def shop_year_program1(rq):
 	return await _resources(rq, {'shop': 1, 'cycle': k_temp_this_cycle, 'program': 1, 'week': -1, 'grammar_supplement': 0})
