@@ -826,7 +826,8 @@ async def resources(rq):
 @rt.get('/GC{cycle}W{week}')
 async def gcw_resources(rq):
 	dbc = rq.app['db']
-	return await _resources(rq, {'cycle': rq.match_info['cycle'], 'week': rq.match_info['week']})
+	return await _resources(rq, {'cycle': 1, 'week': rq.match_info['week']}) # TODO: TODO TODO: THIS is a temporary KLUDGE to solve the problem of some incorrect QR codes on some cycle-1 grammar-guide sheets, that point to cycle 3 instead of cycle 1; here, I just FORCE cycle 1 for now, so that those codes "work", but will have to put this back aright after 8 weeks!
+	#REAL: return await _resources(rq, {'cycle': rq.match_info['cycle'], 'week': rq.match_info['week']})
 
 @rt.get('/shop1', name = 'shop1')
 async def shop_year_program1(rq):
