@@ -24,7 +24,7 @@ from . import settings
 from . import text
 from . import util as U
 
-k_cache_version = '?v=k1'
+k_cache_version = '?v=k2'
 
 # Classes ---------------------------------------------------------------------
 
@@ -1088,7 +1088,7 @@ def _grammar_resources(container, spec, records, show_cw, subject_directory, ren
 						filename_base = subject_directory + '/%s%s' % (main_audio_base, record[main_audio_suffix_field])
 					filename_accompanied_base = subject_directory + '/c%sw%s-chant' % (record['cycle'], record['week'])
 					with buttonstrip:
-						if path_exists('static/audio/' + filename_solo_base + '.pdf'): # TODO: improve! use pathstuffs!
+						if path_exists('static/audio/' + filename_base + '.pdf'): # TODO: improve! use pathstuffs!
 							t.button('♬', title = 'Musical score', onclick = 'window.open("%s","_blank");' % _aurl(filename_base + '.pdf' + k_cache_version))
 						#t.button('»', title = 'Accompanied song', onclick = 'play_pause("%s", this, "»");' % filename_accompanied_base)
 						if path_exists('static/audio/' + filename_solo_base + '.mp3'): # TODO: improve! use pathstuffs!
