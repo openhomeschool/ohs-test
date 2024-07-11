@@ -506,10 +506,13 @@ def financial(links, years_filter, login, user_settings, person, data):
 					if total > 0:
 						cl('Balance Due (make checks payable to CCLSC):')
 						cli(_format_money(total))
-					else:
+					elif total < 0:
 						cl('Balance CCLSC owes YOU:')
 						cli(_format_money(-total))
 						cli('(your check will be delivered soon!)')
+					else:
+						cl('Balance:')
+						cli(_format_money(total))
 
 		t.p('If you see any mistakes, please just contact me directly.  Thanks!')
 
