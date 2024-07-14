@@ -1112,8 +1112,8 @@ async def get_enrollment_costs(dbc, student_person_ids, academic_year_ids):
 		join enrollment on enrollment.academic_year = cost.academic_year and enrollment.program = cost.program
 		join program on program.id = cost.program
 		where enrollment.academic_year = cost.academic_year and enrollment.student = person.id and cost.per_student = 1
-		and person.id in ({','.join(['?']*len(student_person_ids))}) and cost.academic_year in ({','.join(['?']*len(academic_year_ids))}) order by person.id, cost.academic_year, cost.program
-	'''
+		and person.id in ({','.join(['?']*len(student_person_ids))}) and cost.academic_year in ({','.join(['?']*len(academic_year_ids))}) group by cost.id, person.id, cost.academic_year, cost.program order by person.id, cost.academic_year, cost.program
+	''' # the 'group by' is vital to avoid duplicates that meet the joins, but are actually referring to the same cost; this singles out uniques in just the right way
 	return await fetchall(dbc, (sel, student_person_ids + academic_year_ids))
 
 
