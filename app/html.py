@@ -1257,10 +1257,14 @@ def _add_eqality_record(table, record, left_field_name, right_field_name, yougli
 		table += t.tr(t.td(), t.td(str(record[line2])))
 
 def _prefix_answer(record, youglishit = False):
-	answer_prompt = record['answer_prefix'].capitalize() + ' ' + record['prompt'] if record['answer_prefix'] else record['prompt'][0].upper() + record['prompt'][1:]
-	answer = '%s %s %s.' % (answer_prompt, record['answer_verb'], record['answer'])
+	if record['prefixless_answer']:
+		answer = record['answer']
+	else:
+		answer_prompt = record['answer_prefix'].capitalize() + ' ' + record['prompt'] if record['answer_prefix'] else record['prompt'][0].upper() + record['prompt'][1:]
+		answer_verb = record['answer_verb']
+		answer = '%s %s %s.' % (answer_prompt, answer_verb if answer_verb else '', record['answer'])
 	if youglishit:
-		answer = _youglishify('%s %s %s.' % (answer_prompt, record['answer_verb'], record['answer']))
+		answer = _youglishify(answer)
 	return answer
 
 @subject_resources('math_vocabulary')
@@ -1308,7 +1312,9 @@ def science_grammar(container, spec, records, show_cw):
 		with container:
 			if not record['continuer']:
 				#OLD: t.div(t.b())
-				prompt = f"{record['answer_prefix']} {record['prompt']}" if record['answer_prefix'] else record['prompt']
+				prompt = record['prompt']
+				if record['answer_prefix'] and not record['prefixless_prompt']:
+					prompt = f"{record['answer_prefix']} {prompt}"
 				if not record['addendum']:
 					prompt_verb = record['prompt_verb'] if record['prompt_verb'] else record['answer_verb'] # default to the answer_verb if there is no prompt_verb
 					prompt = f"What {prompt_verb} {prompt}?"

@@ -894,9 +894,9 @@ async def timeline_event_detail(record, details, signs, host):
 async def science_detail(record, details, signs, host):
 	return hr(html.science_detail(record, details, signs, host))
 
-k_temp_this_week = 4
-k_temp_this_cycle = 1
-k_temp_this_academic_year = 4
+k_temp_this_week = 1
+k_temp_this_cycle = 2
+k_temp_this_academic_year = 5
 
 # cool characters: ⌂♩♪♫♬▲►▼◄→ ʘΞΞΩΨΦΣΠϘЮФѺѼ׀ᴓ₪Ω⃰∞∑∆◊?¿ ᵯ«»   ₧◙□∞Ξ©π
 _links = lambda rq: (
@@ -922,7 +922,7 @@ async def _resources(rq, qargs):
 	session = await get_session(rq)
 	dbc = rq.app['db']
 	uid = await db.get_user_id_from_uuid(dbc, session.get('uuid'), False)
-	#uid = 1 # DEPRECATED !!!!!! -- NOTE, this is NO LONGER a needed hack; 'admin' users can now correctly access, e.g., a_financial/{person_id} --- NO, still use this, in print_syllab
+	#uid = 1 # NOT DEPRECATED !!!!!! -- NOTE, this is NO LONGER a needed hack for NORMAL day-to-da (as 'admin' users can now correctly access, e.g., a_financial/{person_id}), BUT, still use this, in print_syllabi.py!!!
 	spec = _make_resources_spec(qargs)
 	_set_up_twixt(session, 'resources', _first_resources(dbc, uid, spec), spec) # start the first lookup now... should be done by the time the page is loaded and websocket handshake occurs, when this result is passed on into the loaded skeletal page
 
@@ -1398,7 +1398,12 @@ def _set_up_twixt(session, task_name, async_call, spec):
 
 async def init_db(filename):
 	conn = await aiosqlite.connect(filename, isolation_level = None, detect_types = PARSE_DECLTYPES) # "isolation_level = None disables the Python wrapper's automatic handling of issuing BEGIN etc. for you. What's left is the underlying C library, which does do "autocommit" by default. That autocommit, however, is disabled when you do a BEGIN (b/c you're signaling a transaction with that statement" - from https://stackoverflow.com/questions/15856976/transactions-with-python-sqlite3 - thanks Thanatos
+	#def dict_factory(cursor, row):
+	#	fields = [column[0] for column in cursor.description]
+	#	return {key: value for key, value in zip(fields, row)}
+	#conn.row_factory = dict_factory # aiosqlite.Row is more feature-full, but we often really want dict semantics, so, dict is better
 	conn.row_factory = aiosqlite.Row
+
 	await conn.execute('pragma journal_mode = wal') # see https://charlesleifer.com/blog/going-fast-with-sqlite-and-python/ - since we're using async/await from a wsgi stack, this is appropriate
 	await conn.execute('pragma foreign_keys = ON')
 	#await conn.execute('pragma case_sensitive_like = true')
