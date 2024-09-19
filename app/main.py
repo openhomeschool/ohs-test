@@ -591,7 +591,7 @@ class Family_Invitation(web.View):
 		vw = await _set_up_common_view_post(self)
 		result = await self.first(vw)
 		# TODO: auto-log-in guardian?!  uid = await db.get_user_id_from_person_id(vw.dbc, invitation['person']) or db.get_user_id_from_username(vw.dbc, username)
-		return await _family_user_setup_post(vw, result)
+		return await _family_user_setup_result(vw, result)
 
 @rt.view('/user_settings', name = 'user_settings')
 class User_Settings(web.View):
@@ -610,7 +610,7 @@ class User_Settings(web.View):
 	async def post(self):
 		vw = await _set_up_common_view_post(self)
 		result = await self.first(vw)
-		return await _family_user_setup_post(vw, result)
+		return await _family_user_setup_result(vw, result)
 
 #@rt.view('/invitation/{code}', name = 'invitation')
 class Invitation_DEPRECATED(web.View):
