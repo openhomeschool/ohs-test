@@ -24,7 +24,7 @@ from . import settings
 from . import text
 from . import util as U
 
-k_cache_version = '?v=l2'
+k_cache_version = '?v=l3'
 
 # Classes ---------------------------------------------------------------------
 
@@ -1087,17 +1087,20 @@ def _grammar_resources(container, spec, records, show_cw, subject_directory, ren
 				if audio_widgets and (not spec or not spec.for_print):
 					filename_base = subject_directory + '/c%sw%s' % (record['cycle'], record['week'])
 					filename_solo_base = filename_base + '-solo'
+					filename_chant_base = filename_base + '-chant'
 					if main_audio_base and main_audio_suffix_field:
 						filename_base = subject_directory + '/%s%s' % (main_audio_base, record[main_audio_suffix_field])
-					filename_accompanied_base = subject_directory + '/c%sw%s-chant' % (record['cycle'], record['week'])
+					#@filename_accompanied_base = subject_directory + '/c%sw%s-chant' % (record['cycle'], record['week'])
 					with buttonstrip:
 						if path_exists('static/audio/' + filename_base + '.pdf'): # TODO: improve! use pathstuffs!
 							t.button('♬', title = 'Musical score', onclick = 'window.open("%s","_blank");' % _aurl(filename_base + '.pdf' + k_cache_version))
-						#t.button('»', title = 'Accompanied song', onclick = 'play_pause("%s", this, "»");' % filename_accompanied_base)
+						#@t.button('»', title = 'Accompanied song', onclick = 'play_pause("%s", this, "»");' % filename_accompanied_base)
 						if path_exists('static/audio/' + filename_solo_base + '.mp3'): # TODO: improve! use pathstuffs!
 							t.button('►', title = 'Audio song', onclick = 'play_pause("%s", this, "►");' % filename_solo_base)
 						if path_exists('static/audio/' + filename_base + '.mp3'): # TODO: improve! use pathstuffs!
 							t.button('►►', title = 'Audio song with repeat phrases', onclick = 'play_pause("%s", this, "►►");' % filename_base)
+						if path_exists('static/audio/' + filename_chant_base + '.mp3'): # TODO: improve! use pathstuffs!
+							t.button('Ѥ', title = 'Audio chant', onclick = 'play_pause("%s", this, "Ѥ");' % filename_chant_base)
 						#t.button('ℓ', title = 'Copywork')
 						#t.button('Ξ', title = 'Details')
 					buttonstrip_detail_solo = t.div(cls = 'buttonstrip_detail', id = filename_solo_base + '_container') # invisible at first
@@ -1107,15 +1110,20 @@ def _grammar_resources(container, spec, records, show_cw, subject_directory, ren
 					with buttonstrip_detail:
 						t.audio(t.source(src = _aurl(filename_base + '.mp3' + k_cache_version), type = 'audio/mpeg'), controls = True, preload='none', id = filename_base)
 						#t.button('-', title = 'Lower pitch', onclick = 'lower_pitch("%s");' % filename_base)
-					buttonstrip_accompanied_detail = t.div(cls = 'buttonstrip_detail', id = filename_accompanied_base + '_container') # invisible at first
-					with buttonstrip_accompanied_detail:
-						t.audio(t.source(src = _aurl(filename_accompanied_base + '.mp3' + k_cache_version), type = 'audio/mpeg'), controls = True, preload = 'none', id = filename_accompanied_base)
+					buttonstrip_detail_chant = t.div(cls = 'buttonstrip_detail', id = filename_chant_base + '_container') # invisible at first
+					with buttonstrip_detail_chant:
+						t.audio(t.source(src = _aurl(filename_chant_base + '.mp3' + k_cache_version), type = 'audio/mpeg'), controls = True, preload='none', id = filename_chant_base)
+					#@buttonstrip_accompanied_detail = t.div(cls = 'buttonstrip_detail', id = filename_accompanied_base + '_container') # invisible at first
+					#@with buttonstrip_accompanied_detail:
+					#@	t.audio(t.source(src = _aurl(filename_accompanied_base + '.mp3' + k_cache_version), type = 'audio/mpeg'), controls = True, preload = 'none', id = filename_accompanied_base)
 
 				_add_cw(record, buttonstrip, spec)
 				resource_div += buttonstrip
 				if audio_widgets and (not spec or not spec.for_print):
 					resource_div += buttonstrip_detail
-					resource_div += buttonstrip_accompanied_detail
+					resource_div += buttonstrip_detail_solo
+					resource_div += buttonstrip_detail_chant
+					#@resource_div += buttonstrip_accompanied_detail
 				if record_container_class:
 					record_container = record_container_class()
 					resource_div += record_container
