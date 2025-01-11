@@ -648,7 +648,7 @@ async def _get_assignments(dbc, spec, resource_spec, uid):
 	joins = [f'resource on {spec.table}.resource = resource.id', ]
 	if resource_spec.extra_joins:
 		joins.extend(resource_spec.extra_joins)
-	wheres, args = [f'{spec.table}.subject = ?',], [k_subject_ids[resource_spec.subject_title], ]
+	wheres, args = [f'{spec.table}.subject = ?', 'assignment.archived is NULL'], [k_subject_ids[resource_spec.subject_title], ]
 	_filter_cycle_week_range(spec, joins, wheres, args, True)
 	orig_spec_grade = spec.grade
 	orig_spec_program = spec.program
