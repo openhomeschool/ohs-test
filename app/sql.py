@@ -1048,10 +1048,10 @@ async def get_person_addresses(dbc, person_id):
 	return await fetchall(dbc, ('select address.* from address join person_address on address.id = person_address.address join person on person_address.person = person.id where person.id = ?', (person_id,)))
 
 async def get_prior_academic_year_ids(dbc, person_id, academic_year_id):
-	academic_year = await get_academic_year(dbc, academic_year_id) # expected to always return a record
+	academic_year = await get_academic_year(dbc, academic_year_id) if academic_year_id else None
 	guardians = await _get_guardians(dbc, person_id)
 	joins = ['academic_year on academic_year.id = enrollment.academic_year',]
-	wheres = [f'academic_year.seq < {academic_year["seq"]}',]
+	wheres = [f'academic_year.seq < {academic_year["seq"]}',] if academic_year else []
 	group_order = 'group by academic_year order by academic_year'
 	if guardians:
 		# person_id is a child, get enrollment years:
