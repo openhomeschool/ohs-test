@@ -68,13 +68,13 @@ def login(action, flash = None, hide_username = False):
 		t.script(_js_validate_username_fields())
 	return d.render()
 
-def forgot_password(form, flash = None):
+def forgot_password(form, error = None):
 	d = _doc(text.doc_prefix + 'Forgot Password')
 	with d:
 		with t.form(action = form.action, method = 'post'):
 			with t.fieldset(cls = 'small_fieldset'):
 				t.legend('Request password reset...')
-				_flash(flash)
+				_error(error)
 				t.div('What is your email address on account?')
 				t.div(_text_input('email', None, ('required', 'autofocus'), {'pattern': valid.re_email}, 'Type your email address here',
 					_invalid_div(text.inv_email, form.is_invalid('email'))))
@@ -1007,10 +1007,10 @@ def resources(ws_url, filters, cycles, weeks, qargs, links, login, user_settings
 								t.button(name, type = 'button', title = hint, onclick = onclick)
 					with t.div(id = 'login'):
 						with t.div(cls = 'ib-right'):
+							t.button('₪', title = 'Messages', type = 'button', onclick = 'load_page("https://um.openhome.school/")') #TODO: 'load_page("%s")' % _gurl('/messages'))
 							if login['type'] == 'button':
 								t.button(text.login_button_title, title = text.login_button_title, onclick = 'load_page("%s")' % _gurl('/login'))
 							else:
-								t.button('₪', title = 'Messages', onclick = 'void()') #TODO: 'load_page("%s")' % _gurl('/messages'))
 								assert(login['type'] == 'menu')
 								_login_dropdown(login['username'], login['switch_users'], hint = 'Switch person')
 
@@ -1558,6 +1558,7 @@ def _assignments(container, spec, records, show_cw):
 		instruction = instruction.replace('{skips}', str(record['skips']) if record['skips'] else '')
 		if record['optional']:
 			instruction = '<b>[optional]</b> ' + instruction
+		#instruction += f' [{record["assignment_id"]}]' # NOTE -- this is nice for debugging!
 		grade_first = record['grade_first']
 		grade_last = record['grade_last']
 		#TEMP COMMENT-OUT!!!!!!!! --- too many students now are in different grades for different subjects, and this needlessly (and constantly) "shows" that when they're logged in and looking at their personal syllabus (or looking at their printed syllabus)... consider just adding a qarg/spec item called show_grades which could be checked here, and grades shown only if that flag is true AND the following conditions are met (note: don't just replace!  b/c then e.g., for IEW, e.g., you'll get grade prefixes on all lines, even those that apply to the full span - it'll just be really ugly)
