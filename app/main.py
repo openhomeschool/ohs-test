@@ -77,6 +77,7 @@ g_playlists = {}
 
 rt = web.RouteTableDef()
 def hr(text): return web.Response(text = text, content_type = 'text/html')
+def hr_csv(text): return web.Response(text = text, content_type = 'text/csv')
 
 # TEMP, DEBUG!!!!  (for running with:
 #   python -m aiohttp.web -H 0.0.0.0 -P 8080 app.main:init
@@ -720,6 +721,86 @@ async def a_financial(rq):
 	person_id = rq.match_info['person_id']
 	return await _financial(rq, dbc, await get_session(rq), (await db.get_person(dbc, person_id)) if person_id else None, int(rq.query.get('academic_year', 0)))
 
+@rt.get('/all_financial/{person_id}')
+@auth('admin')
+async def all_financial(rq):
+	dbc = rq.app['db']
+	person_id = rq.match_info['person_id']
+	ayids = await db.get_prior_academic_year_ids(dbc, person_id, None) # `None` to get ALL AYs
+	fs = await _build_financial_struct(dbc, person_id, ayids)
+	lines = []
+	ays = dict(map(lambda item: (item['id'], item['name']), await db.get_academic_years(dbc)))
+	dollars = lambda cents: '%.2f' % (cents / 100)
+
+	#def add_block():
+
+	lines.append('Student Costs:')
+	ay = None
+	for cost in fs.costs:
+		if cost['amount'] == 0 or cost['enrollment_exception'] == 1:
+			continue # skip
+		if ay != cost['academic_year']:
+			ay = cost['academic_year']
+			lines.append(ays[ay])
+		lines.append(','.join(['',
+				dollars(cost['amount']),
+				cost['first_name'],
+				cost['program_name'],
+				cost['name'],
+			]))
+
+	lines.append('Family Costs:')
+	ay = None
+	for cost in fs.family_costs:
+		if ay != cost['academic_year']:
+			ay = cost['academic_year']
+			lines.append(ays[ay])
+		lines.append(','.join(['',
+				dollars(cost['amount']),
+				cost['name'],
+			]))
+
+	lines.append('Cost Offsets:')
+	ay = None
+	for offset in fs.cost_offsets:
+		if ay != offset['academic_year']:
+			ay = offset['academic_year']
+			lines.append(ays[ay])
+		lines.append(','.join(['',
+				dollars(offset['amount']),
+				offset['note'],
+			]))
+
+	lines.append('Leadership:')
+	ay = None
+	for role in fs.leaders:
+		if ay != role['academic_year']:
+			ay = role['academic_year']
+			lines.append(ays[ay])
+		l.debug(f"!!!!@ ${dollars(role['annual_offset'])}")
+		lines.append(','.join(['',
+				dollars(role['annual_offset']),
+				role['program_name'] + ' ' + role['role'],
+				(role['subject_name'] + ' (%d weeks)' % role['weeks']) if role['subject_name'] else '',
+				(' (%s sections)' % role['sections']) if role['sections'] else '',
+				role['note'] if role['note'] else '',
+			]))
+
+	lines.append('Payments:')
+	ay = None
+	for payment in fs.payments:
+		if ay != payment['academic_year']:
+			ay = payment['academic_year']
+			lines.append(ays[ay])
+		lines.append(','.join(['',
+				dollars(payment['amount']),
+				str(payment['check_number']),
+				str(payment['date']),
+			]))
+
+	return hr_csv('\n'.join(lines))
+
+
 @rt.get('/financial')
 @auth('parent')
 async def financial(rq):
@@ -826,8 +907,7 @@ async def resources(rq):
 @rt.get('/GC{cycle}W{week}')
 async def gcw_resources(rq):
 	dbc = rq.app['db']
-	return await _resources(rq, {'cycle': 1, 'week': rq.match_info['week']}) # TODO: TODO TODO: THIS is a temporary KLUDGE to solve the problem of some incorrect QR codes on some cycle-1 grammar-guide sheets, that point to cycle 3 instead of cycle 1; here, I just FORCE cycle 1 for now, so that those codes "work", but will have to put this back aright after 8 weeks!
-	#REAL: return await _resources(rq, {'cycle': rq.match_info['cycle'], 'week': rq.match_info['week']})
+	return await _resources(rq, {'cycle': rq.match_info['cycle'], 'week': rq.match_info['week']}) # TODO: TODO TODO: temporary KLUDGE: need to manually set 'cycle': 1, here, first 8 weeks of cycle 1 to solve the problem of some incorrect QR codes on some cycle-1 grammar-guide sheets that point to cycle 3 instead of cycle 1; FORCE cycle 1 here brings up the right material even if the QR-code is wrong; need to fix those QR-codes, in the grammar sheets, next time we print for Cycle 1, so that this kludge isn't necessary
 
 @rt.get('/shop1', name = 'shop1')
 async def shop_year_program1(rq):
@@ -895,15 +975,15 @@ async def science_detail(record, details, signs, host):
 	return hr(html.science_detail(record, details, signs, host))
 
 k_temp_this_week = 1
-k_temp_this_cycle = 2
-k_temp_this_academic_year = 5
+k_temp_this_cycle = 3
+k_temp_this_academic_year = 6
 
 # cool characters: ⌂♩♪♫♬▲►▼◄→ ʘΞΞΩΨΦΣΠϘЮФѺѼ׀ᴓ₪Ω⃰∞∑∆◊?¿ ᵯ«»   ₧◙□∞Ξ©π
 _links = lambda rq: (
 	#(name/title, hint, content, is-url?)
 	('⌂', "Home (THIS week)", _http_url(rq, '/resources', {}), True),
 	('π', 'Practice/quiz grammar', _http_url(rq, '/practice', {}), True),
-	('©', 'Calendar', _http_url(rq, '/appointments', {}), True),
+	('©', 'Calendar', 'https://um.openhome.school/static/uploads/Kd79X_calendar-2025-2026-v3.pdf', {}), True),
 	('$', 'Shop', _http_url(rq, '/shop1', {}), True),
 	
 	# ¿ - ASSESS?!! (practice, but with teeth!?
@@ -1083,6 +1163,7 @@ k_db_handlers = { # 'id' keys must coincide with DB 'program' table
 	8: db.get_high1_resources, # TODO: placeholder
 	9: db.get_high1_resources, # TODO: placeholder
 	10: db.get_high1_resources, # TODO: placeholder
+	11: db.get_high1_resources, # TODO: placeholder
 }
 
 def _make_resources_spec(qargs):
